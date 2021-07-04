@@ -49,11 +49,11 @@ class LCADLConvSpatialComp:
 
     def create_feat_grid(self):
         self.grid_size = self.kernel_size * 3 - 2
-        self.n_spatial = int(np.ceil((self.grid_size - self.kernel_size + 1) / self.stride))
+        self.n_surround = int(np.ceil((self.grid_size - self.kernel_size + 1) / self.stride))
         self.feat_grid = torch.zeros(
             self.m,
-            self.n_spatial,
-            self.n_spatial,
+            self.n_surround,
+            self.n_surround,
             self.in_c,
             self.grid_size,
             self.grid_size,
@@ -66,36 +66,36 @@ class LCADLConvSpatialComp:
                 for iw, w in enumerate(range(0, self.grid_size - self.kernel_size + 1, self.stride)):
                     self.feat_grid[feat_num, ih, iw, :, h:h+self.kernel_size, w:w+self.kernel_size] = 1.0
 
-        self.feat_mask = (self.feat_grid != 0).bool().cpu()
+        self.feat_mask = (self.feat_grid != 0).cpu().bool()
 
     def compute_lateral_connectivity(self):
         self.feat_grid.flatten()[self.feat_mask.flatten()] = self.D.\
             unsqueeze(1).\
             unsqueeze(1).\
-            repeat_interleave(self.n_spatial, dim = 1).\
-            repeat_interleave(self.n_spatial, dim = 2).\
+            repeat_interleave(self.n_surround, dim = 1).\
+            repeat_interleave(self.n_surround, dim = 2).\
             flatten()
         G = torch.mm(
-            self.feat_grid.reshape(self.m * self.n_spatial * self.n_spatial, -1),
-            self.feat_grid.reshape(self.m * self.n_spatial * self.n_spatial, -1).T
+            self.feat_grid.reshape(self.m * self.n_surround * self.n_surround, -1),
+            self.feat_grid.reshape(self.m * self.n_surround * self.n_surround, -1).T
         )
         G[list(range(G.shape[0])), list(range(G.shape[1]))] = 0.0
         G = G.reshape(
             self.m,
-            self.n_spatial,
-            self.n_spatial,
+            self.n_surround,
+            self.n_surround,
             self.m,
-            self.n_spatial,
-            self.n_spatial
+            self.n_surround,
+            self.n_surround
         )
-        return G[:, self.n_spatial // 2, self.n_spatial // 2]
+        return G[:, self.n_surround // 2, self.n_surround // 2]
 
     def perform_lateral_competition(self, a, G):
         return F.conv2d(
             a,
             G,
             stride = 1,
-            padding = (self.n_spatial - 1) // 2
+            padding = (self.n_surround - 1) // 2
         )
 
     def get_device(self, x):
@@ -211,7 +211,7 @@ model = LCADLConvSpatialComp(
     batch_size = 256,
     device = 1,
     stride = 2,
-    kernel_size = 11,
+    kernel_size = 7,
     dtype = torch.float16
 )
 model.run_model(imgs_gray[:-1000])
@@ -230,7 +230,7 @@ plt.show()
 
 
 # reconstruct new images
-inputs = model.preprocess_inputs(x[-1000:])
+inputs = model.preprocess_inputs(imgs_gray[-1000:])
 a = model.encode(inputs)
 recon = model.compute_recon(a) 
 
@@ -239,10 +239,10 @@ recon = model.compute_recon(a)
 fig = plt.figure()
 sub1 = fig.add_subplot(121)
 sub2 = fig.add_subplot(122)
-in_grid = make_grid(inputs.T.reshape([1000, 1, PATCH_SIZE, PATCH_SIZE]), nrow = 30)
-rec_grid = make_grid(recon.T.reshape([1000, 1, PATCH_SIZE, PATCH_SIZE]), nrow = 30)
-sub1.imshow(in_grid.cpu().numpy()[0], cmap = 'gray')
-sub2.imshow(rec_grid.cpu().numpy()[0], cmap = 'gray')
+in_grid = make_grid(inputs, nrow = 30)
+rec_grid = make_grid(recon, nrow = 30)
+sub1.imshow(in_grid.float().cpu().numpy()[0], cmap = 'gray')
+sub2.imshow(rec_grid.float().cpu().numpy()[0], cmap = 'gray')
 sub1.set_title('Input')
 sub2.set_title('Recon')
 plt.show()
