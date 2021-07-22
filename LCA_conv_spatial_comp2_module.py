@@ -12,7 +12,7 @@ from torchvision.datasets import CIFAR10
 from torchvision.transforms import ToTensor
 from torchvision.utils import make_grid
 
-BATCH_SIZE = 256
+BATCH_SIZE = 128
 UPDATE_STEPS = 2000
 
 
@@ -74,12 +74,6 @@ class LCADLConvSpatialComp:
             stride = self.stride, 
             padding = (self.kh - 1, self.kw - 1)
         )
-        G[
-            list(range(self.m)), 
-            list(range(self.m)), 
-            (G.shape[-2] - 1) // 2,
-            (G.shape[-2] - 1) // 2
-        ] = 0.0
         if not hasattr(self, 'n_surround_h'):
             self.n_surround_h = int(np.ceil((G.shape[-2] - 1) / 2))
             self.n_surround_w = int(np.ceil((G.shape[-1] - 1) / 2))
@@ -118,7 +112,7 @@ class LCADLConvSpatialComp:
 
         for _ in range(self.lca_iters):
             a_t = self.soft_threshold(u_t)
-            u_t += self.charge_rate * (b_t - u_t - self.perform_lateral_competition(a_t, G))
+            u_t += self.charge_rate * (b_t - u_t - self.perform_lateral_competition(a_t, G) + a_t)
 
         return a_t 
 
@@ -146,11 +140,11 @@ class LCADLConvSpatialComp:
         self.D += update * self.eta
         self.normalize_D()
 
-    def normalize_D(self):
+    def normalize_D(self, eps = 1e-8):
         ''' Normalizes features such at each one has unit norm '''
 
         scale = (self.D.norm(p = 2, dim = (1, 2, 3), keepdim = True) + 1e-12)
-        self.D /= scale
+        self.D /= (scale + eps)
 
     def soft_threshold(self, x):
         ''' Soft threshold '''
