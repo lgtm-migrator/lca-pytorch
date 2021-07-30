@@ -13,20 +13,18 @@ from torchvision.transforms import ToTensor
 from torchvision.utils import make_grid
 
 BATCH_SIZE = 128
-UPDATE_STEPS = 2000
+UPDATE_STEPS = 1500
 
 
 class LCADLConvSpatialComp:
-    def __init__(self, n_neurons, in_c, in_h, in_w, thresh = 0.1, tau = 50, 
+    def __init__(self, n_neurons, in_c, thresh = 0.1, tau = 50, 
                  eta = 0.01, lca_iters = 2000, kh = 7, kw = 7, stride = 1, 
                  pad = 'same', device = None, dtype = torch.float32, learn_dict = True,
-                 nonneg = True):
+                 nonneg = True, track_loss = True):
         ''' Performs sparse dictionary learning via LCA (Rozell et al. 2008) '''
 
         self.m = n_neurons
         self.in_c = in_c 
-        self.in_h = in_h 
-        self.in_w = in_w 
         self.thresh = thresh 
         self.tau = tau 
         self.charge_rate = 1.0 / self.tau
@@ -40,20 +38,17 @@ class LCADLConvSpatialComp:
         self.dtype = dtype
         self.learn_dict = learn_dict
         self.nonneg = nonneg
-        self.input_pad = ((self.kh-1)//2, (self.kw-1)//2) if self.pad == 'same' else 0
-        self.recon_output_pad = (
-            self.stride - 1 if (self.kh % 2 != 0 and self.stride > 1) else 0, 
-            self.stride - 1 if (self.kh % 2 != 0 and self.stride > 1) else 0
-        )
+        self.track_loss = track_loss
 
-        assert(self.kh > 0 and self.kw > 0)
         assert(self.kh % 2 != 0 and self.kw % 2 != 0)
-        assert(self.stride >= 1)
-        assert(self.eta > 0)
 
         # We will store l2 reconstruction values in these to plot 
-        self.error_mean, self.error_se = [], []
+        if self.track_loss:
+            self.recon_error_mean, self.recon_error_se = [], []
+            self.l1_sparsity_mean, self.l1_sparsity_se = [], []
 
+        # create the weight tensor and compute padding
+        self.compute_padding_dims()
         self.create_weight_mat()
 
     def create_weight_mat(self):
@@ -66,6 +61,14 @@ class LCADLConvSpatialComp:
             dtype = self.dtype
         )
         self.normalize_D()
+
+    def compute_padding_dims(self):
+        ''' Computes padding for forward and transpose convs '''
+        self.input_pad = ((self.kh-1)//2, (self.kw-1)//2) if self.pad == 'same' else 0
+        self.recon_output_pad = (
+            self.stride - 1 if (self.kh % 2 != 0 and self.stride > 1) else 0, 
+            self.stride - 1 if (self.kh % 2 != 0 and self.stride > 1) else 0
+        )
 
     def compute_lateral_connectivity(self):
         G = F.conv2d(
@@ -114,6 +117,7 @@ class LCADLConvSpatialComp:
             a_t = self.soft_threshold(u_t)
             u_t += self.charge_rate * (b_t - u_t - self.lateral_competition(a_t, G) + a_t)
 
+        if self.track_loss: self.track_l1_sparsity(a_t)
         return a_t 
 
     def update_D(self, x, a):
@@ -121,7 +125,7 @@ class LCADLConvSpatialComp:
 
         recon = self.compute_recon(a)
         error = x - recon
-        self.track_l2_recon_error(error)
+        if self.track_loss: self.track_l2_recon_error(error)
         error = F.unfold(
             error, 
             (self.kh, self.kw), 
@@ -166,8 +170,13 @@ class LCADLConvSpatialComp:
     def track_l2_recon_error(self, error):
         ''' Keeps track of the reconstruction error over training '''
         l2_error = error.norm(p = 2, dim = (1, 2, 3))
-        self.error_mean.append(torch.mean(l2_error).item())
-        self.error_se.append(torch.std(l2_error).item() / np.sqrt(error.shape[0]))
+        self.recon_error_mean.append(torch.mean(l2_error).item())
+        self.recon_error_se.append(torch.std(l2_error).item() / np.sqrt(error.shape[0]))
+
+    def track_l1_sparsity(self, acts):
+        l1_sparsity = acts.norm(p = 1, dim = (1, 2, 3))
+        self.l1_sparsity_mean.append(torch.mean(l1_sparsity).item())
+        self.l1_sparsity_se.append(torch.std(l1_sparsity).item() / np.sqrt(acts.shape[0]))
 
     def preprocess_inputs(self, x, eps = 1e-12):
         ''' Scales the values of each patch to [0, 1] and then transforms each patch to have mean 0 '''
@@ -179,6 +188,8 @@ class LCADLConvSpatialComp:
         return x
 
     def forward(self, x):
+        assert x.shape[1] == self.in_c
+
         x = self.preprocess_inputs(x)
         a = self.encode(x)
 
@@ -198,8 +209,6 @@ train, test = imgs_gray[:-100], imgs_gray[-100:]
 model = LCADLConvSpatialComp(
     64, 
     1,
-    32,
-    32,
     lca_iters = 1500, 
     thresh = 0.1, 
     device = 1,
@@ -217,8 +226,22 @@ for step in ProgressBar()(range(UPDATE_STEPS)):
 
 
 # plot error 
-plt.errorbar(list(range(len(model.error_mean))), model.error_mean, yerr = model.error_se)
+plt.errorbar(
+    list(range(len(model.recon_error_mean))), 
+    model.recon_error_mean, 
+    yerr = model.recon_error_se
+)
 plt.ylabel('Reconstruction Error +/- SE')
+plt.xlabel('Training Iteration')
+plt.show()
+
+# plot sparsity
+plt.errorbar(
+    list(range(len(model.l1_sparsity_mean))),
+    model.l1_sparsity_mean,
+    yerr = model.l1_sparsity_se
+)
+plt.ylabel('L1 Sparsity +/- SE')
 plt.xlabel('Training Iteration')
 plt.show()
 
