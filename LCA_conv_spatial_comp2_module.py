@@ -42,8 +42,8 @@ class LCADLConvSpatialComp:
         self.nonneg = nonneg
         self.input_pad = ((self.kh-1)//2, (self.kw-1)//2) if self.pad == 'same' else 0
         self.recon_output_pad = (
-            1 if (self.kh % 2 != 0 and self.stride > 1) else 0, 
-            1 if (self.kh % 2 != 0 and self.stride > 1) else 0
+            self.stride - 1 if (self.kh % 2 != 0 and self.stride > 1) else 0, 
+            self.stride - 1 if (self.kh % 2 != 0 and self.stride > 1) else 0
         )
 
         assert(self.kh > 0 and self.kw > 0)
@@ -80,7 +80,7 @@ class LCADLConvSpatialComp:
 
         return G
 
-    def perform_lateral_competition(self, a, G):
+    def lateral_competition(self, a, G):
         return F.conv2d(
             a,
             G,
@@ -112,7 +112,7 @@ class LCADLConvSpatialComp:
 
         for _ in range(self.lca_iters):
             a_t = self.soft_threshold(u_t)
-            u_t += self.charge_rate * (b_t - u_t - self.perform_lateral_competition(a_t, G) + a_t)
+            u_t += self.charge_rate * (b_t - u_t - self.lateral_competition(a_t, G) + a_t)
 
         return a_t 
 
@@ -140,11 +140,11 @@ class LCADLConvSpatialComp:
         self.D += update * self.eta
         self.normalize_D()
 
-    def normalize_D(self, eps = 1e-8):
+    def normalize_D(self, eps = 1e-12):
         ''' Normalizes features such at each one has unit norm '''
 
-        scale = (self.D.norm(p = 2, dim = (1, 2, 3), keepdim = True) + 1e-12)
-        self.D /= (scale + eps)
+        scale = (self.D.norm(p = 2, dim = (1, 2, 3), keepdim = True) + eps)
+        self.D /= scale
 
     def soft_threshold(self, x):
         ''' Soft threshold '''
@@ -191,7 +191,7 @@ class LCADLConvSpatialComp:
 # loading in random images from CIFAR dataset
 imgs = CIFAR10(root = 'cifar/', download = True).data.astype(np.float32)
 imgs_gray = torch.from_numpy(np.mean(imgs, -1)).unsqueeze(1)
-train, test = imgs_gray[:-1000], imgs_gray[-1000:]
+train, test = imgs_gray[:-100], imgs_gray[-100:]
 
 
 # run the model
@@ -207,6 +207,7 @@ model = LCADLConvSpatialComp(
     kh = 9,
     kw = 9,
     nonneg = False,
+    pad = 'valid',
     dtype = torch.float16
 )
 
@@ -237,8 +238,8 @@ recon = model.compute_recon(a)
 fig = plt.figure()
 sub1 = fig.add_subplot(121)
 sub2 = fig.add_subplot(122)
-in_grid = make_grid(inputs, nrow = 30)
-rec_grid = make_grid(recon, nrow = 30)
+in_grid = make_grid(inputs, nrow = 10)
+rec_grid = make_grid(recon, nrow = 10)
 sub1.imshow(in_grid.float().cpu().numpy()[0], cmap = 'gray')
 sub2.imshow(rec_grid.float().cpu().numpy()[0], cmap = 'gray')
 sub1.set_title('Input')
