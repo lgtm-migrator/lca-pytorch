@@ -2,6 +2,7 @@ import os
 from random import shuffle
 
 import cv2
+import h5py
 import matplotlib.pyplot as plt 
 import numpy as np
 from progressbar import ProgressBar
@@ -20,7 +21,9 @@ class LCADLConvSpatialComp:
     def __init__(self, n_neurons, in_c, thresh = 0.1, tau = 50, 
                  eta = 0.01, lca_iters = 2000, kh = 7, kw = 7, stride = 1, 
                  pad = 'same', device = None, dtype = torch.float32, learn_dict = True,
-                 nonneg = True, track_loss = True):
+                 nonneg = True, track_loss = True, dict_write_step = -1, 
+                 act_write_step = -1, input_write_step = -1, recon_write_step = -1, 
+                 result_fpath = 'LCA_results'):
         ''' Performs sparse dictionary learning via LCA (Rozell et al. 2008) '''
 
         self.m = n_neurons
@@ -39,6 +42,12 @@ class LCADLConvSpatialComp:
         self.learn_dict = learn_dict
         self.nonneg = nonneg
         self.track_loss = track_loss
+        self.dict_write_step = dict_write_step 
+        self.act_write_step = act_write_step
+        self.input_write_step = input_write_step
+        self.recon_write_step = recon_write_step
+        self.result_fpath = result_fpath
+        self.ts = 0
 
         assert(self.kh % 2 != 0 and self.kw % 2 != 0)
 
@@ -117,13 +126,21 @@ class LCADLConvSpatialComp:
             a_t = self.soft_threshold(u_t)
             u_t += self.charge_rate * (b_t - u_t - self.lateral_competition(a_t, G) + a_t)
 
+
         if self.track_loss: self.track_l1_sparsity(a_t)
+        if self.ts % self.act_write_step == 0 and self.act_write_step != -1:
+            self.append_h5(self.result_fpath, 'a_{}'.format(self.ts), a_t)
+
         return a_t 
 
     def update_D(self, x, a):
         ''' Updates the dictionary based on the reconstruction error. '''
 
         recon = self.compute_recon(a)
+
+        if self.ts % self.recon_write_step == 0 and self.recon_write_step != -1:
+            self.append_h5(self.result_fpath, 'recon_{}'.format(self.ts), recon)
+
         error = x - recon
         if self.track_loss: self.track_l2_recon_error(error)
         error = F.unfold(
@@ -143,6 +160,9 @@ class LCADLConvSpatialComp:
         update = torch.tensordot(a, error, dims = ([0, 2, 3], [0, -2, -1]))
         self.D += update * self.eta
         self.normalize_D()
+
+        if self.ts % self.dict_write_step == 0 and self.dict_write_step != -1:
+            self.append_h5(self.result_fpath, 'D_{}'.format(self.ts), self.D)
 
     def normalize_D(self, eps = 1e-12):
         ''' Normalizes features such at each one has unit norm '''
@@ -187,14 +207,24 @@ class LCADLConvSpatialComp:
         x -= x.mean(dim = (1, 2, 3), keepdim = True)
         return x
 
+    def append_h5(self, fpath, key, data):
+        with h5py.File(fpath, 'a') as h5file:
+            h5file.create_dataset(key, data = data.cpu().numpy())
+
     def forward(self, x):
         assert x.shape[1] == self.in_c
 
         x = self.preprocess_inputs(x)
+
+        if self.ts % self.input_write_step == 0 and self.input_write_step != -1:
+            self.append_h5(self.result_fpath, 'input_{}'.format(self.ts), x)
+
         a = self.encode(x)
 
         if self.learn_dict:
             self.update_D(x, a)
+
+        self.ts += 1
 
         return a
 
@@ -212,11 +242,11 @@ model = LCADLConvSpatialComp(
     lca_iters = 1500, 
     thresh = 0.1, 
     device = 1,
-    stride = 2,
+    stride = 4,
     kh = 9,
     kw = 9,
     nonneg = False,
-    pad = 'valid',
+    pad = 'same',
     dtype = torch.float16
 )
 
