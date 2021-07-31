@@ -25,7 +25,7 @@ class LCADLConvSpatialComp:
                  pad = 'same', device = None, dtype = torch.float32, learn_dict = True,
                  nonneg = True, track_loss = True, dict_write_step = -1, 
                  act_write_step = -1, input_write_step = -1, recon_write_step = -1, 
-                 result_fpath = 'LCA_results'):
+                 result_fpath = 'LCA_results', scale_imgs = True, zero_center_imgs = True):
         ''' Performs sparse dictionary learning via LCA (Rozell et al. 2008) '''
 
         self.m = n_neurons
@@ -49,6 +49,8 @@ class LCADLConvSpatialComp:
         self.input_write_step = input_write_step
         self.recon_write_step = recon_write_step
         self.result_fpath = result_fpath
+        self.scale_imgs = scale_imgs 
+        self.zero_center_imgs = zero_center_imgs
         self.ts = 0
 
         assert(self.kh % 2 != 0 and self.kw % 2 != 0)
@@ -202,10 +204,14 @@ class LCADLConvSpatialComp:
 
     def preprocess_inputs(self, x, eps = 1e-12):
         ''' Scales the values of each patch to [0, 1] and then transforms each patch to have mean 0 '''
-        minx = x.reshape(x.shape[0], -1).min(dim = -1, keepdim = True)[0][..., None, None]
-        maxx = x.reshape(x.shape[0], -1).max(dim = -1, keepdim = True)[0][..., None, None]
-        x = (x - minx) / (maxx - minx + eps)
-        x -= x.mean(dim = (1, 2, 3), keepdim = True)
+
+        if self.scale_imgs:
+            minx = x.reshape(x.shape[0], -1).min(dim = -1, keepdim = True)[0][..., None, None]
+            maxx = x.reshape(x.shape[0], -1).max(dim = -1, keepdim = True)[0][..., None, None]
+            x = (x - minx) / (maxx - minx + eps)
+        if self.zero_center_imgs:
+            x -= x.mean(dim = (1, 2, 3), keepdim = True)
+            
         return x
 
     def append_h5(self, fpath, key, data):
