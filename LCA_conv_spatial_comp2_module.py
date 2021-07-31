@@ -14,6 +14,8 @@ from torchvision.transforms import ToTensor
 from torchvision.utils import make_grid
 
 BATCH_SIZE = 128
+DEVICE = 1
+DTYPE = torch.float16
 UPDATE_STEPS = 1500
 
 
@@ -200,7 +202,6 @@ class LCADLConvSpatialComp:
 
     def preprocess_inputs(self, x, eps = 1e-12):
         ''' Scales the values of each patch to [0, 1] and then transforms each patch to have mean 0 '''
-        x = x.type(self.dtype).to(self.device)
         minx = x.reshape(x.shape[0], -1).min(dim = -1, keepdim = True)[0][..., None, None]
         maxx = x.reshape(x.shape[0], -1).max(dim = -1, keepdim = True)[0][..., None, None]
         x = (x - minx) / (maxx - minx + eps)
@@ -247,11 +248,12 @@ model = LCADLConvSpatialComp(
     kw = 9,
     nonneg = False,
     pad = 'same',
-    dtype = torch.float16
+    dtype = DTYPE
 )
 
 for step in ProgressBar()(range(UPDATE_STEPS)):
     batch = train[np.random.choice(train.shape[0], BATCH_SIZE, replace = False)]
+    batch = batch.type(DTYPE).to(DEVICE)
     a = model.forward(batch)
 
 
