@@ -20,7 +20,7 @@ UPDATE_STEPS = 1500
 
 
 class LCADLConvSpatialComp:
-    def __init__(self, n_neurons, in_c, thresh = 0.1, tau = 50, 
+    def __init__(self, n_neurons, in_c, thresh = 0.1, tau = 1500, 
                  eta = 0.01, lca_iters = 2000, kh = 7, kw = 7, stride = 1, 
                  pad = 'same', device = None, dtype = torch.float32, learn_dict = True,
                  nonneg = True, track_loss = True, dict_write_step = -1, 
@@ -244,12 +244,12 @@ train, test = imgs_gray[:-100], imgs_gray[-100:]
 
 # run the model
 model = LCADLConvSpatialComp(
-    64, 
+    128, 
     1,
-    lca_iters = 1500, 
+    lca_iters = 1000, 
     thresh = 0.1, 
     device = 1,
-    stride = 4,
+    stride = 2,
     kh = 9,
     kw = 9,
     nonneg = False,
@@ -291,6 +291,7 @@ plt.show()
 
 # reconstruct new images
 inputs = model.preprocess_inputs(test)
+inputs = inputs.type(DTYPE).to(DEVICE)
 a = model.encode(inputs)
 recon = model.compute_recon(a) 
 
