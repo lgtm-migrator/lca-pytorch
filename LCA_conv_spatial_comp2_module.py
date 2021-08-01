@@ -21,7 +21,7 @@ UPDATE_STEPS = 1500
 
 class LCADLConvSpatialComp:
     def __init__(self, n_neurons, in_c, thresh = 0.1, tau = 1500, 
-                 eta = 0.01, lca_iters = 2000, kh = 7, kw = 7, stride = 1, 
+                 eta = 0.01, lca_iters = 2000, kh = 7, kw = 7, stride_h = 1, stride_w = 1, 
                  pad = 'same', device = None, dtype = torch.float32, learn_dict = True,
                  nonneg = True, track_loss = True, dict_write_step = -1, 
                  act_write_step = -1, input_write_step = -1, recon_write_step = -1, 
@@ -37,7 +37,8 @@ class LCADLConvSpatialComp:
         self.lca_iters = lca_iters 
         self.kh = kh 
         self.kw = kw 
-        self.stride = stride 
+        self.stride_h = stride_h
+        self.stride_w = stride_w
         self.pad = pad 
         self.device = device 
         self.dtype = dtype
@@ -79,15 +80,15 @@ class LCADLConvSpatialComp:
         ''' Computes padding for forward and transpose convs '''
         self.input_pad = ((self.kh-1)//2, (self.kw-1)//2) if self.pad == 'same' else 0
         self.recon_output_pad = (
-            self.stride - 1 if (self.kh % 2 != 0 and self.stride > 1) else 0, 
-            self.stride - 1 if (self.kh % 2 != 0 and self.stride > 1) else 0
+            self.stride_h - 1 if (self.kh % 2 != 0 and self.stride_h > 1) else 0, 
+            self.stride_w - 1 if (self.kw % 2 != 0 and self.stride_w > 1) else 0
         )
 
     def compute_lateral_connectivity(self):
         G = F.conv2d(
             self.D, 
             self.D, 
-            stride = self.stride, 
+            stride = (self.stride_h, self.stride_w), 
             padding = (self.kh - 1, self.kw - 1)
         )
         if not hasattr(self, 'n_surround_h'):
@@ -116,7 +117,7 @@ class LCADLConvSpatialComp:
         b_t = F.conv2d(
             x,
             self.D,
-            stride = self.stride,
+            stride = (self.stride_h, self.stride_w),
             padding = self.input_pad
         )
 
@@ -151,7 +152,7 @@ class LCADLConvSpatialComp:
             error, 
             (self.kh, self.kw), 
             padding = self.input_pad, 
-            stride = self.stride
+            stride = (self.stride_h, self.stride_w)
         )
         error = error.reshape(
             error.shape[0], 
@@ -186,7 +187,7 @@ class LCADLConvSpatialComp:
         return F.conv_transpose2d(
             a, 
             self.D,
-            stride = self.stride,
+            stride = (self.stride_h, self.stride_w),
             padding = self.input_pad,
             output_padding = self.recon_output_pad
         )
@@ -244,17 +245,19 @@ train, test = imgs_gray[:-100], imgs_gray[-100:]
 
 # run the model
 model = LCADLConvSpatialComp(
-    128, 
+    64, 
     1,
-    lca_iters = 1000, 
+    lca_iters = 1500, 
     thresh = 0.1, 
     device = 1,
-    stride = 2,
+    stride_h = 4,
+    stride_w = 4,
     kh = 9,
     kw = 9,
     nonneg = False,
     pad = 'same',
-    dtype = DTYPE
+    dtype = DTYPE,
+    tau = 1000
 )
 
 for step in ProgressBar()(range(UPDATE_STEPS)):
