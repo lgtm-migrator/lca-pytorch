@@ -95,6 +95,9 @@ class LCADLConvSpatialComp:
             stride = (self.stride_t, self.stride_h, self.stride_w), 
             padding = (self.kt - 1, self.kh - 1, self.kw - 1)
         )
+        # to avoid inhibition from future neurons to past neurons
+        # if kt != input depth
+        G[:, :, (G.shape[2]-1)//2+1:, :, :] = 0.0
         if not hasattr(self, 'n_surround_h'):
             self.n_surround_t = int(np.ceil((G.shape[-3] - 1) / 2))
             self.n_surround_h = int(np.ceil((G.shape[-2] - 1) / 2))
@@ -258,7 +261,7 @@ class LCADLConvSpatialComp:
 # loading in random images from CIFAR dataset
 imgs = CIFAR10(root = 'cifar/', download = True).data.astype(np.float32)
 imgs_gray = torch.from_numpy(np.mean(imgs, -1)).unsqueeze(1)
-imgs_gray = torch.stack([imgs_gray for _ in range(15)], dim = 2)
+imgs_gray = torch.stack([imgs_gray for _ in range(9)], dim = 2)
 train, test = imgs_gray[:-100], imgs_gray[-100:]
 
 
@@ -270,11 +273,11 @@ model = LCADLConvSpatialComp(
     thresh = 0.1, 
     device = DEVICE,
     stride_h = 2,
-    stride_w = 4,
-    stride_t = 2,
-    kh = 7,
+    stride_w = 2,
+    stride_t = 1,
+    kh = 9,
     kw = 9,
-    kt = 5,
+    kt = 9,
     nonneg = False,
     pad = 'same',
     dtype = DTYPE,
