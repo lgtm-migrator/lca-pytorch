@@ -21,8 +21,8 @@ UPDATE_STEPS = 1500
 
 class LCADLConvSpatialComp:
     def __init__(self, n_neurons, in_c, thresh = 0.1, tau = 1500, 
-                 eta = 0.01, lca_iters = 2000, kh = 7, kw = 7, stride_h = 1, stride_w = 1, 
-                 pad = 'same', device = None, dtype = torch.float32, learn_dict = True,
+                 eta = 0.01, lca_iters = 2000, kh = 7, kw = 7, kt = 9, stride_h = 1, stride_w = 1, 
+                 stride_t = 1, pad = 'same', device = None, dtype = torch.float32, learn_dict = True,
                  nonneg = True, track_loss = True, dict_write_step = -1, 
                  act_write_step = -1, input_write_step = -1, recon_write_step = -1, 
                  result_fpath = 'LCA_results', scale_imgs = True, zero_center_imgs = True):
@@ -37,8 +37,10 @@ class LCADLConvSpatialComp:
         self.lca_iters = lca_iters 
         self.kh = kh 
         self.kw = kw 
+        self.kt = kt
         self.stride_h = stride_h
         self.stride_w = stride_w
+        self.stride_t = stride_t
         self.pad = pad 
         self.device = device 
         self.dtype = dtype
@@ -69,6 +71,7 @@ class LCADLConvSpatialComp:
         self.D = torch.randn(
             self.m,
             self.in_c,
+            self.kt,
             self.kh,
             self.kw,
             device = self.device,
@@ -78,31 +81,33 @@ class LCADLConvSpatialComp:
 
     def compute_padding_dims(self):
         ''' Computes padding for forward and transpose convs '''
-        self.input_pad = ((self.kh-1)//2, (self.kw-1)//2) if self.pad == 'same' else 0
+        self.input_pad = (0, (self.kh-1)//2, (self.kw-1)//2) if self.pad == 'same' else 0
         self.recon_output_pad = (
+            0,
             self.stride_h - 1 if (self.kh % 2 != 0 and self.stride_h > 1) else 0, 
             self.stride_w - 1 if (self.kw % 2 != 0 and self.stride_w > 1) else 0
         )
 
     def compute_lateral_connectivity(self):
-        G = F.conv2d(
+        G = F.conv3d(
             self.D, 
             self.D, 
-            stride = (self.stride_h, self.stride_w), 
-            padding = (self.kh - 1, self.kw - 1)
+            stride = (self.stride_t, self.stride_h, self.stride_w), 
+            padding = (self.kt - 1, self.kh - 1, self.kw - 1)
         )
         if not hasattr(self, 'n_surround_h'):
+            self.n_surround_t = int(np.ceil((G.shape[-3] - 1) / 2))
             self.n_surround_h = int(np.ceil((G.shape[-2] - 1) / 2))
             self.n_surround_w = int(np.ceil((G.shape[-1] - 1) / 2))
 
         return G
 
     def lateral_competition(self, a, G):
-        return F.conv2d(
+        return F.conv3d(
             a,
             G,
             stride = 1,
-            padding = (self.n_surround_h, self.n_surround_w)
+            padding = (self.n_surround_t, self.n_surround_h, self.n_surround_w)
         )
 
     def get_device(self, x):
@@ -114,10 +119,10 @@ class LCADLConvSpatialComp:
         ''' Computes sparse code given data vector x and dictionary matrix D '''
 
         # input drive
-        b_t = F.conv2d(
+        b_t = F.conv3d(
             x,
             self.D,
-            stride = (self.stride_h, self.stride_w),
+            stride = (self.stride_t, self.stride_h, self.stride_w),
             padding = self.input_pad
         )
 
@@ -148,21 +153,30 @@ class LCADLConvSpatialComp:
 
         error = x - recon
         if self.track_loss: self.track_l2_recon_error(error)
-        error = F.unfold(
-            error, 
-            (self.kh, self.kw), 
-            padding = self.input_pad, 
-            stride = (self.stride_h, self.stride_w)
+        error = F.pad(
+            error,
+            (
+                self.input_pad[2],
+                self.input_pad[2],
+                self.input_pad[1],
+                self.input_pad[1],
+                self.input_pad[0],
+                self.input_pad[0]
+            )
+        ).unfold(
+            -3,
+            self.kt,
+            self.stride_t
+        ).unfold(
+            -3,
+            self.kh,
+            self.stride_h
+        ).unfold(
+            -3,
+            self.kw,
+            self.stride_w
         )
-        error = error.reshape(
-            error.shape[0], 
-            self.in_c, 
-            self.kh, 
-            self.kw, 
-            a.shape[-2], 
-            a.shape[-1]
-        )
-        update = torch.tensordot(a, error, dims = ([0, 2, 3], [0, -2, -1]))
+        update = torch.tensordot(a, error, dims = ([0, 2, 3, 4], [0, 2, 3, 4]))
         self.D += update * self.eta
         self.normalize_D()
 
@@ -184,10 +198,10 @@ class LCADLConvSpatialComp:
 
     def compute_recon(self, a):
         ''' Computes reconstruction given code '''
-        return F.conv_transpose2d(
+        return F.conv_transpose3d(
             a, 
             self.D,
-            stride = (self.stride_h, self.stride_w),
+            stride = (self.stride_t, self.stride_h, self.stride_w),
             padding = self.input_pad,
             output_padding = self.recon_output_pad
         )
@@ -207,11 +221,15 @@ class LCADLConvSpatialComp:
         ''' Scales the values of each patch to [0, 1] and then transforms each patch to have mean 0 '''
 
         if self.scale_imgs:
-            minx = x.reshape(x.shape[0], -1).min(dim = -1, keepdim = True)[0][..., None, None]
-            maxx = x.reshape(x.shape[0], -1).max(dim = -1, keepdim = True)[0][..., None, None]
+            x = x.permute(0, 2, 1, 3, 4)
+            minx = x.reshape(x.shape[0], x.shape[1], -1). \
+                min(dim = -1, keepdim = True)[0][..., None, None]
+            maxx = x.reshape(x.shape[0], x.shape[1], -1). \
+                max(dim = -1, keepdim = True)[0][..., None, None]
             x = (x - minx) / (maxx - minx + eps)
+            x = x.permute(0, 2, 1, 3, 4)
         if self.zero_center_imgs:
-            x -= x.mean(dim = (1, 2, 3), keepdim = True)
+            x -= x.mean(dim = (1, 3, 4), keepdim = True)
             
         return x
 
@@ -240,6 +258,7 @@ class LCADLConvSpatialComp:
 # loading in random images from CIFAR dataset
 imgs = CIFAR10(root = 'cifar/', download = True).data.astype(np.float32)
 imgs_gray = torch.from_numpy(np.mean(imgs, -1)).unsqueeze(1)
+imgs_gray = torch.stack([imgs_gray for _ in range(15)], dim = 2)
 train, test = imgs_gray[:-100], imgs_gray[-100:]
 
 
@@ -249,11 +268,13 @@ model = LCADLConvSpatialComp(
     1,
     lca_iters = 1500, 
     thresh = 0.1, 
-    device = 1,
-    stride_h = 4,
+    device = DEVICE,
+    stride_h = 2,
     stride_w = 4,
-    kh = 9,
+    stride_t = 2,
+    kh = 7,
     kw = 9,
+    kt = 5,
     nonneg = False,
     pad = 'same',
     dtype = DTYPE,
