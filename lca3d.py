@@ -1,3 +1,4 @@
+import csv
 import os 
 from random import randint, shuffle
 
@@ -6,6 +7,7 @@ import h5py
 import imageio
 import matplotlib.pyplot as plt 
 import numpy as np
+import pandas as pd
 from progressbar import ProgressBar
 import torch
 import torch.nn as nn
@@ -14,10 +16,10 @@ from torchvision.datasets import CIFAR10
 from torchvision.transforms import ToTensor
 from torchvision.utils import make_grid
 
-BATCH_SIZE = 128
+BATCH_SIZE = 64
 DEVICE = 1
 DTYPE = torch.float32
-N_FRAMES_IN_TIME = 5
+N_FRAMES_IN_TIME = 3
 UPDATE_STEPS = 1500
 
 
@@ -25,9 +27,9 @@ class LCADLConvSpatialComp:
     def __init__(self, n_neurons, in_c, thresh = 0.1, tau = 1500, 
                  eta = 0.01, lca_iters = 2000, kh = 7, kw = 7, kt = 9, stride_h = 1, stride_w = 1, 
                  stride_t = 1, pad = 'same', device = None, dtype = torch.float32, learn_dict = True,
-                 nonneg = True, track_metrics = True, dict_write_step = -1, 
+                 nonneg = True, track_metrics = True, dict_write_step = -1, recon_error_write_step = -1,
                  act_write_step = -1, input_write_step = -1, recon_write_step = -1, 
-                 result_fpath = 'LCA_results', scale_imgs = True, zero_center_imgs = True):
+                 result_dir = 'LCA_results', scale_imgs = True, zero_center_imgs = True):
         ''' Performs sparse dictionary learning via LCA (Rozell et al. 2008) '''
 
         self.m = n_neurons
@@ -50,20 +52,19 @@ class LCADLConvSpatialComp:
         self.nonneg = nonneg
         self.track_metrics = track_metrics
         self.dict_write_step = dict_write_step 
+        self.recon_error_write_step = recon_error_write_step
         self.act_write_step = act_write_step
         self.input_write_step = input_write_step
         self.recon_write_step = recon_write_step
-        self.result_fpath = result_fpath
+        self.result_dir = result_dir
+        os.makedirs(self.result_dir, exist_ok = True)
+        self.metric_fpath = os.path.join(result_dir, 'metrics.xz')
+        self.tensor_write_fpath = os.path.join(result_dir, 'written_tensors.h5')
         self.scale_imgs = scale_imgs 
         self.zero_center_imgs = zero_center_imgs
         self.ts = 0
 
         assert(self.kh % 2 != 0 and self.kw % 2 != 0)
-
-        # We will store l2 reconstruction values in these to plot 
-        if self.track_metrics:
-            self.recon_error_mean, self.recon_error_se = [], []
-            self.l1_sparsity_mean, self.l1_sparsity_se = [], []
 
         # create the weight tensor and compute padding
         self.compute_padding_dims()
@@ -115,13 +116,13 @@ class LCADLConvSpatialComp:
             padding = (self.n_surround_t, self.n_surround_h, self.n_surround_w)
         )
 
-    def get_device(self, x):
-        ''' Gets the device (GPU) x is on and returns None if on CPU ''' 
-
-        return x.device.index if x.is_cuda else None
-
     def encode(self, x):
         ''' Computes sparse code given data vector x and dictionary matrix D '''
+
+        if self.track_metrics:
+            l1_sparsity = torch.zeros(self.lca_iters, dtype = self.dtype, device = self.device)
+            l2_error = torch.zeros(self.lca_iters, dtype = self.dtype, device = self.device)
+            timestep = np.zeros([self.lca_iters], dtype = np.int64)
 
         # input drive
         b_t = F.conv3d(
@@ -137,28 +138,30 @@ class LCADLConvSpatialComp:
         # compute inhibition matrix
         G = self.compute_lateral_connectivity()
 
-        for _ in range(self.lca_iters):
+        for lca_iter in range(self.lca_iters):
             a_t = self.soft_threshold(u_t)
             u_t += self.charge_rate * (b_t - u_t - self.lateral_competition(a_t, G) + a_t)
 
+            if self.track_metrics or lca_iter == self.lca_iters - 1:
+                recon = self.compute_recon(a_t)
+                recon_error = x - recon
 
-        if self.track_metrics: self.track_l1_sparsity(a_t)
-        if self.ts % self.act_write_step == 0 and self.act_write_step != -1:
-            self.append_h5(self.result_fpath, 'a_{}'.format(self.ts), a_t)
+            if self.track_metrics:
+                l2_error[lca_iter] = self.compute_l2_recon_error(recon_error)
+                l1_sparsity[lca_iter] = self.compute_l1_sparsity(a_t)
+                timestep[lca_iter] = self.ts
 
-        assert not any(torch.isnan(a_t).flatten())
-        return a_t 
+            self.ts += 1
 
-    def update_D(self, x, a):
+        if self.track_metrics:
+            self.write_obj_values(timestep, l2_error, l1_sparsity)
+
+        assert(torch.isnan(a_t).sum() == 0.0)
+        return a_t, recon_error, recon
+
+    def update_D(self, x, a, error):
         ''' Updates the dictionary based on the reconstruction error. '''
 
-        recon = self.compute_recon(a)
-
-        if self.ts % self.recon_write_step == 0 and self.recon_write_step != -1:
-            self.append_h5(self.result_fpath, 'recon_{}'.format(self.ts), recon)
-
-        error = x - recon
-        if self.track_metrics: self.track_l2_recon_error(error)
         error = F.pad(
             error,
             (
@@ -186,16 +189,11 @@ class LCADLConvSpatialComp:
         self.D += update * self.eta
         self.normalize_D()
 
-        if self.ts % self.dict_write_step == 0 and self.dict_write_step != -1:
-            self.append_h5(self.result_fpath, 'D_{}'.format(self.ts), self.D)
-
     def normalize_D(self, eps = 1e-12):
         ''' Normalizes features such at each one has unit norm '''
 
         scale = (self.D.norm(p = 2, dim = (1, 2, 3, 4), keepdim = True) + eps)
         self.D /= scale
-        assert not any(torch.isnan(self.D).flatten())
-        assert all(self.D.norm(p=2, dim = (1,2,3,4)) >= 0.99)
 
     def soft_threshold(self, x):
         ''' Soft threshold '''
@@ -214,16 +212,29 @@ class LCADLConvSpatialComp:
             output_padding = self.recon_output_pad
         )
 
-    def track_l2_recon_error(self, error):
+    def compute_l2_recon_error(self, error):
         ''' Keeps track of the reconstruction error over training '''
-        l2_error = error.norm(p = 2, dim = (1, 2, 3, 4))
-        self.recon_error_mean.append(torch.mean(l2_error).item())
-        self.recon_error_se.append(torch.std(l2_error).item() / np.sqrt(error.shape[0]))
+        l2_error_per_sample = error.norm(p = 2, dim = (1, 2, 3, 4))
+        return torch.mean(l2_error_per_sample)
 
-    def track_l1_sparsity(self, acts):
-        l1_sparsity = acts.norm(p = 1, dim = (1, 2, 3, 4))
-        self.l1_sparsity_mean.append(torch.mean(l1_sparsity).item())
-        self.l1_sparsity_se.append(torch.std(l1_sparsity).item() / np.sqrt(acts.shape[0]))
+    def compute_l1_sparsity(self, acts):
+        l1_norm_per_sample = acts.norm(p = 1, dim = (1, 2, 3, 4))
+        return torch.mean(l1_norm_per_sample)
+
+    def write_obj_values(self, timesteps, l2_error, l1_sparsity):
+        obj_df = pd.DataFrame(
+            {
+                'Timestep': timesteps,
+                'L2_Recon_Error': l2_error.float().cpu().numpy(),
+                'L1_Sparsity': l1_sparsity.float().cpu().numpy()
+            }
+        )
+        obj_df.to_csv(
+            self.metric_fpath,
+            header = True if not os.path.isfile(self.metric_fpath) else False,
+            index = False,
+            mode = 'a'
+        )
 
     def preprocess_inputs(self, x, eps = 1e-12):
         ''' Scales the values of each patch to [0, 1] and then transforms each patch to have mean 0 '''
@@ -241,24 +252,28 @@ class LCADLConvSpatialComp:
             
         return x
 
-    def append_h5(self, fpath, key, data):
-        with h5py.File(fpath, 'a') as h5file:
+    def append_h5(self, key, data):
+        with h5py.File(self.tensor_write_fpath, 'a') as h5file:
             h5file.create_dataset(key, data = data.cpu().numpy())
 
     def forward(self, x):
-        assert x.shape[1] == self.in_c
+        if self.ts % self.dict_write_step == 0 and self.dict_write_step != -1:
+            self.append_h5('D_{}'.format(self.ts), self.D)
 
         x = self.preprocess_inputs(x)
-
-        if self.ts % self.input_write_step == 0 and self.input_write_step != -1:
-            self.append_h5(self.result_fpath, 'input_{}'.format(self.ts), x)
-
-        a = self.encode(x)
+        a, recon_error, recon = self.encode(x)
 
         if self.learn_dict:
-            self.update_D(x, a)
+            self.update_D(x, a, recon_error)
 
-        self.ts += 1
+        if self.ts % self.act_write_step == 0 and self.act_write_step != -1:
+            self.append_h5('a_{}'.format(self.ts), a)
+        if self.ts % self.recon_write_step == 0 and self.recon_write_step != -1:
+            self.append_h5('recon_{}'.format(self.ts), recon)
+        if self.ts % self.input_write_step == 0 and self.input_write_step != -1:
+            self.append_h5('input_{}'.format(self.ts), x)
+        if self.ts % self.recon_error_write_step == 0 and self.recon_error_write_step != -1:
+            self.append_h5('recon_error_{}'.format(self.ts), recon_error)
 
         return a
 
@@ -273,8 +288,8 @@ fpaths = [[os.path.join(d, f) for f in os.listdir(d)] for d in vid_dirs]
 model = LCADLConvSpatialComp(
     128, 
     1,
-    lca_iters = 1000, 
-    thresh = 0.125, 
+    lca_iters = 3000, 
+    thresh = 0.1, 
     device = DEVICE,
     stride_h = 4,
     stride_w = 4,
@@ -282,11 +297,18 @@ model = LCADLConvSpatialComp(
     kh = 13,
     kw = 13,
     kt = N_FRAMES_IN_TIME,
-    nonneg = False,
+    nonneg = True,
     pad = 'same',
     dtype = DTYPE,
-    tau = 500,
-    eta = 1e-3
+    tau = 1500,
+    eta = 0.01,
+    act_write_step = -1,
+    dict_write_step = -1,
+    recon_write_step = -1,
+    recon_error_write_step = -1,
+    input_write_step = -1,
+    result_dir = 'LCA_results_run3',
+    track_metrics = False
 )
 
 for step in ProgressBar()(range(UPDATE_STEPS)):
