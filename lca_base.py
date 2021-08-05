@@ -112,11 +112,14 @@ class LCAConvBase:
 
         if self.ts % self.act_write_step == 0 and self.act_write_step != -1:
             self.write_tensors('a_{}'.format(self.ts), a)
-        if self.ts % self.recon_write_step == 0 and self.recon_write_step != -1:
+        if (self.ts % self.recon_write_step == 0 
+                and self.recon_write_step != -1):
             self.write_tensors('recon_{}'.format(self.ts), recon)
-        if self.ts % self.input_write_step == 0 and self.input_write_step != -1:
+        if (self.ts % self.input_write_step == 0 
+                and self.input_write_step != -1):
             self.write_tensors('input_{}'.format(self.ts), x)
-        if self.ts % self.recon_error_write_step == 0 and self.recon_error_write_step != -1:
+        if (self.ts % self.recon_error_write_step == 0 
+                and self.recon_error_write_step != -1):
             self.write_tensors('recon_error_{}'.format(self.ts), recon_error)
 
         return a
