@@ -1,3 +1,6 @@
+import os
+
+import cv2
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -129,20 +132,60 @@ class LCA3DConv(LCAConvBase):
     def update_D(self, x, a, error):
         ''' Updates the dictionary based on the recon error '''
 
-        error = F.pad(
-            error,
-            (
-                self.input_pad[2],
-                self.input_pad[2],
-                self.input_pad[1],
-                self.input_pad[1],
-                self.input_pad[0],
-                self.input_pad[0]
-            )
-        )
+        error = F.pad(error, (self.input_pad[2], self.input_pad[2], 
+                              self.input_pad[1], self.input_pad[1], 
+                              self.input_pad[0], self.input_pad[0]
+            ))
         error = error.unfold(-3, self.kt, self.stride_t)
         error = error.unfold(-3, self.kh, self.stride_h)
         error = error.unfold(-3, self.kw, self.stride_w)
         update = torch.tensordot(a, error, dims=([0, 2, 3, 4], [0, 2, 3, 4]))
         self.D += update * self.eta
         self.normalize_D()
+
+
+if __name__ == '__main__':
+    BATCH_SIZE = 64
+    DEVICE = 1
+    DTYPE = torch.float32
+    N_FRAMES_IN_TIME = 3
+    UPDATE_STEPS = 1500
+
+    # get paths to videos from imagenet video dataset
+    data_dir = '/media/mteti/1TB_SSD/NEMO/data/ILSVRC2015/Data/VID/train/ILSVRC2015_VID_train_0000/'
+    vid_dirs = [os.path.join(data_dir, d) for d in os.listdir(data_dir) if 'resized' in d]
+    fpaths = [[os.path.join(d, f) for f in os.listdir(d)] for d in vid_dirs]
+
+    model = LCA3DConv(
+        kh=9,
+        kw=9,
+        kt=N_FRAMES_IN_TIME,
+        stride_h=4,
+        stride_w=4,
+        stride_t=1,
+        in_c=1,
+        n_neurons=128,
+        result_dir='LCA_Test',
+        tau=3000,
+        eta=1e-3,
+        tau_decay_factor=1e-3,
+        device=DEVICE,
+        dtype=DTYPE,
+        nonneg=True,
+        act_write_step=3000 * 200,
+        dict_write_step=3000 * 200,
+        recon_write_step=3000 * 200,
+        recon_error_write_step=3000 * 200,
+        input_write_step=3000 * 200,
+    )
+
+    for step in ProgressBar()(range(UPDATE_STEPS)):
+        batch_vids = [fpaths[ind] for ind in np.random.choice(len(fpaths), BATCH_SIZE, replace = False)]
+        frame_inds = [randint(0, len(vid)-N_FRAMES_IN_TIME) if len(vid) >= N_FRAMES_IN_TIME else 'remove' for vid in batch_vids]
+        batch_frames = [v[ind:ind+N_FRAMES_IN_TIME] for v, ind in zip(batch_vids, frame_inds) if ind != 'remove']
+        batch_imgs = [[torch.from_numpy(cv2.imread(img_fpath, cv2.IMREAD_GRAYSCALE)) for img_fpath in f] for f in batch_frames]
+        batch_imgs_tensor = [torch.unsqueeze(torch.stack(imgs), dim = 0) for imgs in batch_imgs]
+        batch = torch.stack(batch_imgs_tensor)
+        batch = batch[..., 16:48]
+        batch = batch.type(DTYPE).to(DEVICE)
+        a = model.forward(batch)
