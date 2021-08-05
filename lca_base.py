@@ -44,7 +44,6 @@ class LCAConvBase:
         self.metric_fpath = os.path.join(self.result_dir, 'metrics.xz')
         self.tensor_write_fpath = os.path.join(self.result_dir, 'tensors.h5')
 
-
     def encode(self, x):
         ''' Computes sparse code given data x and dictionary D '''
 
@@ -93,7 +92,6 @@ class LCAConvBase:
 
         return a_t, recon_error, recon
 
-
     def forward(self, x):
         if self.ts % self.dict_write_step == 0 and self.dict_write_step != -1:
             self.write_tensors('D_{}'.format(self.ts), self.D)
@@ -118,7 +116,6 @@ class LCAConvBase:
 
         return a
 
-
     def soft_threshold(self, x):
         ''' Soft threshold transfer function '''
 
@@ -126,7 +123,6 @@ class LCAConvBase:
             return F.relu(x - self.thresh)
         else:
             return F.relu(x - self.thresh) - F.relu(-x - self.thresh)
-
 
     def write_obj_values(self, timesteps, l2_error, l1_sparsity, tau_vals):
         ''' Write out objective values to file '''
@@ -146,9 +142,8 @@ class LCAConvBase:
             mode = 'a'
         )
 
-
     def write_tensors(self, key, data):
         ''' Writes out tensors to a HDF5 file. '''
-        
+
         with h5py.File(self.tensor_write_fpath, 'a') as h5file:
             h5file.create_dataset(key, data = data.cpu().numpy())
