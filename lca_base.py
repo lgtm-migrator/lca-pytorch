@@ -41,3 +41,52 @@ class LCAConvBase:
         os.makedirs(self.result_dir, exist_ok = True)
         self.metric_fpath = os.path.join(result_dir, 'metrics.xz')
         self.tensor_write_fpath = os.path.join(result_dir, 'tensors.h5')
+
+
+    def encode(self, x):
+        ''' Computes sparse code given data vector x and dictionary matrix D '''
+
+        if self.track_metrics:
+            l1_sparsity = torch.zeros(self.lca_iters, dtype = self.dtype, device = self.device)
+            l2_error = torch.zeros(self.lca_iters, dtype = self.dtype, device = self.device)
+            timestep = np.zeros([self.lca_iters], dtype = np.int64)
+            tau_vals = np.zeros([self.lca_iters], dtype = np.float32)
+
+        # input drive
+        b_t = F.conv3d(
+            x,
+            self.D,
+            stride = (self.stride_t, self.stride_h, self.stride_w),
+            padding = self.input_pad
+        )
+
+        # initialize membrane potentials
+        u_t = torch.zeros_like(b_t)
+
+        # compute inhibition matrix
+        G = self.compute_lateral_connectivity()
+
+        # initialize time constant
+        tau = self.tau
+
+        for lca_iter in range(self.lca_iters):
+            a_t = self.soft_threshold(u_t)
+            u_t += (1 / tau) * (b_t - u_t - self.lateral_competition(a_t, G) + a_t)
+
+            if self.track_metrics or lca_iter == self.lca_iters - 1:
+                recon = self.compute_recon(a_t)
+                recon_error = x - recon
+
+            if self.track_metrics:
+                l2_error[lca_iter] = self.compute_l2_recon_error(recon_error)
+                l1_sparsity[lca_iter] = self.compute_l1_sparsity(a_t)
+                timestep[lca_iter] = self.ts
+                tau_vals[lca_iter] = tau
+
+            tau -= tau * self.tau_decay_factor
+            self.ts += 1
+
+        if self.track_metrics:
+            self.write_obj_values(timestep, l2_error, l1_sparsity, tau_vals)
+
+        return a_t, recon_error, recon
