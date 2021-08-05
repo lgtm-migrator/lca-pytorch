@@ -15,7 +15,7 @@ class LCAConvBase:
                  zero_center_inputs=True, dict_write_step=-1, 
                  recon_write_step=-1, act_write_step=-1, 
                  recon_error_write_step=-1, input_write_step=-1, 
-                 tau_decay_factor=0.0):
+                 tau_decay_factor=0.0, lca_tol = 0.0):
 
         self.act_write_step = act_write_step 
         self.device = device 
@@ -25,6 +25,7 @@ class LCAConvBase:
         self.in_c = in_c 
         self.input_write_step = input_write_step 
         self.lca_iters = lca_iters 
+        self.lca_tol = lca_tol
         self.learn_dict = learn_dict
         self.n_neurons = n_neurons 
         self.nonneg = nonneg 
@@ -78,19 +79,26 @@ class LCAConvBase:
                                 - u_t 
                                 - self.lateral_competition(a_t, G) 
                                 + a_t)
-
-            if self.track_metrics or lca_iter == self.lca_iters - 1:
-                recon = self.compute_recon(a_t)
-                recon_error = x - recon
+            recon = self.compute_recon(a_t)
+            recon_error = x - recon
+            l2_recon_error = self.compute_l2_recon_error(recon_error)
 
             if self.track_metrics:
-                l2_error[lca_iter] = self.compute_l2_recon_error(recon_error)
+                l2_error[lca_iter] = l2_recon_error
                 l1_sparsity[lca_iter] = self.compute_l1_sparsity(a_t)
                 timestep[lca_iter] = self.ts
                 tau_vals[lca_iter] = tau
 
             tau = self.update_tau(tau)
             self.ts += 1
+
+            if lca_iter == self.lca_iters // 5:
+                prev_l2_recon_error = l2_recon_error
+            elif lca_iter > self.lca_iters // 5:
+                if (l2_recon_error-prev_l2_recon_error).abs() <= self.lca_tol:
+                    break
+                else:
+                    prev_l2_recon_error = l2_recon_error
 
         if self.track_metrics:
             self.write_obj_values(timestep, l2_error, l1_sparsity, tau_vals)
