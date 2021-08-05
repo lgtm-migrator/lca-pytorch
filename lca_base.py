@@ -46,6 +46,8 @@ class LCAConvBase:
         self.tensor_write_fpath = os.path.join(self.result_dir, 'tensors.h5')
 
     def create_trackers(self):
+        ''' Create placeholders to store different metrics '''
+
         l1_sparsity = torch.zeros(self.lca_iters, dtype=self.dtype, 
                                   device=self.device)
         l2_error = torch.zeros(self.lca_iters, dtype=self.dtype, 
@@ -145,6 +147,8 @@ class LCAConvBase:
             return F.relu(x - self.thresh) - F.relu(-x - self.thresh)
 
     def update_tau(self, tau):
+        ''' Update LCA time constant with given decay factor '''
+
         return tau - tau * self.tau_decay_factor
 
     def write_obj_values(self, tracker, ts_cutoff):
