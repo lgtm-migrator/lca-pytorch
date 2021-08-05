@@ -24,8 +24,8 @@ class LCA3DConv(LCAConvBase):
         G = F.conv3d(
             self.D, 
             self.D, 
-            stride = (self.stride_t, self.stride_h, self.stride_w), 
-            padding = (self.kt - 1, self.kh - 1, self.kw - 1)
+            stride=(self.stride_t, self.stride_h, self.stride_w), 
+            padding=(self.kt - 1, self.kh - 1, self.kw - 1)
         )
         # to avoid inhibition from future neurons to past neurons
         # if kt != input depth
@@ -66,8 +66,16 @@ class LCA3DConv(LCAConvBase):
         self.D[:, :, 1:] = 0.0
         self.normalize_D()
 
+    def lateral_competition(self, a, G):
+        return F.conv3d(
+            a,
+            G,
+            stride=1,
+            padding=(self.n_surround_t, self.n_surround_h, self.n_surround_w)
+        )
+
     def normalize_D(self, eps=1e-12):
         ''' Normalizes features such at each one has unit norm '''
 
-        scale = (self.D.norm(p = 2, dim = (1, 2, 3, 4), keepdim = True) + eps)
+        scale = (self.D.norm(p=2, dim=(1, 2, 3, 4), keepdim = True) + eps)
         self.D *= (1.0 / scale)
