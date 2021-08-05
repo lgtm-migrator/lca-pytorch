@@ -154,11 +154,14 @@ class LCAConvBase:
         return tau - tau * self.tau_decay_factor
 
     def update_tracks(self, tracks, timestep, tau, du_norm, l1, l2, lca_iter):
+        ''' Update dictionary that stores the metrics we're tracking '''
+
         tracks['L2'][lca_iter] = l2
         tracks['L1'][lca_iter] = l1
         tracks['Timestep'][lca_iter] = timestep
         tracks['Tau'][lca_iter] = tau
         tracks['duNorm'][lca_iter] = du_norm
+        
         return tracks
 
     def write_obj_values(self, tracker, ts_cutoff):
