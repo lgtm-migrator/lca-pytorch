@@ -1,7 +1,9 @@
 import os
+from random import randint
 
 import cv2
 import numpy as np
+from progressbar import ProgressBar
 import torch
 import torch.nn.functional as F
 
@@ -118,13 +120,13 @@ class LCA3DConv(LCAConvBase):
         ''' Scales each batch sample to [0, 1] and 
             zero-center's each frame '''
 
-        if self.scale_imgs:
+        if self.scale_inputs:
             minx = x.reshape(x.shape[0], -1).min(dim=-1)[0]
             maxx = x.reshape(x.shape[0], -1).max(dim=-1)[0]
             minx = minx.reshape(minx.shape[0], 1, 1, 1, 1)
             maxx = maxx.reshape(maxx.shape[0], 1, 1, 1, 1)
             x = (x - minx) / (maxx - minx + eps)
-        if self.zero_center_imgs:
+        if self.zero_center_inputs:
             x -= x.mean(dim=(1, 3, 4), keepdim = True)
             
         return x
