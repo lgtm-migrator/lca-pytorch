@@ -113,7 +113,7 @@ class LCA3DConv(LCAConvBase):
     def normalize_D(self, eps=1e-12):
         ''' Normalizes features such at each one has unit norm '''
 
-        scale = (self.D.norm(p=2, dim=(1, 2, 3, 4), keepdim = True) + eps)
+        scale = (self.D.norm(p=2, dim=(1, 2, 3, 4), keepdim=True) + eps)
         self.D *= (1.0 / scale)
 
     def preprocess_inputs(self, x, eps=1e-12):
