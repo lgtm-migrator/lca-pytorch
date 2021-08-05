@@ -122,6 +122,15 @@ class LCAConvBase:
         return a
 
 
+    def soft_threshold(self, x):
+        ''' Soft threshold transfer function '''
+        
+        if self.nonneg:
+            return F.relu(x - self.thresh)
+        else:
+            return F.relu(x - self.thresh) - F.relu(-x - self.thresh)
+
+
     def write_obj_values(self, timesteps, l2_error, l1_sparsity, tau_vals):
         obj_df = pd.DataFrame(
             {
