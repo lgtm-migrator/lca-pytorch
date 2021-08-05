@@ -44,16 +44,21 @@ class LCAConvBase:
         self.metric_fpath = os.path.join(self.result_dir, 'metrics.xz')
         self.tensor_write_fpath = os.path.join(self.result_dir, 'tensors.h5')
 
+    def create_trackers(self):
+        l1_sparsity = torch.zeros(self.lca_iters, dtype=self.dtype, 
+                                  device=self.device)
+        l2_error = torch.zeros(self.lca_iters, dtype=self.dtype, 
+                               device=self.device)
+        timestep = np.zeros([self.lca_iters], dtype=np.int64)
+        tau_vals = np.zeros([self.lca_iters], dtype=np.float32)
+
+        return timestep, tau_vals, l1_sparsity, l2_error
+
     def encode(self, x):
         ''' Computes sparse code given data x and dictionary D '''
 
         if self.track_metrics:
-            l1_sparsity = torch.zeros(self.lca_iters, dtype=self.dtype, 
-                                      device=self.device)
-            l2_error = torch.zeros(self.lca_iters, dtype=self.dtype, 
-                                   device=self.device)
-            timestep = np.zeros([self.lca_iters], dtype=np.int64)
-            tau_vals = np.zeros([self.lca_iters], dtype=np.float32)
+            timestep, tau_vals, l1_sparsity, l2_error = self.create_trackers()
 
         # input drive
         b_t = self.compute_input_drive(x)
