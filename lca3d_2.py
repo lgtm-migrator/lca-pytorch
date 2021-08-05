@@ -20,6 +20,14 @@ class LCA3DConv(LCAConvBase):
         self.create_weight_tensor()
         self.compute_padding_dims()
 
+    def compute_input_drive(self, x):
+        return F.conv3d(
+            x,
+            self.D,
+            stride=(self.stride_t, self.stride_h, self.stride_w),
+            padding=self.input_pad
+        )
+
     def compute_lateral_connectivity(self):
         G = F.conv3d(
             self.D, 
