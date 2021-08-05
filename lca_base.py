@@ -41,7 +41,7 @@ class LCAConvBase:
         self.ts = 0
         self.zero_center_inputs = zero_center_inputs
 
-        os.makedirs(self.result_dir, exist_ok = True)
+        os.makedirs(self.result_dir)
         self.metric_fpath = os.path.join(self.result_dir, 'metrics.xz')
         self.tensor_write_fpath = os.path.join(self.result_dir, 'tensors.h5')
 
@@ -142,9 +142,9 @@ class LCAConvBase:
         ''' Soft threshold transfer function '''
 
         if self.nonneg:
-            return F.relu(x - self.thresh)
+            return F.relu(x-self.thresh)
         else:
-            return F.relu(x - self.thresh) - F.relu(-x - self.thresh)
+            return F.relu(x-self.thresh) - F.relu(-x-self.thresh)
 
     def update_tau(self, tau):
         ''' Update LCA time constant with given decay factor '''
@@ -162,13 +162,13 @@ class LCAConvBase:
         obj_df = pd.DataFrame(tracker)
         obj_df.to_csv(
             self.metric_fpath,
-            header = True if not os.path.isfile(self.metric_fpath) else False,
-            index = False,
-            mode = 'a'
+            header=True if not os.path.isfile(self.metric_fpath) else False,
+            index=False,
+            mode='a'
         )
 
     def write_tensors(self, key, data):
         ''' Writes out tensors to a HDF5 file. '''
 
         with h5py.File(self.tensor_write_fpath, 'a') as h5file:
-            h5file.create_dataset(key, data = data.cpu().numpy())
+            h5file.create_dataset(key, data=data.cpu().numpy())
