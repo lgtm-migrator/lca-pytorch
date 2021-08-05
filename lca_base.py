@@ -47,8 +47,10 @@ class LCAConvBase:
         ''' Computes sparse code given data vector x and dictionary matrix D '''
 
         if self.track_metrics:
-            l1_sparsity = torch.zeros(self.lca_iters, dtype = self.dtype, device = self.device)
-            l2_error = torch.zeros(self.lca_iters, dtype = self.dtype, device = self.device)
+            l1_sparsity = torch.zeros(self.lca_iters, dtype = self.dtype, 
+                                      device = self.device)
+            l2_error = torch.zeros(self.lca_iters, dtype = self.dtype, 
+                                   device = self.device)
             timestep = np.zeros([self.lca_iters], dtype = np.int64)
             tau_vals = np.zeros([self.lca_iters], dtype = np.float32)
 
@@ -71,7 +73,10 @@ class LCAConvBase:
 
         for lca_iter in range(self.lca_iters):
             a_t = self.soft_threshold(u_t)
-            u_t += (1 / tau) * (b_t - u_t - self.lateral_competition(a_t, G) + a_t)
+            u_t += (1 / tau) * (b_t 
+                                - u_t 
+                                - self.lateral_competition(a_t, G) 
+                                + a_t)
 
             if self.track_metrics or lca_iter == self.lca_iters - 1:
                 recon = self.compute_recon(a_t)
