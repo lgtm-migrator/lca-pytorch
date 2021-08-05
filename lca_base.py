@@ -1,5 +1,6 @@
 import os
 
+import h5py
 import numpy as np
 import torch 
 import torch.nn.functional as F
@@ -41,6 +42,12 @@ class LCAConvBase:
         os.makedirs(self.result_dir, exist_ok = True)
         self.metric_fpath = os.path.join(result_dir, 'metrics.xz')
         self.tensor_write_fpath = os.path.join(result_dir, 'tensors.h5')
+
+
+    def write_tensors(self, key, data):
+        ''' Writes out tensors to a HDF5 file. '''
+        with h5py.File(self.tensor_write_fpath, 'a') as h5file:
+            h5file.create_dataset(key, data = data.cpu().numpy())
 
 
     def encode(self, x):
@@ -94,7 +101,7 @@ class LCAConvBase:
 
     def forward(self, x):
         if self.ts % self.dict_write_step == 0 and self.dict_write_step != -1:
-            self.append_h5('D_{}'.format(self.ts), self.D)
+            self.write_tensors('D_{}'.format(self.ts), self.D)
 
         x = self.preprocess_inputs(x)
         a, recon_error, recon = self.encode(x)
@@ -103,12 +110,12 @@ class LCAConvBase:
             self.update_D(x, a, recon_error)
 
         if self.ts % self.act_write_step == 0 and self.act_write_step != -1:
-            self.append_h5('a_{}'.format(self.ts), a)
+            self.write_tensors('a_{}'.format(self.ts), a)
         if self.ts % self.recon_write_step == 0 and self.recon_write_step != -1:
-            self.append_h5('recon_{}'.format(self.ts), recon)
+            self.write_tensors('recon_{}'.format(self.ts), recon)
         if self.ts % self.input_write_step == 0 and self.input_write_step != -1:
-            self.append_h5('input_{}'.format(self.ts), x)
+            self.write_tensors('input_{}'.format(self.ts), x)
         if self.ts % self.recon_error_write_step == 0 and self.recon_error_write_step != -1:
-            self.append_h5('recon_error_{}'.format(self.ts), recon_error)
+            self.write_tensors('recon_error_{}'.format(self.ts), recon_error)
 
         return a
