@@ -2,6 +2,7 @@ import os
 
 import h5py
 import numpy as np
+import pandas as pd
 import torch 
 import torch.nn.functional as F
 
@@ -119,3 +120,20 @@ class LCAConvBase:
             self.write_tensors('recon_error_{}'.format(self.ts), recon_error)
 
         return a
+
+
+    def write_obj_values(self, timesteps, l2_error, l1_sparsity, tau_vals):
+        obj_df = pd.DataFrame(
+            {
+                'Timestep': timesteps,
+                'L2_Recon_Error': l2_error.float().cpu().numpy(),
+                'L1_Sparsity': l1_sparsity.float().cpu().numpy(),
+                'Time_Constant_Tau': tau_vals
+            }
+        )
+        obj_df.to_csv(
+            self.metric_fpath,
+            header = True if not os.path.isfile(self.metric_fpath) else False,
+            index = False,
+            mode = 'a'
+        )
