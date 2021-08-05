@@ -53,13 +53,18 @@ class LCAConvBase:
         timestep = np.zeros([self.lca_iters], dtype=np.int64)
         tau_vals = np.zeros([self.lca_iters], dtype=np.float32)
 
-        return timestep, tau_vals, l1_sparsity, l2_error
+        return {
+            'L1': l1_sparsity,
+            'L2': l2_error,
+            'Timestep': timestep,
+            'Tau': tau_vals
+        }
 
     def encode(self, x):
         ''' Computes sparse code given data x and dictionary D '''
 
         if self.track_metrics:
-            timestep, tau_vals, l1_sparsity, l2_error = self.create_trackers()
+            tracks = self.create_trackers()
 
         # input drive
         b_t = self.compute_input_drive(x)
@@ -84,13 +89,10 @@ class LCAConvBase:
             l2_recon_error = self.compute_l2_recon_error(recon_error)
 
             if self.track_metrics:
-                l2_error[lca_iter] = l2_recon_error
-                l1_sparsity[lca_iter] = self.compute_l1_sparsity(a_t)
-                timestep[lca_iter] = self.ts
-                tau_vals[lca_iter] = tau
-
-            tau = self.update_tau(tau)
-            self.ts += 1
+                tracks['L2'][lca_iter] = l2_recon_error
+                tracks['L1'][lca_iter] = self.compute_l1_sparsity(a_t)
+                tracks['Timestep'][lca_iter] = self.ts
+                tracks['Tau'][lca_iter] = tau
 
             if lca_iter == self.lca_iters // 5:
                 prev_l2_recon_error = l2_recon_error
@@ -100,8 +102,11 @@ class LCAConvBase:
                 else:
                     prev_l2_recon_error = l2_recon_error
 
+            tau = self.update_tau(tau)
+            self.ts += 1
+
         if self.track_metrics:
-            self.write_obj_values(timestep, l2_error, l1_sparsity, tau_vals)
+            self.write_obj_values(tracks, lca_iter+1)
 
         return a_t, recon_error, recon
 
@@ -140,17 +145,15 @@ class LCAConvBase:
     def update_tau(self, tau):
         return tau - tau * self.tau_decay_factor
 
-    def write_obj_values(self, timesteps, l2_error, l1_sparsity, tau_vals):
+    def write_obj_values(self, tracker, ts_cutoff):
         ''' Write out objective values to file '''
 
-        obj_df = pd.DataFrame(
-            {
-                'Timestep': timesteps,
-                'L2_Recon_Error': l2_error.float().cpu().numpy(),
-                'L1_Sparsity': l1_sparsity.float().cpu().numpy(),
-                'Time_Constant_Tau': tau_vals
-            }
-        )
+        for k,v in tracker.items():
+            tracker[k] = v[:ts_cutoff]
+            if k in ['L1', 'L2']:
+                tracker[k] = tracker[k].float().cpu().numpy()
+
+        obj_df = pd.DataFrame(tracker)
         obj_df.to_csv(
             self.metric_fpath,
             header = True if not os.path.isfile(self.metric_fpath) else False,
