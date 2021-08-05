@@ -1,4 +1,6 @@
+import numpy as np
 import torch
+import torch.nn.functional as F
 
 from lca_base import LCAConvBase 
 
@@ -17,6 +19,23 @@ class LCA3DConv(LCAConvBase):
         assert self.kh % 2 != 0 and self.kw % 2 != 0
         self.create_weight_tensor()
         self.compute_padding_dims()
+
+    def compute_lateral_connectivity(self):
+        G = F.conv3d(
+            self.D, 
+            self.D, 
+            stride = (self.stride_t, self.stride_h, self.stride_w), 
+            padding = (self.kt - 1, self.kh - 1, self.kw - 1)
+        )
+        # to avoid inhibition from future neurons to past neurons
+        # if kt != input depth
+        # G[:, :, (G.shape[2]-1)//2+1:, :, :] = 0.0
+        if not hasattr(self, 'n_surround_h'):
+            self.n_surround_t = int(np.ceil((G.shape[-3] - 1) / 2))
+            self.n_surround_h = int(np.ceil((G.shape[-2] - 1) / 2))
+            self.n_surround_w = int(np.ceil((G.shape[-1] - 1) / 2))
+
+        return G
 
     def compute_padding_dims(self):
         ''' Computes padding for forward and transpose convs '''
