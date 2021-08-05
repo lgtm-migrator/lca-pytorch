@@ -89,7 +89,7 @@ class LCAConvBase:
                 timestep[lca_iter] = self.ts
                 tau_vals[lca_iter] = tau
 
-            tau -= tau * self.tau_decay_factor
+            tau = self.update_tau(tau)
             self.ts += 1
 
         if self.track_metrics:
@@ -128,6 +128,9 @@ class LCAConvBase:
             return F.relu(x - self.thresh)
         else:
             return F.relu(x - self.thresh) - F.relu(-x - self.thresh)
+
+    def update_tau(self, tau):
+        return tau - tau * self.tau_decay_factor
 
     def write_obj_values(self, timesteps, l2_error, l1_sparsity, tau_vals):
         ''' Write out objective values to file '''
