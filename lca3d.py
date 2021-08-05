@@ -28,7 +28,7 @@ class LCADLConvSpatialComp:
                  eta = 0.01, lca_iters = 2000, kh = 7, kw = 7, kt = 9, stride_h = 1, stride_w = 1, 
                  stride_t = 1, pad = 'same', device = None, dtype = torch.float32, learn_dict = True,
                  nonneg = True, track_metrics = True, dict_write_step = -1, recon_error_write_step = -1,
-                 act_write_step = -1, input_write_step = -1, recon_write_step = -1, 
+                 act_write_step = -1, input_write_step = -1, recon_write_step = -1, tau_decay_factor = 0,
                  result_dir = 'LCA_results', scale_imgs = True, zero_center_imgs = True):
         ''' Performs sparse dictionary learning via LCA (Rozell et al. 2008) '''
 
@@ -56,6 +56,7 @@ class LCADLConvSpatialComp:
         self.act_write_step = act_write_step
         self.input_write_step = input_write_step
         self.recon_write_step = recon_write_step
+        self.tau_decay_factor = tau_decay_factor
         self.result_dir = result_dir
         os.makedirs(self.result_dir, exist_ok = True)
         self.metric_fpath = os.path.join(result_dir, 'metrics.xz')
@@ -123,6 +124,7 @@ class LCADLConvSpatialComp:
             l1_sparsity = torch.zeros(self.lca_iters, dtype = self.dtype, device = self.device)
             l2_error = torch.zeros(self.lca_iters, dtype = self.dtype, device = self.device)
             timestep = np.zeros([self.lca_iters], dtype = np.int64)
+            tau_vals = np.zeros([self.lca_iters], dtype = np.float32)
 
         # input drive
         b_t = F.conv3d(
@@ -138,9 +140,12 @@ class LCADLConvSpatialComp:
         # compute inhibition matrix
         G = self.compute_lateral_connectivity()
 
+        # initialize time constant
+        tau = self.tau
+
         for lca_iter in range(self.lca_iters):
             a_t = self.soft_threshold(u_t)
-            u_t += self.charge_rate * (b_t - u_t - self.lateral_competition(a_t, G) + a_t)
+            u_t += (1 / tau) * (b_t - u_t - self.lateral_competition(a_t, G) + a_t)
 
             if self.track_metrics or lca_iter == self.lca_iters - 1:
                 recon = self.compute_recon(a_t)
@@ -150,11 +155,13 @@ class LCADLConvSpatialComp:
                 l2_error[lca_iter] = self.compute_l2_recon_error(recon_error)
                 l1_sparsity[lca_iter] = self.compute_l1_sparsity(a_t)
                 timestep[lca_iter] = self.ts
+                tau_vals[lca_iter] = tau
 
+            tau -= tau * self.tau_decay_factor
             self.ts += 1
 
         if self.track_metrics:
-            self.write_obj_values(timestep, l2_error, l1_sparsity)
+            self.write_obj_values(timestep, l2_error, l1_sparsity, tau_vals)
 
         assert(torch.isnan(a_t).sum() == 0.0)
         return a_t, recon_error, recon
@@ -221,12 +228,13 @@ class LCADLConvSpatialComp:
         l1_norm_per_sample = acts.norm(p = 1, dim = (1, 2, 3, 4))
         return torch.mean(l1_norm_per_sample)
 
-    def write_obj_values(self, timesteps, l2_error, l1_sparsity):
+    def write_obj_values(self, timesteps, l2_error, l1_sparsity, tau_vals):
         obj_df = pd.DataFrame(
             {
                 'Timestep': timesteps,
                 'L2_Recon_Error': l2_error.float().cpu().numpy(),
-                'L1_Sparsity': l1_sparsity.float().cpu().numpy()
+                'L1_Sparsity': l1_sparsity.float().cpu().numpy(),
+                'Time_Constant_Tau': tau_vals
             }
         )
         obj_df.to_csv(
@@ -300,15 +308,16 @@ model = LCADLConvSpatialComp(
     nonneg = True,
     pad = 'same',
     dtype = DTYPE,
-    tau = 1500,
-    eta = 0.01,
-    act_write_step = -1,
-    dict_write_step = -1,
-    recon_write_step = -1,
-    recon_error_write_step = -1,
-    input_write_step = -1,
-    result_dir = 'LCA_results_run3',
-    track_metrics = False
+    tau = 3000,
+    tau_decay_factor = 1e-3,
+    eta = 0.001,
+    act_write_step = 3000 * 200,
+    dict_write_step = 3000 * 200,
+    recon_write_step = 3000 * 200,
+    recon_error_write_step = 3000 * 200,
+    input_write_step = 3000 * 200,
+    result_dir = 'LCA_results',
+    track_metrics = True
 )
 
 for step in ProgressBar()(range(UPDATE_STEPS)):
@@ -321,41 +330,3 @@ for step in ProgressBar()(range(UPDATE_STEPS)):
     batch = batch[..., 16:48]
     batch = batch.type(DTYPE).to(DEVICE)
     a = model.forward(batch)
-
-
-# plot error 
-plt.errorbar(
-    list(range(len(model.recon_error_mean))), 
-    model.recon_error_mean, 
-    yerr = model.recon_error_se
-)
-plt.ylabel('Reconstruction Error +/- SE')
-plt.xlabel('Training Iteration')
-plt.show()
-
-# plot sparsity
-plt.errorbar(
-    list(range(len(model.l1_sparsity_mean))),
-    model.l1_sparsity_mean,
-    yerr = model.l1_sparsity_se
-)
-plt.ylabel('L1 Sparsity +/- SE')
-plt.xlabel('Training Iteration')
-plt.show()
-
-# plot dictionary
-grids = [make_grid(model.D[:, :, t], nrow = int(np.sqrt(model.m))) for t in range(model.D.shape[2])]
-imageio.mimwrite('lca3d_feats.gif', [grid[0].float().cpu().numpy() for grid in grids], fps = 5)
-
-# reconstruct new images
-batch = model.preprocess_inputs(batch)
-a = model.encode(batch)
-recon = model.compute_recon(a) 
-
-# write out input and recon .gifs
-input_grids = [make_grid(batch[:, :, t], nrow = int(np.sqrt(BATCH_SIZE))) for t in range(N_FRAMES_IN_TIME)]
-recon_grids = [make_grid(recon[:, :, t], nrow = int(np.sqrt(BATCH_SIZE))) for t in range(N_FRAMES_IN_TIME)]
-diff_grids = [igrid - rgrid for igrid, rgrid in zip(input_grids, recon_grids)]
-imageio.mimwrite('inputs.gif', [grid[0].float().cpu().numpy() for grid in input_grids], fps = 5)
-imageio.mimwrite('recons.gif', [grid[0].float().cpu().numpy() for grid in recon_grids], fps = 5)
-imageio.mimwrite('diffs.gif', [grid[0].float().cpu().numpy() for grid in diff_grids], fps = 5)
