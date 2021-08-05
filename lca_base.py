@@ -44,15 +44,15 @@ class LCAConvBase:
 
 
     def encode(self, x):
-        ''' Computes sparse code given data vector x and dictionary matrix D '''
+        ''' Computes sparse code given data x and dictionary D '''
 
         if self.track_metrics:
-            l1_sparsity = torch.zeros(self.lca_iters, dtype = self.dtype, 
-                                      device = self.device)
-            l2_error = torch.zeros(self.lca_iters, dtype = self.dtype, 
-                                   device = self.device)
-            timestep = np.zeros([self.lca_iters], dtype = np.int64)
-            tau_vals = np.zeros([self.lca_iters], dtype = np.float32)
+            l1_sparsity = torch.zeros(self.lca_iters, dtype=self.dtype, 
+                                      device=self.device)
+            l2_error = torch.zeros(self.lca_iters, dtype=self.dtype, 
+                                   device=self.device)
+            timestep = np.zeros([self.lca_iters], dtype=np.int64)
+            tau_vals = np.zeros([self.lca_iters], dtype=np.float32)
 
         # input drive
         b_t = self.compute_input_drive(x)
