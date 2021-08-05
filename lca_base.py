@@ -99,7 +99,7 @@ class LCAConvBase:
             if lca_iter == self.lca_iters // 5:
                 prev_l2_recon_error = l2_recon_error
             elif lca_iter > self.lca_iters // 5:
-                if (l2_recon_error-prev_l2_recon_error).abs() <= self.lca_tol:
+                if (l2_recon_error-prev_l2_recon_error).abs() < self.lca_tol:
                     break
                 else:
                     prev_l2_recon_error = l2_recon_error
