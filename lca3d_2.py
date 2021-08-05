@@ -61,6 +61,17 @@ class LCA3DConv(LCAConvBase):
             self.stride_w - 1 if self.stride_w > 1 else 0
         )
 
+    def compute_recon(self, a):
+        ''' Computes reconstruction given code '''
+
+        return F.conv_transpose3d(
+            a, 
+            self.D,
+            stride=(self.stride_t, self.stride_h, self.stride_w),
+            padding=self.input_pad,
+            output_padding=self.recon_output_pad
+        )
+
     def create_weight_tensor(self):
         self.D = torch.randn(
             self.n_neurons,
