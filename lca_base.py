@@ -41,14 +41,8 @@ class LCAConvBase:
         self.zero_center_inputs = zero_center_inputs
 
         os.makedirs(self.result_dir, exist_ok = True)
-        self.metric_fpath = os.path.join(result_dir, 'metrics.xz')
-        self.tensor_write_fpath = os.path.join(result_dir, 'tensors.h5')
-
-
-    def write_tensors(self, key, data):
-        ''' Writes out tensors to a HDF5 file. '''
-        with h5py.File(self.tensor_write_fpath, 'a') as h5file:
-            h5file.create_dataset(key, data = data.cpu().numpy())
+        self.metric_fpath = os.path.join(self.result_dir, 'metrics.xz')
+        self.tensor_write_fpath = os.path.join(self.result_dir, 'tensors.h5')
 
 
     def encode(self, x):
@@ -151,3 +145,10 @@ class LCAConvBase:
             index = False,
             mode = 'a'
         )
+
+
+    def write_tensors(self, key, data):
+        ''' Writes out tensors to a HDF5 file. '''
+        
+        with h5py.File(self.tensor_write_fpath, 'a') as h5file:
+            h5file.create_dataset(key, data = data.cpu().numpy())
