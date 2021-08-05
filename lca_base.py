@@ -55,12 +55,7 @@ class LCAConvBase:
             tau_vals = np.zeros([self.lca_iters], dtype = np.float32)
 
         # input drive
-        b_t = F.conv3d(
-            x,
-            self.D,
-            stride = (self.stride_t, self.stride_h, self.stride_w),
-            padding = self.input_pad
-        )
+        b_t = self.compute_input_drive(x)
 
         # initialize membrane potentials
         u_t = torch.zeros_like(b_t)
