@@ -125,3 +125,24 @@ class LCA3DConv(LCAConvBase):
             x -= x.mean(dim=(1, 3, 4), keepdim = True)
             
         return x
+
+    def update_D(self, x, a, error):
+        ''' Updates the dictionary based on the recon error '''
+
+        error = F.pad(
+            error,
+            (
+                self.input_pad[2],
+                self.input_pad[2],
+                self.input_pad[1],
+                self.input_pad[1],
+                self.input_pad[0],
+                self.input_pad[0]
+            )
+        )
+        error = error.unfold(-3, self.kt, self.stride_t)
+        error = error.unfold(-3, self.kh, self.stride_h)
+        error = error.unfold(-3, self.kw, self.stride_w)
+        update = torch.tensordot(a, error, dims=([0, 2, 3, 4], [0, 2, 3, 4]))
+        self.D += update * self.eta
+        self.normalize_D()
