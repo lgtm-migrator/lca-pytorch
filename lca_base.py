@@ -52,6 +52,8 @@ class LCAConvBase:
                                   device=self.device)
         l2_error = torch.zeros(self.lca_iters, dtype=self.dtype, 
                                device=self.device)
+        du_norm = torch.zeros(self.lca_iters, dtype=self.dtype,
+                              device=self.device)
         timestep = np.zeros([self.lca_iters], dtype=np.int64)
         tau_vals = np.zeros([self.lca_iters], dtype=np.float32)
 
@@ -59,7 +61,8 @@ class LCAConvBase:
             'L1': l1_sparsity,
             'L2': l2_error,
             'Timestep': timestep,
-            'Tau': tau_vals
+            'Tau': tau_vals,
+            'duNorm': du_norm
         }
 
     def encode(self, x):
@@ -82,33 +85,32 @@ class LCAConvBase:
 
         for lca_iter in range(self.lca_iters):
             a_t = self.soft_threshold(u_t)
-            u_t += (1 / tau) * (b_t 
-                                - u_t 
-                                - self.lateral_competition(a_t, G) 
-                                + a_t)
-            recon = self.compute_recon(a_t)
-            recon_error = x - recon
-            l2_recon_error = self.compute_l2_recon_error(recon_error)
+            du = (1 / tau) * (b_t 
+                              - u_t 
+                              - self.lateral_competition(a_t, G) 
+                              + a_t)
+            u_t += du
+            du_norm = du.norm(p=2, dim=(1,2,3,4)).mean()
 
             if self.track_metrics:
-                tracks['L2'][lca_iter] = l2_recon_error
-                tracks['L1'][lca_iter] = self.compute_l1_sparsity(a_t)
-                tracks['Timestep'][lca_iter] = self.ts
-                tracks['Tau'][lca_iter] = tau
+                recon = self.compute_recon(a_t)
+                recon_error = x - recon
+                tracks = self.update_tracks(tracks, self.ts, tau, du_norm, 
+                                            self.compute_l1_sparsity(a_t),
+                                            self.compute_l2_error(recon_error), 
+                                            lca_iter)
 
-            if lca_iter == self.lca_iters // 5:
-                prev_l2_recon_error = l2_recon_error
-            elif lca_iter > self.lca_iters // 5:
-                if (l2_recon_error-prev_l2_recon_error).abs() < self.lca_tol:
-                    break
-                else:
-                    prev_l2_recon_error = l2_recon_error
+            if du_norm <= self.lca_tol:
+                break
 
             tau = self.update_tau(tau)
             self.ts += 1
 
         if self.track_metrics:
             self.write_obj_values(tracks, lca_iter+1)
+        else:
+            recon = self.compute_recon(a_t)
+            recon_error = x - recon
 
         return a_t, recon_error, recon
 
@@ -151,12 +153,20 @@ class LCAConvBase:
 
         return tau - tau * self.tau_decay_factor
 
+    def update_tracks(self, tracks, timestep, tau, du_norm, l1, l2, lca_iter):
+        tracks['L2'][lca_iter] = l2
+        tracks['L1'][lca_iter] = l1
+        tracks['Timestep'][lca_iter] = timestep
+        tracks['Tau'][lca_iter] = tau
+        tracks['duNorm'][lca_iter] = du_norm
+        return tracks
+
     def write_obj_values(self, tracker, ts_cutoff):
         ''' Write out objective values to file '''
 
         for k,v in tracker.items():
             tracker[k] = v[:ts_cutoff]
-            if k in ['L1', 'L2']:
+            if k in ['L1', 'L2', 'duNorm']:
                 tracker[k] = tracker[k].float().cpu().numpy()
 
         obj_df = pd.DataFrame(tracker)
