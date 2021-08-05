@@ -111,8 +111,9 @@ class LCAConvBase:
         return a_t, recon_error, recon
 
     def forward(self, x):
-        if self.ts % self.dict_write_step == 0 and self.dict_write_step != -1:
-            self.write_tensors('D_{}'.format(self.ts), self.D)
+        if (self.ts / self.lca_iters) % self.dict_write_step == 0:
+            if self.dict_write_step != -1:
+                self.write_tensors('D_{}'.format(self.ts), self.D)
 
         x = self.preprocess_inputs(x)
         a, recon_error, recon = self.encode(x)
@@ -120,17 +121,18 @@ class LCAConvBase:
         if self.learn_dict:
             self.update_D(x, a, recon_error)
 
-        if self.ts % self.act_write_step == 0 and self.act_write_step != -1:
-            self.write_tensors('a_{}'.format(self.ts), a)
-        if (self.ts % self.recon_write_step == 0 
-                and self.recon_write_step != -1):
-            self.write_tensors('recon_{}'.format(self.ts), recon)
-        if (self.ts % self.input_write_step == 0 
-                and self.input_write_step != -1):
-            self.write_tensors('input_{}'.format(self.ts), x)
-        if (self.ts % self.recon_error_write_step == 0 
-                and self.recon_error_write_step != -1):
-            self.write_tensors('recon_error_{}'.format(self.ts), recon_error)
+        if (self.ts / self.lca_iters) % self.act_write_step == 0:
+            if self.act_write_step != -1:
+                self.write_tensors('a_{}'.format(self.ts), a)
+        if (self.ts / self.lca_iters) % self.recon_write_step == 0: 
+            if self.recon_write_step != -1:
+                self.write_tensors('recon_{}'.format(self.ts), recon)
+        if (self.ts / self.lca_iters) % self.input_write_step == 0: 
+            if self.input_write_step != -1:
+                self.write_tensors('input_{}'.format(self.ts), x)
+        if (self.ts / self.lca_iters) % self.recon_error_write_step == 0:
+            if self.recon_error_write_step != -1:
+                self.write_tensors('recon_error_{}'.format(self.ts), recon_error)
 
         return a
 
