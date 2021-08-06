@@ -22,6 +22,7 @@ class LCAConvBase:
         self.dict_write_step = dict_write_step
         self.dtype = dtype 
         self.eta = eta 
+        self.forward_pass = 0
         self.in_c = in_c 
         self.input_write_step = input_write_step 
         self.lca_iters = lca_iters 
@@ -115,28 +116,28 @@ class LCAConvBase:
         return a_t, recon_error, recon
 
     def forward(self, x):
-        if (self.ts / self.lca_iters) % self.dict_write_step == 0:
-            if self.dict_write_step != -1:
-                self.write_tensors('D_{}'.format(self.ts), self.D)
-
         x = self.preprocess_inputs(x)
         a, recon_error, recon = self.encode(x)
-
         if self.learn_dict:
             self.update_D(x, a, recon_error)
 
-        if (self.ts / self.lca_iters) % self.act_write_step == 0:
+        if self.forward_pass % self.dict_write_step == 0:
+            if self.dict_write_step != -1:
+                self.write_tensors('D_{}'.format(self.ts), self.D)
+        if self.forward_pass % self.act_write_step == 0:
             if self.act_write_step != -1:
                 self.write_tensors('a_{}'.format(self.ts), a)
-        if (self.ts / self.lca_iters) % self.recon_write_step == 0: 
+        if self.forward_pass % self.recon_write_step == 0: 
             if self.recon_write_step != -1:
                 self.write_tensors('recon_{}'.format(self.ts), recon)
-        if (self.ts / self.lca_iters) % self.input_write_step == 0: 
+        if self.forward_pass % self.input_write_step == 0: 
             if self.input_write_step != -1:
                 self.write_tensors('input_{}'.format(self.ts), x)
-        if (self.ts / self.lca_iters) % self.recon_error_write_step == 0:
+        if self.forward_pass % self.recon_error_write_step == 0:
             if self.recon_error_write_step != -1:
                 self.write_tensors('recon_error_{}'.format(self.ts), recon_error)
+
+        self.forward_pass += 1
 
         return a
 
