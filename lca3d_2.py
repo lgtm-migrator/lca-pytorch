@@ -25,6 +25,11 @@ class LCA3DConv(LCAConvBase):
         self.create_weight_tensor()
         self.compute_padding_dims()
 
+    def compute_du_norm(self, du):
+        ''' Computes the norm of du to deterimine stopping '''
+
+        return du.norm(p=2, dim=(1,2,3,4)).mean()
+
     def compute_input_drive(self, x):
         return F.conv3d(
             x,

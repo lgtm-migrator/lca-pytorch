@@ -91,7 +91,7 @@ class LCAConvBase:
                               - self.lateral_competition(a_t, G) 
                               + a_t)
             u_t += du
-            du_norm = du.norm(p=2, dim=(1,2,3,4)).mean()
+            du_norm = self.compute_du_norm(du)
 
             if self.track_metrics:
                 recon = self.compute_recon(a_t)
