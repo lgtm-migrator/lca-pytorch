@@ -188,7 +188,8 @@ class LCAConvBase:
                 self.write_tensors('input_{}'.format(self.ts), x)
         if self.forward_pass % self.recon_error_write_step == 0:
             if self.recon_error_write_step != -1:
-                self.write_tensors('recon_error_{}'.format(self.ts), recon_error)
+                self.write_tensors('recon_error_{}'.format(self.ts), 
+                                   recon_error)
 
         self.forward_pass += 1
         return a
