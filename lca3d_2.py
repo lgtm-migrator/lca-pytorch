@@ -148,7 +148,7 @@ class LCA3DConv(LCAConvBase):
             
         return x
 
-    def update_D(self, x, a, error):
+    def update_D(self, a, error):
         ''' Updates the dictionary based on the recon error '''
 
         error = F.pad(error, (self.input_pad[2], self.input_pad[2], 
