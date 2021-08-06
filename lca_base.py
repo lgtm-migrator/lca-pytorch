@@ -138,7 +138,6 @@ class LCAConvBase:
                 self.write_tensors('recon_error_{}'.format(self.ts), recon_error)
 
         self.forward_pass += 1
-
         return a
 
     def soft_threshold(self, x):
