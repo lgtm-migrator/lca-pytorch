@@ -8,6 +8,58 @@ import torch.nn.functional as F
 
 
 class LCAConvBase:
+    '''
+    Base class for LCA models.
+
+    Required Args:
+        n_neurons (int): Number of neurons / dictionary elements.
+        in_c (int): Number of channels / features in the input data.
+        result_dir (str): Path to dir where results will be saved.
+
+    Optional Args:
+        thresh (float): Threshold for the LCA transfer function.
+        tau (int): LCA time constant. 
+        eta (float): Learning rate for dictionary updates.
+        lca_iters (int): Number of LCA timesteps per forward pass.
+        pad ('same' or 'valid'): Input padding method.
+        device (int): GPU to run on. 
+        dtype (torch.dtype): Data type to use.
+        nonneg (bool): True for rectified activations, False for 
+            non-rectified activations.
+        learn_dict (bool): True to update dict features in 
+            alternation with LCA, False to not update dict.
+        track_metrics (bool): True to track and write out objective
+            metrics over the run.
+        scale_inputs (bool): If True, inputs values will be scaled to
+            [0, 1] per batch sample. 
+        zero_center_inputs (bool): If True, inputs will be centered 
+            at 0 per batch sample and depth slice after being scaled
+            to [0, 1] if scale_inputs is True.
+        dict_write_step (int): How often to write out dictionary 
+            features in terms of the number of forward passes 
+            through the model. -1 disables writing dict to disk.
+        recon_write_step (int): How often to write out recons in 
+            terms of the number of forward passes through the model.
+            -1 disables writing recons to disk.
+        act_write_step (int): How often to write out feature maps in 
+            terms of the number of forward passes through the model.
+            -1 disables writing feature maps to disk.
+        recon_error_write_step (int): How often to write out x-recon 
+            in terms of the number of forward passes through the model.
+            -1 disables writing to disk.
+        input_write_step (int): How often to write out inputs in terms
+            of the number of forward passes through the model. 
+            -1 disables writing out inputs to disk.
+        tau_decay_factor (float): Each lca loop, tau will start at tau
+            and after each iteration will update according to 
+            tau -= tau * tau_decay_factor. Empirically helps speed up
+            convergence in most cases. Use 0.0 to use constant tau.
+        lca_tol (float): Value to determine when to stop LCA loop. 
+            if the norm of du across the batch is less than this,
+            LCA will terminate during that forward pass. Use 0.0 to 
+            disable this and run for lca_iters iterations.
+    '''
+
     def __init__(self, n_neurons, in_c, result_dir, thresh=0.1, tau=1500, 
                  eta=1e-3, lca_iters=3000, pad='same', device=None, 
                  dtype=torch.float32, nonneg=False, learn_dict=True, 
