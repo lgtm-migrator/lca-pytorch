@@ -50,7 +50,7 @@ class LCA3DConv(LCAConvBase):
 
         return G
 
-    def compute_l2_recon_error(self, error):
+    def compute_l2_error(self, error):
         ''' Compute l2 norm of the recon error  '''
 
         l2_error_per_sample = error.norm(p=2, dim=(1, 2, 3, 4))
@@ -147,7 +147,7 @@ class LCA3DConv(LCAConvBase):
 
 
 if __name__ == '__main__':
-    BATCH_SIZE = 64
+    BATCH_SIZE = 32
     DEVICE = 1
     DTYPE = torch.float32
     N_FRAMES_IN_TIME = 3
@@ -168,17 +168,20 @@ if __name__ == '__main__':
         in_c=1,
         n_neurons=128,
         result_dir='LCA_Test',
-        tau=3000,
+        tau=1000,
         eta=1e-3,
-        tau_decay_factor=1e-3,
+        lca_tol=1e-3,
+        lca_iters=4000,
+        tau_decay_factor=7e-4,
         device=DEVICE,
         dtype=DTYPE,
         nonneg=True,
-        act_write_step=3000 * 200,
-        dict_write_step=3000 * 200,
-        recon_write_step=3000 * 200,
-        recon_error_write_step=3000 * 200,
-        input_write_step=3000 * 200,
+        act_write_step=200,
+        dict_write_step=200,
+        recon_write_step=200,
+        recon_error_write_step=200,
+        input_write_step=200,
+        track_metrics = True
     )
 
     for step in ProgressBar()(range(UPDATE_STEPS)):
