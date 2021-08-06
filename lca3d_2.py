@@ -171,6 +171,7 @@ if __name__ == '__main__':
     UPDATE_STEPS = 1500
 
     # get paths to videos from imagenet video dataset
+    # this is just a directory with subdirectories which contain images taken from videos
     data_dir = '/media/mteti/1TB_SSD/NEMO/data/ILSVRC2015/Data/VID/train/ILSVRC2015_VID_train_0000/'
     vid_dirs = [os.path.join(data_dir, d) for d in os.listdir(data_dir) if 'resized' in d]
     fpaths = [[os.path.join(d, f) for f in os.listdir(d)] for d in vid_dirs]
