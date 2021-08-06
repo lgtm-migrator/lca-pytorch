@@ -10,6 +10,18 @@ import torch.nn.functional as F
 from lca_base import LCAConvBase 
 
 class LCA3DConv(LCAConvBase):
+    '''
+    3D Convolutional LCA Model
+
+    Args:
+        kh (int): Kernel height of the dictionary features.
+        kw (int): Kernel width of the dictionary features. 
+        kt (int): Kernel depth of the dictionary features.
+        stride_h (int): Stride of the kernel in the vert. direction.
+        stride_w (int): Stride of the kernel in the horiz. direction.
+        stride_t (int): Stride of the kernel in the depth direction.
+    '''
+    
     def __init__(self, kh=7, kw=7, kt=3, stride_h=1, stride_w=1, stride_t=1,
                  **kwargs):
         super(LCA3DConv, self).__init__(**kwargs)

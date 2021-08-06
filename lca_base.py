@@ -168,6 +168,7 @@ class LCAConvBase:
         return a_t, recon_error, recon
 
     def forward(self, x):
+        # x is of shape B x C x D x H x W
         x = self.preprocess_inputs(x)
         a, recon_error, recon = self.encode(x)
         if self.learn_dict:
