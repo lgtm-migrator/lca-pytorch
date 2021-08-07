@@ -172,7 +172,7 @@ class LCAConvBase:
         x = self.preprocess_inputs(x)
         a, recon_error, recon = self.encode(x)
         if self.learn_dict:
-            self.update_D(x, a, recon_error)
+            self.update_D(a, recon_error)
 
         if self.forward_pass % self.dict_write_step == 0:
             if self.dict_write_step != -1:
