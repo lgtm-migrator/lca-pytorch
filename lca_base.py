@@ -67,7 +67,8 @@ class LCAConvBase:
                  zero_center_inputs=True, dict_write_step=-1, 
                  recon_write_step=-1, act_write_step=-1, 
                  recon_error_write_step=-1, input_write_step=-1, 
-                 tau_decay_factor=0.0, lca_tol = 0.0):
+                 tau_decay_factor=0.0, lca_tol = 0.0,
+                 cudnn_benchmark=False):
 
         self.act_write_step = act_write_step 
         self.device = device 
@@ -93,6 +94,9 @@ class LCAConvBase:
         self.track_metrics = track_metrics
         self.ts = 0
         self.zero_center_inputs = zero_center_inputs
+
+        if cudnn_benchmark and torch.backends.cudnn.enabled: 
+            torch.backends.cudnn.benchmark = True
 
         os.makedirs(self.result_dir)
         self.metric_fpath = os.path.join(self.result_dir, 'metrics.xz')
