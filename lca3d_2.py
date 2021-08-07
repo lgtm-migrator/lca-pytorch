@@ -184,6 +184,7 @@ if __name__ == '__main__':
         stride_w=4,
         stride_t=1,
         in_c=1,
+        cudnn_benchmark=True,
         n_neurons=128,
         result_dir='LCA_Test',
         tau=1000,
