@@ -202,6 +202,16 @@ class LCAConvBase:
         else:
             return F.relu(x-self.thresh) - F.relu(-x-self.thresh)
 
+    def update_D(self, a, recon_error):
+        ''' Updates the dictionary given the computed gradient '''
+
+        update = self.compute_update(a, recon_error)
+        update *= self.eta
+        update = torch.clamp(update, min=-self.d_update_clip, 
+                             max=self.d_update_clip)
+        self.D += update
+        self.normalize_D()
+
     def update_tau(self, tau):
         ''' Update LCA time constant with given decay factor '''
 
