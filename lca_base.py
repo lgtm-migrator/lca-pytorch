@@ -72,10 +72,12 @@ class LCAConvBase:
                  zero_center_inputs=True, dict_write_step=-1, 
                  recon_write_step=-1, act_write_step=-1, 
                  recon_error_write_step=-1, input_write_step=-1, 
-                 update_write_step=-1, tau_decay_factor=0.0, lca_tol = 0.0,
-                 cudnn_benchmark=False, d_update_clip=np.inf):
+                 update_write_step=-1, tau_decay_factor=0.0, lca_tol=0.0,
+                 cudnn_benchmark=False, d_update_clip=np.inf,
+                 compute_inhib_every_n=1):
 
         self.act_write_step = act_write_step 
+        self.compute_inhib_every_n = compute_inhib_every_n
         self.d_update_clip = d_update_clip
         self.device = device 
         self.dict_write_step = dict_write_step
@@ -141,11 +143,11 @@ class LCAConvBase:
         tau = self.tau 
 
         for lca_iter in range(self.lca_iters):
-            a_t = self.soft_threshold(u_t)
-            du = (1 / tau) * (b_t 
-                              - u_t 
-                              - self.lateral_competition(a_t, G) 
-                              + a_t)
+            if lca_iter % self.compute_inhib_every_n == 0:
+                a_t = self.soft_threshold(u_t)
+                inhib = self.lateral_competition(a_t, G)
+
+            du = (1 / tau) * (b_t - u_t - inhib + a_t)
             u_t += du
             du_norm = self.compute_du_norm(du)
 

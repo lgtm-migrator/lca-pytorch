@@ -184,7 +184,7 @@ if __name__ == '__main__':
         n_neurons=128,
         result_dir='LCA_Test',
         tau=1000,
-        eta=1e-3,
+        eta=1e-2,
         lca_tol=1e-3,
         lca_iters=4000,
         tau_decay_factor=7e-4,
@@ -197,7 +197,9 @@ if __name__ == '__main__':
         recon_error_write_step=200,
         input_write_step=200,
         update_write_step=200,
-        track_metrics=True
+        track_metrics=True,
+        d_update_clip=5*1e-2,
+        compute_inhib_every_n=2
     )
 
     for step in ProgressBar()(range(UPDATE_STEPS)):
