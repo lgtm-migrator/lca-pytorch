@@ -196,6 +196,7 @@ if __name__ == '__main__':
         recon_write_step=200,
         recon_error_write_step=200,
         input_write_step=200,
+        update_write_step=200,
         track_metrics=True
     )
 

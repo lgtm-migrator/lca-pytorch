@@ -50,6 +50,9 @@ class LCAConvBase:
         input_write_step (int): How often to write out inputs in terms
             of the number of forward passes through the model. 
             -1 disables writing out inputs to disk.
+        update_write_step (int): How often to write out dict updates
+            in terms of the number of forward passes through the model.
+            -1 disables writing out updates to disk.
         tau_decay_factor (float): Each lca loop, tau will start at tau
             and after each iteration will update according to 
             tau -= tau * tau_decay_factor. Empirically helps speed up
@@ -69,7 +72,7 @@ class LCAConvBase:
                  zero_center_inputs=True, dict_write_step=-1, 
                  recon_write_step=-1, act_write_step=-1, 
                  recon_error_write_step=-1, input_write_step=-1, 
-                 tau_decay_factor=0.0, lca_tol = 0.0,
+                 update_write_step=-1, tau_decay_factor=0.0, lca_tol = 0.0,
                  cudnn_benchmark=False, d_update_clip=np.inf):
 
         self.act_write_step = act_write_step 
@@ -96,6 +99,7 @@ class LCAConvBase:
         self.thresh = thresh 
         self.track_metrics = track_metrics
         self.ts = 0
+        self.update_write_step = update_write_step
         self.zero_center_inputs = zero_center_inputs
 
         if cudnn_benchmark and torch.backends.cudnn.enabled: 
@@ -172,7 +176,7 @@ class LCAConvBase:
         x = self.preprocess_inputs(x)
         a, recon_error, recon = self.encode(x)
         if self.learn_dict:
-            self.update_D(a, recon_error)
+            update = self.update_D(a, recon_error)
 
         if self.forward_pass % self.dict_write_step == 0:
             if self.dict_write_step != -1:
@@ -190,6 +194,9 @@ class LCAConvBase:
             if self.recon_error_write_step != -1:
                 self.write_tensors('recon_error_{}'.format(self.ts), 
                                    recon_error)
+        if self.forward_pass % self.update_write_step == 0:
+            if self.update_write_step != -1:
+                self.write_tensors('update_{}'.format(self.ts), update)
 
         self.forward_pass += 1
         return a
@@ -211,6 +218,8 @@ class LCAConvBase:
                              max=self.d_update_clip)
         self.D += update
         self.normalize_D()
+
+        return update
 
     def update_tau(self, tau):
         ''' Update LCA time constant with given decay factor '''
