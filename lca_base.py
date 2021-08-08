@@ -128,17 +128,10 @@ class LCAConvBase:
         if self.track_metrics:
             tracks = self.create_trackers()
 
-        # input drive
-        b_t = self.compute_input_drive(x)
-
-        # initialize membrane potentials
-        u_t = torch.zeros_like(b_t)
-
-        # compute inhibition matrix
+        b_t = self.compute_input_drive(x) 
+        u_t = torch.zeros_like(b_t) 
         G = self.compute_lateral_connectivity()
-
-        # initialize time constant
-        tau = self.tau
+        tau = self.tau 
 
         for lca_iter in range(self.lca_iters):
             a_t = self.soft_threshold(u_t)
