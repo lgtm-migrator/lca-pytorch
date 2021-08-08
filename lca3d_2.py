@@ -159,7 +159,10 @@ class LCA3DConv(LCAConvBase):
         error = error.unfold(-3, self.kh, self.stride_h)
         error = error.unfold(-3, self.kw, self.stride_w)
         update = torch.tensordot(a, error, dims=([0, 2, 3, 4], [0, 2, 3, 4]))
-        self.D += update * self.eta
+        update *= self.eta
+        update = torch.clamp(update, min=-self.d_update_clip, 
+                             max=self.d_update_clip)
+        self.D += update
         self.normalize_D()
 
 

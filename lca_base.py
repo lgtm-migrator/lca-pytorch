@@ -58,6 +58,8 @@ class LCAConvBase:
             if the norm of du across the batch is less than this,
             LCA will terminate during that forward pass. Use 0.0 to 
             disable this and run for lca_iters iterations.
+        d_update_clip (float): Dictionary updates will be clipped to
+            [-d_update_clip, d_update_clip].
     '''
 
     def __init__(self, n_neurons, in_c, result_dir, thresh=0.1, tau=1500, 
@@ -68,9 +70,10 @@ class LCAConvBase:
                  recon_write_step=-1, act_write_step=-1, 
                  recon_error_write_step=-1, input_write_step=-1, 
                  tau_decay_factor=0.0, lca_tol = 0.0,
-                 cudnn_benchmark=False):
+                 cudnn_benchmark=False, d_update_clip=np.inf):
 
         self.act_write_step = act_write_step 
+        self.d_update_clip = d_update_clip
         self.device = device 
         self.dict_write_step = dict_write_step
         self.dtype = dtype 
