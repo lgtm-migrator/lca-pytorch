@@ -98,7 +98,7 @@ class LCAConvBase:
         if cudnn_benchmark and torch.backends.cudnn.enabled: 
             torch.backends.cudnn.benchmark = True
 
-        os.makedirs(self.result_dir)
+        os.makedirs(self.result_dir, exist_ok=True)
         self.metric_fpath = os.path.join(self.result_dir, 'metrics.xz')
         self.tensor_write_fpath = os.path.join(self.result_dir, 'tensors.h5')
 
