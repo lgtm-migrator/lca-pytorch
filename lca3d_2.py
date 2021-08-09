@@ -82,17 +82,24 @@ class LCA3DConv(LCAConvBase):
         ''' Computes padding for forward and transpose convs '''
 
         if self.pad == 'same':
-            self.input_pad = (0, (self.kh - 1) // 2, (self.kw - 1) // 2)
+            if self.kh % 2 != 0 and self.kw % 2 != 0:
+                self.input_pad = (0, (self.kh - 1) // 2, (self.kw - 1) // 2)
+            else:
+                raise NotImplementedError(
+                    "Even kh and kw implemented only for 'valid' padding.")
         elif self.pad == 'valid':
             self.input_pad = (0, 0, 0)
         else:
             raise ValueError
 
-        self.recon_output_pad = (
-            0,
-            self.stride_h - 1 if self.stride_h > 1 else 0, 
-            self.stride_w - 1 if self.stride_w > 1 else 0
-        )
+        if self.kh % 2 != 0 and self.kw != 0:
+            self.recon_output_pad = (
+                0,
+                self.stride_h - 1 if self.stride_h > 1 else 0, 
+                self.stride_w - 1 if self.stride_w > 1 else 0
+            )
+        elif self.kh % 2 == 0 and self.kw % 2 == 0:
+            self.recon_output_pad = (0, 0, 0)
 
     def compute_recon(self, a):
         ''' Computes reconstruction given code '''
@@ -172,8 +179,9 @@ if __name__ == '__main__':
     fpaths = [[os.path.join(d, f) for f in os.listdir(d)] for d in vid_dirs]
 
     model = LCA3DConv(
-        kh=9,
-        kw=9,
+        kh=8,
+        kw=8,
+        pad='valid',
         kt=N_FRAMES_IN_TIME,
         stride_h=4,
         stride_w=4,
