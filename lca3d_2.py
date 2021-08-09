@@ -33,6 +33,12 @@ class LCA3DConv(LCAConvBase):
         self.stride_t = stride_t 
         self.stride_w = stride_w
 
+        assert ((self.kh%2 != 0 and self.kw%2 != 0) or 
+                (self.kh%2 == 0 and self.kw%2 == 0)), (
+                'kh and kw should either both be even or both be odd numbers')
+        assert self.stride_h == 1 or self.stride_h%2 == 0
+        assert self.stride_w == 1 or self.stride_w%2 == 0
+
         self.create_weight_tensor()
         self.compute_padding_dims()
 
