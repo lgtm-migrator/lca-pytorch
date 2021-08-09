@@ -33,7 +33,6 @@ class LCA3DConv(LCAConvBase):
         self.stride_t = stride_t 
         self.stride_w = stride_w
 
-        assert self.kh % 2 != 0 and self.kw % 2 != 0
         self.create_weight_tensor()
         self.compute_padding_dims()
 
