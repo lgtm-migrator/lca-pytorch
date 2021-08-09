@@ -88,6 +88,7 @@ class LCA3DConv(LCAConvBase):
     def compute_padding_dims(self):
         ''' Computes padding for forward and transpose convs '''
 
+        # forward conv to compute input drive
         if self.pad == 'same':
             if self.kernel_odd:
                 self.input_pad = (0, (self.kh - 1) // 2, (self.kw - 1) // 2)
@@ -99,6 +100,7 @@ class LCA3DConv(LCAConvBase):
         else:
             raise ValueError
 
+        # transpose conv to compute recon
         if self.kernel_odd:
             self.recon_output_pad = (0, self.stride_h-1, self.stride_w-1)
         else:
