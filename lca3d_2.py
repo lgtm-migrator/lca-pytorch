@@ -184,7 +184,7 @@ class LCA3DConv(LCAConvBase):
             maxx = maxx.reshape(maxx.shape[0], 1, 1, 1, 1)
             x = (x - minx) / (maxx - minx + eps)
         if self.zero_center_inputs:
-            x -= x.mean(dim=(1, 3, 4), keepdim = True)
+            x -= x.mean(dim=(1, 2, 3, 4), keepdim = True)
             
         return x
 
