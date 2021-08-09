@@ -9,6 +9,7 @@ import torch.nn.functional as F
 
 from lca_base import LCAConvBase 
 
+
 class LCA3DConv(LCAConvBase):
     '''
     3D Convolutional LCA Model
@@ -166,6 +167,7 @@ class LCA3DConv(LCAConvBase):
             x -= x.mean(dim=(1, 3, 4), keepdim = True)
             
         return x
+
 
 if __name__ == '__main__':
     BATCH_SIZE = 32
