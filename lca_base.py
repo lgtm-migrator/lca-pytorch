@@ -63,6 +63,11 @@ class LCAConvBase:
             disable this and run for lca_iters iterations.
         d_update_clip (float): Dictionary updates will be clipped to
             [-d_update_clip, d_update_clip].
+        compute_inhib_every_n (int): How often to compute the 
+            inhibition term in the LCA loop. Can help speed things
+            up in most cases if > 1. Too high values can cause 
+            instability in some causes, particularly if using low 
+            values of tau.  
     '''
 
     def __init__(self, n_neurons, in_c, result_dir, thresh=0.1, tau=1500, 
