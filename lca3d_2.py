@@ -93,11 +93,7 @@ class LCA3DConv(LCAConvBase):
             raise ValueError
 
         if self.kh % 2 != 0 and self.kw % 2 != 0:
-            self.recon_output_pad = (
-                0,
-                self.stride_h - 1 if self.stride_h > 1 else 0, 
-                self.stride_w - 1 if self.stride_w > 1 else 0
-            )
+            self.recon_output_pad = (0, self.stride_h-1, self.stride_w-1)
         elif self.kh % 2 == 0 and self.kw % 2 == 0:
             self.recon_output_pad = (0, 0, 0)
 
