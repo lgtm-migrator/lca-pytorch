@@ -17,22 +17,25 @@ class LCA3DConv(LCAConvBase):
     Args:
         kh (int): Kernel height of the dictionary features.
         kw (int): Kernel width of the dictionary features. 
-        kt (int): Kernel depth of the dictionary features.
+        kt (int): Kernel depth of the dictionary features. Currently
+            only supports kt equal to input depth. 
         stride_h (int): Stride of the kernel in the vert. direction.
         stride_w (int): Stride of the kernel in the horiz. direction.
         stride_t (int): Stride of the kernel in the depth direction.
+            Currently supports only stride_t equal to 1. 
     '''
     
     def __init__(self, kh=7, kw=7, kt=3, stride_h=1, stride_w=1, stride_t=1,
                  **kwargs):
         super(LCA3DConv, self).__init__(**kwargs)
 
-        assert (kh%2 != 0 and kw%2 != 0) or (kh%2 == 0 and kw%2 == 0), (
+        assert ((kh % 2 != 0 and kw % 2 != 0) or 
+                (kh % 2 == 0 and kw % 2 == 0)), (
                 'kh and kw should either both be even or both be odd numbers')
-        assert stride_h == 1 or stride_h%2 == 0
-        assert stride_w == 1 or stride_w%2 == 0
+        assert stride_h == 1 or stride_h % 2 == 0
+        assert stride_w == 1 or stride_w % 2 == 0
         
-        self.kernel_odd = True if kh%2 != 0 else False
+        self.kernel_odd = True if kh % 2 != 0 else False
         self.kh = kh
         self.kt = kt
         self.kw = kw 
@@ -61,7 +64,7 @@ class LCA3DConv(LCAConvBase):
             self.D, 
             self.D, 
             stride=(self.stride_t, self.stride_h, self.stride_w), 
-            padding=(self.kt - 1, self.kh - 1, self.kw - 1)
+            padding=self.lat_conn_pad
         )
         # to avoid inhibition from future neurons to past neurons
         # if kt != input depth
@@ -102,9 +105,24 @@ class LCA3DConv(LCAConvBase):
 
         # transpose conv to compute recon
         if self.kernel_odd:
-            self.recon_output_pad = (0, self.stride_h-1, self.stride_w-1)
+            self.recon_output_pad = (0, self.stride_h - 1, self.stride_w - 1)
         else:
             self.recon_output_pad = (0, 0, 0)
+
+        # padding for conv to compute G
+        self.lat_conn_pad = [self.kt - 1]
+
+        if self.kernel_odd or self.stride_h == 1:
+            self.lat_conn_pad.append(self.kh - 1)
+        else:
+            self.lat_conn_pad.append(self.kh - self.stride_h)
+
+        if self.kernel_odd or self.stride_w == 1:
+            self.lat_conn_pad.append(self.kw - 1)
+        else:
+            self.lat_conn_pad.append(self.kw - self.stride_w)
+        
+        self.lat_conn_pad = tuple(self.lat_conn_pad)
 
     def compute_recon(self, a):
         ''' Computes reconstruction given code '''
