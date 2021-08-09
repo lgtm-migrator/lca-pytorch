@@ -32,6 +32,7 @@ class LCA3DConv(LCAConvBase):
         assert stride_h == 1 or stride_h%2 == 0
         assert stride_w == 1 or stride_w%2 == 0
         
+        self.kernel_odd = True if kh%2 != 0 else False
         self.kh = kh
         self.kt = kt
         self.kw = kw 
@@ -88,7 +89,7 @@ class LCA3DConv(LCAConvBase):
         ''' Computes padding for forward and transpose convs '''
 
         if self.pad == 'same':
-            if self.kh % 2 != 0 and self.kw % 2 != 0:
+            if self.kernel_odd:
                 self.input_pad = (0, (self.kh - 1) // 2, (self.kw - 1) // 2)
             else:
                 raise NotImplementedError(
@@ -98,9 +99,9 @@ class LCA3DConv(LCAConvBase):
         else:
             raise ValueError
 
-        if self.kh % 2 != 0 and self.kw % 2 != 0:
+        if self.kernel_odd:
             self.recon_output_pad = (0, self.stride_h-1, self.stride_w-1)
-        elif self.kh % 2 == 0 and self.kw % 2 == 0:
+        else:
             self.recon_output_pad = (0, 0, 0)
 
     def compute_recon(self, a):
