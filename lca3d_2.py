@@ -44,12 +44,31 @@ class LCA3DConv(LCAConvBase):
         self.stride_w = stride_w
 
         self.create_weight_tensor()
-        self.compute_padding_dims()
+        self.compute_input_pad()
+        self.compute_inhib_pad()
+        self.compute_recon_pad()
 
     def compute_du_norm(self, du):
         ''' Computes the norm of du to deterimine stopping '''
 
         return du.norm(p=2, dim=(1,2,3,4)).mean()
+
+    def compute_inhib_pad(self):
+        ''' Computes padding for compute_lateral_connectivity '''
+
+        self.lat_conn_pad = [self.kt - 1]
+
+        if self.kernel_odd or self.stride_h == 1:
+            self.lat_conn_pad.append(self.kh - 1)
+        else:
+            self.lat_conn_pad.append(self.kh - self.stride_h)
+
+        if self.kernel_odd or self.stride_w == 1:
+            self.lat_conn_pad.append(self.kw - 1)
+        else:
+            self.lat_conn_pad.append(self.kw - self.stride_w)
+        
+        self.lat_conn_pad = tuple(self.lat_conn_pad)        
 
     def compute_input_drive(self, x):
         return F.conv3d(
@@ -58,6 +77,20 @@ class LCA3DConv(LCAConvBase):
             stride=(self.stride_t, self.stride_h, self.stride_w),
             padding=self.input_pad
         )
+
+    def compute_input_pad(self):
+        ''' Computes padding for forward convolution '''
+
+        if self.pad == 'same':
+            if self.kernel_odd:
+                self.input_pad = (0, (self.kh - 1) // 2, (self.kw - 1) // 2)
+            else:
+                raise NotImplementedError(
+                    "Even kh and kw implemented only for 'valid' padding.")
+        elif self.pad == 'valid':
+            self.input_pad = (0, 0, 0)
+        else:
+            raise ValueError
 
     def compute_lateral_connectivity(self):
         G = F.conv3d(
@@ -88,42 +121,6 @@ class LCA3DConv(LCAConvBase):
         l1_norm_per_sample = acts.norm(p=1, dim=(1, 2, 3, 4))
         return torch.mean(l1_norm_per_sample)
 
-    def compute_padding_dims(self):
-        ''' Computes padding for forward and transpose convs '''
-
-        # forward conv to compute input drive
-        if self.pad == 'same':
-            if self.kernel_odd:
-                self.input_pad = (0, (self.kh - 1) // 2, (self.kw - 1) // 2)
-            else:
-                raise NotImplementedError(
-                    "Even kh and kw implemented only for 'valid' padding.")
-        elif self.pad == 'valid':
-            self.input_pad = (0, 0, 0)
-        else:
-            raise ValueError
-
-        # transpose conv to compute recon
-        if self.kernel_odd:
-            self.recon_output_pad = (0, self.stride_h - 1, self.stride_w - 1)
-        else:
-            self.recon_output_pad = (0, 0, 0)
-
-        # padding for conv to compute G
-        self.lat_conn_pad = [self.kt - 1]
-
-        if self.kernel_odd or self.stride_h == 1:
-            self.lat_conn_pad.append(self.kh - 1)
-        else:
-            self.lat_conn_pad.append(self.kh - self.stride_h)
-
-        if self.kernel_odd or self.stride_w == 1:
-            self.lat_conn_pad.append(self.kw - 1)
-        else:
-            self.lat_conn_pad.append(self.kw - self.stride_w)
-        
-        self.lat_conn_pad = tuple(self.lat_conn_pad)
-
     def compute_recon(self, a):
         ''' Computes reconstruction given code '''
 
@@ -134,6 +131,14 @@ class LCA3DConv(LCAConvBase):
             padding=self.input_pad,
             output_padding=self.recon_output_pad
         )
+
+    def compute_recon_pad(self):
+        ''' Computes output padding for recon conv transpose '''
+
+        if self.kernel_odd:
+            self.recon_output_pad = (0, self.stride_h - 1, self.stride_w - 1)
+        else:
+            self.recon_output_pad = (0, 0, 0)
 
     def compute_update(self, a, error):
         error = F.pad(error, (self.input_pad[2], self.input_pad[2], 
