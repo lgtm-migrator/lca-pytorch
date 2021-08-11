@@ -63,11 +63,6 @@ class LCAConvBase:
             disable this and run for lca_iters iterations.
         d_update_clip (float): Dictionary updates will be clipped to
             [-d_update_clip, d_update_clip].
-        compute_inhib_every_n (int): How often to compute the 
-            inhibition term in the LCA loop. Can help speed things
-            up in most cases if > 1. Too high values can cause 
-            instability in some causes, particularly if using low 
-            values of tau.  
     '''
 
     def __init__(self, n_neurons, in_c, result_dir, thresh=0.1, tau=1500, 
@@ -78,11 +73,9 @@ class LCAConvBase:
                  recon_write_step=-1, act_write_step=-1, 
                  recon_error_write_step=-1, input_write_step=-1, 
                  update_write_step=-1, tau_decay_factor=0.0, lca_tol=0.0,
-                 cudnn_benchmark=False, d_update_clip=np.inf,
-                 compute_inhib_every_n=1):
+                 cudnn_benchmark=False, d_update_clip=np.inf):
 
         self.act_write_step = act_write_step 
-        self.compute_inhib_every_n = compute_inhib_every_n
         self.d_update_clip = d_update_clip
         self.device = device 
         self.dict_write_step = dict_write_step
@@ -148,10 +141,8 @@ class LCAConvBase:
         tau = self.tau 
 
         for lca_iter in range(self.lca_iters):
-            if lca_iter % self.compute_inhib_every_n == 0:
-                a_t = self.soft_threshold(u_t)
-                inhib = self.lateral_competition(a_t, G)
-
+            a_t = self.soft_threshold(u_t)
+            inhib = self.lateral_competition(a_t, G)
             du = (1 / tau) * (b_t - u_t - inhib + a_t)
             u_t += du
             du_norm = self.compute_du_norm(du)
