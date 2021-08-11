@@ -234,8 +234,7 @@ if __name__ == '__main__':
         input_write_step=200,
         update_write_step=200,
         track_metrics=True,
-        d_update_clip=5*1e-2,
-        compute_inhib_every_n=2
+        d_update_clip=5*1e-2
     )
 
     for step in ProgressBar()(range(UPDATE_STEPS)):
