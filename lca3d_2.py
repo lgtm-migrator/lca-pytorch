@@ -200,8 +200,8 @@ if __name__ == '__main__':
         kw=8,
         pad='valid',
         kt=N_FRAMES_IN_TIME,
-        stride_h=4,
-        stride_w=4,
+        stride_h=2,
+        stride_w=2,
         stride_t=1,
         in_c=1,
         cudnn_benchmark=True,
@@ -210,8 +210,8 @@ if __name__ == '__main__':
         tau=1000,
         eta=1e-2,
         lca_tol=1e-3,
-        lca_iters=4000,
-        tau_decay_factor=7e-4,
+        lca_iters=6000,
+        tau_decay_factor=0.0,
         device=DEVICE,
         dtype=DTYPE,
         nonneg=True,
@@ -222,7 +222,7 @@ if __name__ == '__main__':
         input_write_step=200,
         update_write_step=200,
         track_metrics=True,
-        d_update_clip=5*1e-2
+        d_update_clip=1e-2
     )
 
     for step in ProgressBar()(range(UPDATE_STEPS)):
