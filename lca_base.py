@@ -133,8 +133,7 @@ class LCAConvBase:
             'L1': l1_sparsity,
             'L2': l2_error,
             'Timestep': timestep,
-            'Tau': tau_vals,
-            'duNorm': du_norm
+            'Tau': tau_vals
         }
 
     def encode(self, x):
