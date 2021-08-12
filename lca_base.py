@@ -144,8 +144,8 @@ class LCAConvBase:
             a_t = self.soft_threshold(u_t)
             inhib = self.lateral_competition(a_t, G)
             du = (1 / tau) * (b_t - u_t - inhib + a_t)
+            du_norm = self.compute_du_norm(du, u_t)
             u_t += du
-            du_norm = self.compute_du_norm(du)
 
             if self.track_metrics:
                 recon = self.compute_recon(a_t)
