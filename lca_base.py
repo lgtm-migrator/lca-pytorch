@@ -159,7 +159,7 @@ class LCAConvBase:
             if self.track_metrics:
                 recon = self.compute_recon(a_t)
                 recon_error = x - recon
-                tracks = self.update_tracks(tracks, self.ts, tau, du_norm, 
+                tracks = self.update_tracks(tracks, self.ts, tau, 
                                             self.compute_l1_sparsity(a_t),
                                             self.compute_l2_error(recon_error), 
                                             lca_iter)
@@ -230,14 +230,13 @@ class LCAConvBase:
 
         return tau - tau * self.tau_decay_factor
 
-    def update_tracks(self, tracks, timestep, tau, du_norm, l1, l2, lca_iter):
+    def update_tracks(self, tracks, timestep, tau, l1, l2, lca_iter):
         ''' Update dictionary that stores the metrics we're tracking '''
 
         tracks['L2'][lca_iter] = l2
         tracks['L1'][lca_iter] = l1
         tracks['Timestep'][lca_iter] = timestep
         tracks['Tau'][lca_iter] = tau
-        tracks['duNorm'][lca_iter] = du_norm
         
         return tracks
 
