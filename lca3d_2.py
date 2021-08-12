@@ -109,18 +109,6 @@ class LCA3DConv(LCAConvBase):
 
         return G
 
-    def compute_l2_error(self, error):
-        ''' Compute l2 norm of the recon error  '''
-
-        l2_error_per_sample = error.norm(p=2, dim=(1, 2, 3, 4))
-        return torch.mean(l2_error_per_sample)
-
-    def compute_l1_sparsity(self, acts):
-        ''' Compute l1 norm of the activations  '''
-
-        l1_norm_per_sample = acts.norm(p=1, dim=(1, 2, 3, 4))
-        return torch.mean(l1_norm_per_sample)
-
     def compute_recon(self, a):
         ''' Computes reconstruction given code '''
 

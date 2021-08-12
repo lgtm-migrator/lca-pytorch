@@ -109,6 +109,16 @@ class LCAConvBase:
         self.metric_fpath = os.path.join(self.result_dir, 'metrics.xz')
         self.tensor_write_fpath = os.path.join(self.result_dir, 'tensors.h5')
 
+    def compute_l1_sparsity(self, acts):
+        ''' Compute l1 sparsity term of objective function '''
+
+        return self.thresh * acts.norm(p=1)
+
+    def compute_l2_error(self, error):
+        ''' Compute l2 recon error term of objective function '''
+
+        return 0.5 * error.norm(p=2)
+
     def create_trackers(self):
         ''' Create placeholders to store different metrics '''
 
