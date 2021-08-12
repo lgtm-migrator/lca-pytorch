@@ -243,9 +243,10 @@ class LCAConvBase:
     def write_obj_values(self, tracker, ts_cutoff):
         ''' Write out objective values to file '''
 
+        tracker['TotalEnergy'] = tracker['L1'] + tracker['L2']
         for k,v in tracker.items():
             tracker[k] = v[:ts_cutoff]
-            if k in ['L1', 'L2', 'duNorm']:
+            if k in ['L1', 'L2', 'TotalEnergy']:
                 tracker[k] = tracker[k].float().cpu().numpy()
 
         obj_df = pd.DataFrame(tracker)
