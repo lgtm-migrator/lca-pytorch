@@ -126,8 +126,6 @@ class LCAConvBase:
                                   device=self.device)
         l2_error = torch.zeros(self.lca_iters, dtype=self.dtype, 
                                device=self.device)
-        du_norm = torch.zeros(self.lca_iters, dtype=self.dtype,
-                              device=self.device)
         timestep = np.zeros([self.lca_iters], dtype=np.int64)
         tau_vals = np.zeros([self.lca_iters], dtype=np.float32)
 
