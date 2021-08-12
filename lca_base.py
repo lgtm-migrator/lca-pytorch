@@ -154,7 +154,6 @@ class LCAConvBase:
             a_t = self.soft_threshold(u_t)
             inhib = self.lateral_competition(a_t, G)
             du = (1 / tau) * (b_t - u_t - inhib + a_t)
-            du_norm = self.compute_du_norm(du, u_t)
             u_t += du
 
             if self.track_metrics:
@@ -164,9 +163,6 @@ class LCAConvBase:
                                             self.compute_l1_sparsity(a_t),
                                             self.compute_l2_error(recon_error), 
                                             lca_iter)
-
-            if du_norm <= self.lca_tol:
-                break
 
             tau = self.update_tau(tau)
             self.ts += 1

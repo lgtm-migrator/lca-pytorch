@@ -48,11 +48,6 @@ class LCA3DConv(LCAConvBase):
         self.compute_inhib_pad()
         self.compute_recon_pad()
 
-    def compute_du_norm(self, du, u, eps=1e-12):
-        ''' Computes the norm of du to deterimine stopping '''
-
-        return du.norm(p=2) / (u.norm(p=2) + eps)
-
     def compute_inhib_pad(self):
         ''' Computes padding for compute_lateral_connectivity '''
 
