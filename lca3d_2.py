@@ -43,7 +43,7 @@ class LCA3DConv(LCAConvBase):
         self.stride_t = stride_t 
         self.stride_w = stride_w
 
-        self.create_weight_tensor()
+        self.init_weight_tensor()
         self.compute_input_pad()
         self.compute_inhib_pad()
         self.compute_recon_pad()
@@ -183,7 +183,7 @@ if __name__ == '__main__':
         result_dir='LCA_Test',
         tau=1000,
         eta=1e-3,
-        thresh=0.175,
+        thresh=0.2,
         lca_tol=1e-5,
         lca_iters=15000,
         tau_decay_factor=0.0,
@@ -197,7 +197,7 @@ if __name__ == '__main__':
         input_write_step=100,
         update_write_step=100,
         track_metrics=True,
-        d_update_clip=1e-3,
+        d_update_clip=5*1e-3,
         thresh_type='soft'
     )
 

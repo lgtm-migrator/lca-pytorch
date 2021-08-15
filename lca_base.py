@@ -61,6 +61,9 @@ class LCAConvBase:
             disable this and run for lca_iters iterations.
         d_update_clip (float): Dictionary updates will be clipped to
             [-d_update_clip, d_update_clip].
+        dict_load_fpath (str): Path to the tensors.h5 file with at 
+            least 1 key starting with 'D_', which will be used to
+            load in the dictionary tensor from the latest ckpt.
     '''
 
     def __init__(self, n_neurons, in_c, result_dir, thresh=0.1, tau=1500, 
@@ -71,11 +74,13 @@ class LCAConvBase:
                  recon_write_step=-1, act_write_step=-1, 
                  recon_error_write_step=-1, input_write_step=-1, 
                  update_write_step=-1, tau_decay_factor=0.0, lca_tol=0.0,
-                 cudnn_benchmark=False, d_update_clip=np.inf):
+                 cudnn_benchmark=False, d_update_clip=np.inf,
+                 dict_load_fpath=None):
 
         self.act_write_step = act_write_step 
         self.d_update_clip = d_update_clip
         self.device = device 
+        self.dict_load_fpath = dict_load_fpath
         self.dict_write_step = dict_write_step
         self.dtype = dtype 
         self.eta = eta 
@@ -179,7 +184,7 @@ class LCAConvBase:
         # x is of shape B x C x D x H x W
         if self.samplewise_standardization:
             x = self.standardize_inputs(x)
-            
+
         a, recon_error, recon = self.encode(x)
         if self.learn_dict:
             update = self.update_D(a, recon_error)
@@ -215,6 +220,25 @@ class LCAConvBase:
         else:
             return (F.threshold(x, self.thresh, 0.0) 
                     - F.threshold(-x, self.thresh, 0.0))
+
+    def init_weight_tensor(self):
+        if self.dict_load_fpath is None:
+            self.create_weight_tensor()
+        else:
+            self.load_weight_tensor()
+
+    def load_weight_tensor(self):
+        ''' Loads in dictionary from latest ckpt in result file '''
+
+        self.create_weight_tensor()
+        with h5py.File(self.dict_load_fpath, 'r') as h5f:
+            h5keys = list(h5f.keys())
+            Dkeys = [key for key in h5keys if 'D_' in key]
+            ckpt_nums = sorted([int(key.split('_')[-1]) for key in Dkeys])
+            dict = h5f[f'D_{ckpt_nums[-1]}'][()]
+            assert dict.shape == self.D.shape 
+            self.D = torch.from_numpy(dict).type(self.dtype).to(self.device)
+            self.normalize_D()
 
     def normalize_D(self, eps=1e-12):
         ''' Normalizes features such at each one has unit norm '''
@@ -265,7 +289,7 @@ class LCAConvBase:
         return tau - tau * self.tau_decay_factor
 
     def update_tracks(self, tracks, timestep, tau, l1, l2, lca_iter):
-        ''' Update dictionary that stores the metrics we're tracking '''
+        ''' Update dictionary that stores the tracked metrics '''
 
         tracks['L2'][lca_iter] = l2
         tracks['L1'][lca_iter] = l1
