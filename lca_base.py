@@ -205,6 +205,15 @@ class LCAConvBase:
         self.forward_pass += 1
         return a
 
+    def hard_threshold(self, x):
+        ''' Hard threshold transfer function '''
+
+        if self.nonneg:
+            return F.threshold(x, self.thresh, 0.0)
+        else:
+            return (F.threshold(x, self.thresh, 0.0) 
+                    - F.threshold(-x, self.thresh, 0.0))
+
     def soft_threshold(self, x):
         ''' Soft threshold transfer function '''
 
