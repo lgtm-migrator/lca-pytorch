@@ -161,21 +161,6 @@ class LCA3DConv(LCAConvBase):
         scale = (self.D.norm(p=2, dim=(1, 2, 3, 4), keepdim=True) + eps)
         self.D *= (1.0 / scale)
 
-    def preprocess_inputs(self, x, eps=1e-12):
-        ''' Scales each batch sample to [0, 1] and 
-            zero-center's each frame '''
-
-        if self.scale_inputs:
-            minx = x.reshape(x.shape[0], -1).min(dim=-1)[0]
-            maxx = x.reshape(x.shape[0], -1).max(dim=-1)[0]
-            minx = minx.reshape(minx.shape[0], 1, 1, 1, 1)
-            maxx = maxx.reshape(maxx.shape[0], 1, 1, 1, 1)
-            x = (x - minx) / (maxx - minx + eps)
-        if self.zero_center_inputs:
-            x -= x.mean(dim=(1, 2, 3, 4), keepdim = True)
-            
-        return x
-
 
 if __name__ == '__main__':
     BATCH_SIZE = 32

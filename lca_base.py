@@ -30,12 +30,9 @@ class LCAConvBase:
             alternation with LCA, False to not update dict.
         track_metrics (bool): True to track and write out objective
             metrics over the run.
-        scale_inputs (bool): If True, inputs values will be scaled to
-            [0, 1] per batch sample. 
         thresh_type ('hard' or 'soft'): Hard or soft transfer function.
-        zero_center_inputs (bool): If True, inputs will be centered 
-            at 0 per batch sample and depth slice after being scaled
-            to [0, 1] if scale_inputs is True.
+        samplewise_standardization (bool): If True, each sample in the
+            batch will be standardized (i.e. mean zero and var 1).
         dict_write_step (int): How often to write out dictionary 
             features in terms of the number of forward passes 
             through the model. -1 disables writing dict to disk.
@@ -69,8 +66,8 @@ class LCAConvBase:
     def __init__(self, n_neurons, in_c, result_dir, thresh=0.1, tau=1500, 
                  eta=1e-3, lca_iters=3000, pad='same', device=None, 
                  dtype=torch.float32, nonneg=False, learn_dict=True, 
-                 track_metrics=True, scale_inputs=True, thresh_type='hard',
-                 zero_center_inputs=True, dict_write_step=-1, 
+                 track_metrics=True, thresh_type='hard',
+                 samplewise_standardization=True, dict_write_step=-1, 
                  recon_write_step=-1, act_write_step=-1, 
                  recon_error_write_step=-1, input_write_step=-1, 
                  update_write_step=-1, tau_decay_factor=0.0, lca_tol=0.0,
@@ -94,7 +91,7 @@ class LCAConvBase:
         self.recon_error_write_step = recon_error_write_step
         self.recon_write_step = recon_write_step
         self.result_dir = result_dir 
-        self.scale_inputs = scale_inputs 
+        self.samplewise_standardization = samplewise_standardization
         self.tau = tau 
         self.tau_decay_factor = tau_decay_factor
         self.thresh = thresh 
@@ -102,7 +99,6 @@ class LCAConvBase:
         self.track_metrics = track_metrics
         self.ts = 0
         self.update_write_step = update_write_step
-        self.zero_center_inputs = zero_center_inputs
 
         if cudnn_benchmark and torch.backends.cudnn.enabled: 
             torch.backends.cudnn.benchmark = True
@@ -179,7 +175,9 @@ class LCAConvBase:
 
     def forward(self, x):
         # x is of shape B x C x D x H x W
-        x = self.preprocess_inputs(x)
+        if self.samplewise_standardization:
+            x = self.standardize_inputs(x)
+            
         a, recon_error, recon = self.encode(x)
         if self.learn_dict:
             update = self.update_D(a, recon_error)
@@ -223,6 +221,14 @@ class LCAConvBase:
             return F.relu(x - self.thresh)
         else:
             return F.relu(x - self.thresh) - F.relu(-x - self.thresh)
+
+    def standardize_inputs(self, batch, eps=1e-12):
+        ''' Standardize each sample in x '''
+
+        dims = tuple(range(1, len(batch.shape)))
+        batch = batch - batch.mean(dim=dims, keepdim=True)
+        batch = batch / (batch.std(dim=dims, keepdim=True) + eps)
+        return batch
 
     def threshold(self, x):
         if self.thresh_type == 'soft':
