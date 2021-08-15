@@ -209,9 +209,9 @@ class LCAConvBase:
         ''' Soft threshold transfer function '''
 
         if self.nonneg:
-            return F.relu(x-self.thresh)
+            return F.relu(x - self.thresh)
         else:
-            return F.relu(x-self.thresh) - F.relu(-x-self.thresh)
+            return F.relu(x - self.thresh) - F.relu(-x - self.thresh)
 
     def update_D(self, a, recon_error):
         ''' Updates the dictionary given the computed gradient '''
