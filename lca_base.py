@@ -32,6 +32,7 @@ class LCAConvBase:
             metrics over the run.
         scale_inputs (bool): If True, inputs values will be scaled to
             [0, 1] per batch sample. 
+        thresh_type ('hard' or 'soft'): Hard or soft transfer function.
         zero_center_inputs (bool): If True, inputs will be centered 
             at 0 per batch sample and depth slice after being scaled
             to [0, 1] if scale_inputs is True.
@@ -68,7 +69,7 @@ class LCAConvBase:
     def __init__(self, n_neurons, in_c, result_dir, thresh=0.1, tau=1500, 
                  eta=1e-3, lca_iters=3000, pad='same', device=None, 
                  dtype=torch.float32, nonneg=False, learn_dict=True, 
-                 track_metrics=True, scale_inputs=True, 
+                 track_metrics=True, scale_inputs=True, thresh_type='hard',
                  zero_center_inputs=True, dict_write_step=-1, 
                  recon_write_step=-1, act_write_step=-1, 
                  recon_error_write_step=-1, input_write_step=-1, 
@@ -97,6 +98,7 @@ class LCAConvBase:
         self.tau = tau 
         self.tau_decay_factor = tau_decay_factor
         self.thresh = thresh 
+        self.thresh_type = thresh_type
         self.track_metrics = track_metrics
         self.ts = 0
         self.update_write_step = update_write_step
@@ -148,7 +150,7 @@ class LCAConvBase:
         tau = self.tau 
 
         for lca_iter in range(self.lca_iters):
-            a_t = self.soft_threshold(u_t)
+            a_t = self.threshold(u_t)
             inhib = self.lateral_competition(a_t, G)
             du = (1 / tau) * (b_t - u_t - inhib + a_t)
             u_t += du
@@ -221,6 +223,14 @@ class LCAConvBase:
             return F.relu(x - self.thresh)
         else:
             return F.relu(x - self.thresh) - F.relu(-x - self.thresh)
+
+    def threshold(self, x):
+        if self.thresh_type == 'soft':
+            return self.soft_threshold(x)
+        elif self.thresh_type == 'hard': 
+            return self.hard_threshold(x)
+        else:
+            raise ValueError
 
     def update_D(self, a, recon_error):
         ''' Updates the dictionary given the computed gradient '''
