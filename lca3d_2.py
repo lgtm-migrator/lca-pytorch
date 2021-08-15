@@ -155,12 +155,6 @@ class LCA3DConv(LCAConvBase):
             padding=(self.n_surround_t, self.n_surround_h, self.n_surround_w)
         )
 
-    def normalize_D(self, eps=1e-12):
-        ''' Normalizes features such at each one has unit norm '''
-
-        scale = (self.D.norm(p=2, dim=(1, 2, 3, 4), keepdim=True) + eps)
-        self.D *= (1.0 / scale)
-
 
 if __name__ == '__main__':
     BATCH_SIZE = 32

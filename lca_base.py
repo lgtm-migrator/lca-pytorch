@@ -214,6 +214,13 @@ class LCAConvBase:
             return (F.threshold(x, self.thresh, 0.0) 
                     - F.threshold(-x, self.thresh, 0.0))
 
+    def normalize_D(self, eps=1e-12):
+        ''' Normalizes features such at each one has unit norm '''
+
+        dims = tuple(range(1, len(self.D.shape)))
+        scale = self.D.norm(p=2, dim=dims, keepdim=True)
+        self.D = self.D / (scale + eps)
+
     def soft_threshold(self, x):
         ''' Soft threshold transfer function '''
 
