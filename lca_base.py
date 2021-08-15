@@ -164,6 +164,9 @@ class LCAConvBase:
             tau = self.update_tau(tau)
             self.ts += 1
 
+            if du.norm() / u_t.norm() < self.lca_tol:
+                break 
+
         if self.track_metrics:
             self.write_obj_values(tracks, lca_iter+1)
         else:
