@@ -110,12 +110,14 @@ class LCAConvBase:
     def compute_l1_sparsity(self, acts):
         ''' Compute l1 sparsity term of objective function '''
 
-        return self.thresh * acts.norm(p=1)
+        dims = tuple(range(1, len(acts.shape)))
+        return self.thresh * acts.norm(p=1, dim=dims).mean()
 
     def compute_l2_error(self, error):
         ''' Compute l2 recon error term of objective function '''
 
-        return 0.5 * error.norm(p=2)
+        dims = tuple(range(1, len(error.shape)))
+        return 0.5 * error.norm(p=2, dim=dims).mean()
 
     def create_trackers(self):
         ''' Create placeholders to store different metrics '''
