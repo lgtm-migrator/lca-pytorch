@@ -157,11 +157,11 @@ class LCA3DConv(LCAConvBase):
 
 
 if __name__ == '__main__':
-    BATCH_SIZE = 32
+    BATCH_SIZE = 64
     DEVICE = 1
     DTYPE = torch.float32
     N_FRAMES_IN_TIME = 3
-    UPDATE_STEPS = 1500
+    UPDATE_STEPS = 800
 
     # get paths to videos from imagenet video dataset
     # this is just a directory with subdirectories which contain images taken from videos
@@ -179,24 +179,26 @@ if __name__ == '__main__':
         stride_t=1,
         in_c=1,
         cudnn_benchmark=True,
-        n_neurons=128,
+        n_neurons=64,
         result_dir='LCA_Test',
         tau=1000,
-        eta=1e-2,
-        lca_tol=1e-3,
-        lca_iters=6000,
+        eta=1e-3,
+        thresh=0.175,
+        lca_tol=1e-5,
+        lca_iters=15000,
         tau_decay_factor=0.0,
         device=DEVICE,
         dtype=DTYPE,
         nonneg=True,
-        act_write_step=200,
-        dict_write_step=200,
-        recon_write_step=200,
-        recon_error_write_step=200,
-        input_write_step=200,
-        update_write_step=200,
+        act_write_step=100,
+        dict_write_step=100,
+        recon_write_step=100,
+        recon_error_write_step=100,
+        input_write_step=100,
+        update_write_step=100,
         track_metrics=True,
-        d_update_clip=1e-2
+        d_update_clip=1e-3,
+        thresh_type='soft'
     )
 
     for step in ProgressBar()(range(UPDATE_STEPS)):
