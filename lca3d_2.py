@@ -163,11 +163,11 @@ if __name__ == '__main__':
     N_FRAMES_IN_TIME = 3
     UPDATE_STEPS = 800
 
-    # get paths to videos from imagenet video dataset
+    # get paths to 32 x 64 pixel video frames from imagenet video dataset
     # this is just a directory with subdirectories which contain images taken from videos
     data_dir = '/media/mteti/1TB_SSD/NEMO/data/ILSVRC2015/Data/VID/train/ILSVRC2015_VID_train_0000/'
     vid_dirs = [os.path.join(data_dir, d) for d in os.listdir(data_dir) if 'resized' in d]
-    fpaths = [[os.path.join(d, f) for f in os.listdir(d)] for d in vid_dirs]
+    fpaths = [[os.path.join(d, f) for f in sorted(os.listdir(d))] for d in vid_dirs]
 
     model = LCA3DConv(
         kh=8,
@@ -208,6 +208,5 @@ if __name__ == '__main__':
         batch_imgs = [[torch.from_numpy(cv2.imread(img_fpath, cv2.IMREAD_GRAYSCALE)) for img_fpath in f] for f in batch_frames]
         batch_imgs_tensor = [torch.unsqueeze(torch.stack(imgs), dim = 0) for imgs in batch_imgs]
         batch = torch.stack(batch_imgs_tensor)
-        batch = batch[..., 16:48]
         batch = batch.type(DTYPE).to(DEVICE)
         a = model.forward(batch)
