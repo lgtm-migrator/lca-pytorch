@@ -112,6 +112,13 @@ class LCAConvBase:
         self.metric_fpath = os.path.join(self.result_dir, 'metrics.xz')
         self.tensor_write_fpath = os.path.join(self.result_dir, 'tensors.h5')
 
+    def compute_times_active_by_feature(self, x):
+        ''' Computes number of active coefficients per feature '''
+        dims = list(range(len(x.shape)))
+        dims.remove(1)
+        times_active = (x != 0).float().sum(dim=dims) + 1
+        return times_active.reshape((x.shape[1],) + (1,) * len(dims))
+
     def compute_l1_sparsity(self, acts):
         ''' Compute l1 sparsity term of objective function '''
 
@@ -275,7 +282,8 @@ class LCAConvBase:
         ''' Updates the dictionary given the computed gradient '''
 
         update = self.compute_update(a, recon_error)
-        update *= self.eta
+        times_active = self.compute_times_active_by_feature(a)
+        update *= self.eta * (1 / times_active)
         update = torch.clamp(update, min=-self.d_update_clip, 
                              max=self.d_update_clip)
         self.D += update
