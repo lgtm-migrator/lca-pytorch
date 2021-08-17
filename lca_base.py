@@ -271,12 +271,11 @@ class LCAConvBase:
         ''' Updates the dictionary given the computed gradient '''
         update = self.compute_update(a, recon_error)
         times_active = self.compute_times_active_by_feature(a)
-        update *= self.eta * (1 / times_active)
+        update *= (self.eta / times_active)
         update = torch.clamp(update, min=-self.d_update_clip, 
                              max=self.d_update_clip)
         self.D += update
         self.normalize_D()
-
         return update
 
     def update_tau(self, tau):
