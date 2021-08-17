@@ -24,7 +24,6 @@ class LCA3DConv(LCAConvBase):
         stride_t (int): Stride of the kernel in the depth direction.
             Currently supports only stride_t equal to 1. 
     '''
-    
     def __init__(self, kh=7, kw=7, kt=3, stride_h=1, stride_w=1, stride_t=1,
                  **kwargs):
         super(LCA3DConv, self).__init__(**kwargs)
@@ -50,7 +49,6 @@ class LCA3DConv(LCAConvBase):
 
     def compute_inhib_pad(self):
         ''' Computes padding for compute_lateral_connectivity '''
-
         self.lat_conn_pad = [self.kt - 1]
 
         if self.kernel_odd or self.stride_h == 1:
@@ -75,7 +73,6 @@ class LCA3DConv(LCAConvBase):
 
     def compute_input_pad(self):
         ''' Computes padding for forward convolution '''
-
         if self.pad == 'same':
             if self.kernel_odd:
                 self.input_pad = (0, (self.kh - 1) // 2, (self.kw - 1) // 2)
@@ -106,7 +103,6 @@ class LCA3DConv(LCAConvBase):
 
     def compute_recon(self, a):
         ''' Computes reconstruction given code '''
-
         return F.conv_transpose3d(
             a, 
             self.D,
@@ -117,7 +113,6 @@ class LCA3DConv(LCAConvBase):
 
     def compute_recon_pad(self):
         ''' Computes output padding for recon conv transpose '''
-
         if self.kernel_odd:
             self.recon_output_pad = (0, self.stride_h - 1, self.stride_w - 1)
         else:
@@ -131,7 +126,7 @@ class LCA3DConv(LCAConvBase):
         error = error.unfold(-3, self.kt, self.stride_t)
         error = error.unfold(-3, self.kh, self.stride_h)
         error = error.unfold(-3, self.kw, self.stride_w)
-        
+
         return torch.tensordot(a, error, dims=([0, 2, 3, 4], [0, 2, 3, 4]))
 
     def create_weight_tensor(self):

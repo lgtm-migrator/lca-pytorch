@@ -65,7 +65,6 @@ class LCAConvBase:
             least 1 key starting with 'D_', which will be used to
             load in the dictionary tensor from the latest ckpt.
     '''
-
     def __init__(self, n_neurons, in_c, result_dir, thresh=0.1, tau=1500, 
                  eta=1e-3, lca_iters=3000, pad='same', device=None, 
                  dtype=torch.float32, nonneg=False, learn_dict=True, 
@@ -121,26 +120,22 @@ class LCAConvBase:
 
     def compute_l1_sparsity(self, acts):
         ''' Compute l1 sparsity term of objective function '''
-
         dims = tuple(range(1, len(acts.shape)))
         return self.thresh * acts.norm(p=1, dim=dims).mean()
 
     def compute_l2_error(self, error):
         ''' Compute l2 recon error term of objective function '''
-
         dims = tuple(range(1, len(error.shape)))
         return 0.5 * error.norm(p=2, dim=dims).mean()
 
     def create_trackers(self):
         ''' Create placeholders to store different metrics '''
-
         l1_sparsity = torch.zeros(self.lca_iters, dtype=self.dtype, 
                                   device=self.device)
         l2_error = torch.zeros(self.lca_iters, dtype=self.dtype, 
                                device=self.device)
         timestep = np.zeros([self.lca_iters], dtype=np.int64)
         tau_vals = np.zeros([self.lca_iters], dtype=np.float32)
-
         return {
             'L1': l1_sparsity,
             'L2': l2_error,
@@ -150,7 +145,6 @@ class LCAConvBase:
 
     def encode(self, x):
         ''' Computes sparse code given data x and dictionary D '''
-
         if self.track_metrics:
             tracks = self.create_trackers()
 
@@ -221,7 +215,6 @@ class LCAConvBase:
 
     def hard_threshold(self, x):
         ''' Hard threshold transfer function '''
-
         if self.nonneg:
             return F.threshold(x, self.thresh, 0.0)
         else:
@@ -236,7 +229,6 @@ class LCAConvBase:
 
     def load_weight_tensor(self):
         ''' Loads in dictionary from latest ckpt in result file '''
-
         self.create_weight_tensor()
         with h5py.File(self.dict_load_fpath, 'r') as h5f:
             h5keys = list(h5f.keys())
@@ -249,14 +241,12 @@ class LCAConvBase:
 
     def normalize_D(self, eps=1e-12):
         ''' Normalizes features such at each one has unit norm '''
-
         dims = tuple(range(1, len(self.D.shape)))
         scale = self.D.norm(p=2, dim=dims, keepdim=True)
         self.D = self.D / (scale + eps)
 
     def soft_threshold(self, x):
         ''' Soft threshold transfer function '''
-
         if self.nonneg:
             return F.relu(x - self.thresh)
         else:
@@ -264,7 +254,6 @@ class LCAConvBase:
 
     def standardize_inputs(self, batch, eps=1e-12):
         ''' Standardize each sample in x '''
-
         dims = tuple(range(1, len(batch.shape)))
         batch = batch - batch.mean(dim=dims, keepdim=True)
         batch = batch / (batch.std(dim=dims, keepdim=True) + eps)
@@ -280,7 +269,6 @@ class LCAConvBase:
 
     def update_D(self, a, recon_error):
         ''' Updates the dictionary given the computed gradient '''
-
         update = self.compute_update(a, recon_error)
         times_active = self.compute_times_active_by_feature(a)
         update *= self.eta * (1 / times_active)
@@ -293,22 +281,18 @@ class LCAConvBase:
 
     def update_tau(self, tau):
         ''' Update LCA time constant with given decay factor '''
-
         return tau - tau * self.tau_decay_factor
 
     def update_tracks(self, tracks, timestep, tau, l1, l2, lca_iter):
         ''' Update dictionary that stores the tracked metrics '''
-
         tracks['L2'][lca_iter] = l2
         tracks['L1'][lca_iter] = l1
         tracks['Timestep'][lca_iter] = timestep
         tracks['Tau'][lca_iter] = tau
-        
         return tracks
 
     def write_obj_values(self, tracker, ts_cutoff):
         ''' Write out objective values to file '''
-
         tracker['TotalEnergy'] = tracker['L1'] + tracker['L2']
         for k,v in tracker.items():
             tracker[k] = v[:ts_cutoff]
@@ -325,6 +309,5 @@ class LCAConvBase:
 
     def write_tensors(self, key, data):
         ''' Writes out tensors to a HDF5 file. '''
-
         with h5py.File(self.tensor_write_fpath, 'a') as h5file:
             h5file.create_dataset(key, data=data.cpu().numpy())
