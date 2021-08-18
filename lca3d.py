@@ -33,6 +33,7 @@ class LCA3DConv(LCAConvBase):
                 'kh and kw should either both be even or both be odd numbers')
         assert stride_h == 1 or stride_h % 2 == 0
         assert stride_w == 1 or stride_w % 2 == 0
+        assert stride_t == 1
         
         self.kernel_odd = True if kh % 2 != 0 else False
         self.kh = kh
