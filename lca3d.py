@@ -64,6 +64,7 @@ class LCA3DConv(LCAConvBase):
         self.lat_conn_pad = tuple(self.lat_conn_pad)        
 
     def compute_input_drive(self, x):
+        assert x.shape[2] == self.kt
         return F.conv3d(
             x,
             self.D,
