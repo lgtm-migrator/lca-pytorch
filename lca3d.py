@@ -95,10 +95,8 @@ class LCA3DConv(LCAConvBase):
         # to avoid inhibition from future neurons to past neurons
         # if kt != input depth
         # G[:, :, (G.shape[2]-1)//2+1:, :, :] = 0.0
-        if not hasattr(self, 'n_surround_h'):
-            self.n_surround_t = int(np.ceil((G.shape[-3] - 1) / 2))
-            self.n_surround_h = int(np.ceil((G.shape[-2] - 1) / 2))
-            self.n_surround_w = int(np.ceil((G.shape[-1] - 1) / 2))
+        if not hasattr(self, 'surround'):
+            self.compute_n_surround(G)
 
         return G
 
@@ -148,7 +146,7 @@ class LCA3DConv(LCAConvBase):
             a,
             G,
             stride=1,
-            padding=(self.n_surround_t, self.n_surround_h, self.n_surround_w)
+            padding=self.surround
         )
 
 

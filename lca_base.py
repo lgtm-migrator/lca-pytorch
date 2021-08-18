@@ -111,6 +111,11 @@ class LCAConvBase:
         self.metric_fpath = os.path.join(self.result_dir, 'metrics.xz')
         self.tensor_write_fpath = os.path.join(self.result_dir, 'tensors.h5')
 
+    def compute_n_surround(self, G):
+        ''' Computes the number of surround neurons for each dim '''
+        G_shp = G.shape[2:]
+        self.surround = tuple([int(np.ceil((dim - 1) / 2)) for dim in G_shp])
+
     def compute_times_active_by_feature(self, x):
         ''' Computes number of active coefficients per feature '''
         dims = list(range(len(x.shape)))
