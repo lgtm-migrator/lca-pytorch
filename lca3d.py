@@ -49,7 +49,7 @@ class LCA3DConv(LCAConvBase):
 
     def compute_inhib_pad(self):
         ''' Computes padding for compute_lateral_connectivity '''
-        self.lat_conn_pad = [self.kt - 1]
+        self.lat_conn_pad = [0]
 
         if self.kernel_odd or self.stride_h == 1:
             self.lat_conn_pad.append(self.kh - 1)
@@ -92,9 +92,6 @@ class LCA3DConv(LCAConvBase):
             stride=(self.stride_t, self.stride_h, self.stride_w), 
             padding=self.lat_conn_pad
         )
-        # to avoid inhibition from future neurons to past neurons
-        # if kt != input depth
-        # G[:, :, (G.shape[2]-1)//2+1:, :, :] = 0.0
         if not hasattr(self, 'surround'):
             self.compute_n_surround(G)
 
