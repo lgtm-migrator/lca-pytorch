@@ -64,6 +64,10 @@ class LCAConvBase:
         dict_load_fpath (str): Path to the tensors.h5 file with at 
             least 1 key starting with 'D_', which will be used to
             load in the dictionary tensor from the latest ckpt.
+        keep_solution (bool): If True, the LCA membrane potentials 
+            for training batch i will be initialized with those found
+            on training batch i-1. This can sometimes allows for faster
+            convergence when iterating sequentially over video data.
     '''
     def __init__(self, n_neurons, in_c, result_dir, thresh=0.1, tau=1500, 
                  eta=1e-3, lca_iters=3000, pad='same', device=None, 
@@ -74,7 +78,7 @@ class LCAConvBase:
                  recon_error_write_step=-1, input_write_step=-1, 
                  update_write_step=-1, tau_decay_factor=0.0, lca_tol=0.0,
                  cudnn_benchmark=False, d_update_clip=np.inf,
-                 dict_load_fpath=None):
+                 dict_load_fpath=None, keep_solution=False):
 
         self.act_write_step = act_write_step 
         self.d_update_clip = d_update_clip
@@ -86,6 +90,7 @@ class LCAConvBase:
         self.forward_pass = 0
         self.in_c = in_c 
         self.input_write_step = input_write_step 
+        self.keep_solution = keep_solution
         self.lca_iters = lca_iters 
         self.lca_tol = lca_tol
         self.learn_dict = learn_dict
@@ -154,15 +159,16 @@ class LCAConvBase:
             tracks = self.create_trackers()
 
         b_t = self.compute_input_drive(x) 
-        u_t = torch.zeros_like(b_t) 
         G = self.compute_lateral_connectivity()
         tau = self.tau 
+        if not self.keep_solution or self.forward_pass == 0:
+            self.u_t = torch.zeros_like(b_t)
 
         for lca_iter in range(self.lca_iters):
-            a_t = self.threshold(u_t)
+            a_t = self.threshold(self.u_t)
             inhib = self.lateral_competition(a_t, G)
-            du = (1 / tau) * (b_t - u_t - inhib + a_t)
-            u_t += du
+            du = (1 / tau) * (b_t - self.u_t - inhib + a_t)
+            self.u_t += du
 
             if self.track_metrics:
                 recon = self.compute_recon(a_t)
@@ -175,7 +181,7 @@ class LCAConvBase:
             tau = self.update_tau(tau)
             self.ts += 1
 
-            if du.norm() / u_t.norm() < self.lca_tol:
+            if du.norm() / self.u_t.norm() < self.lca_tol:
                 break 
 
         if self.track_metrics:
