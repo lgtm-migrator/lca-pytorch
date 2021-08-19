@@ -56,8 +56,8 @@ class LCAConvBase:
             tau -= tau * tau_decay_factor. Empirically helps speed up
             convergence in most cases. Use 0.0 to use constant tau.
         lca_tol (float): Value to determine when to stop LCA loop. 
-            if the norm of du across the batch is less than this,
-            LCA will terminate during that forward pass. Use 0.0 to 
+            If du.norm() / u.norm() across the batch is less than this,
+            LCA will terminate during that forward pass. Use None to 
             disable this and run for lca_iters iterations.
         d_update_clip (float): Dictionary updates will be clipped to
             [-d_update_clip, d_update_clip].
@@ -76,7 +76,7 @@ class LCAConvBase:
                  samplewise_standardization=True, dict_write_step=-1, 
                  recon_write_step=-1, act_write_step=-1, 
                  recon_error_write_step=-1, input_write_step=-1, 
-                 update_write_step=-1, tau_decay_factor=0.0, lca_tol=0.0,
+                 update_write_step=-1, tau_decay_factor=0.0, lca_tol=None,
                  cudnn_benchmark=False, d_update_clip=np.inf,
                  dict_load_fpath=None, keep_solution=False):
 
@@ -180,9 +180,9 @@ class LCAConvBase:
 
             tau = self.update_tau(tau)
             self.ts += 1
-
-            if du.norm() / self.u_t.norm() < self.lca_tol:
-                break 
+            if self.lca_tol is not None:
+                if du.norm() / self.u_t.norm() < self.lca_tol:
+                    break 
 
         if self.track_metrics:
             self.write_obj_values(tracks, lca_iter+1)
