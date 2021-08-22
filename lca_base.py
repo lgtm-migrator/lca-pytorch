@@ -185,7 +185,7 @@ class LCAConvBase:
                     break 
 
         if self.track_metrics:
-            self.write_obj_values(tracks, lca_iter+1)
+            self.write_tracks(tracks, lca_iter + 1)
         else:
             recon = self.compute_recon(a_t)
             recon_error = x - recon
@@ -301,7 +301,7 @@ class LCAConvBase:
         tracks['Tau'][lca_iter] = tau
         return tracks
 
-    def write_obj_values(self, tracker, ts_cutoff):
+    def write_tracks(self, tracker, ts_cutoff):
         ''' Write out objective values to file '''
         tracker['TotalEnergy'] = tracker['L1'] + tracker['L2']
         for k,v in tracker.items():
@@ -310,6 +310,7 @@ class LCAConvBase:
                 tracker[k] = tracker[k].float().cpu().numpy()
 
         obj_df = pd.DataFrame(tracker)
+        obj_df['ForwardPass'] = self.forward_pass
         obj_df.to_csv(
             self.metric_fpath,
             header=True if not os.path.isfile(self.metric_fpath) else False,
