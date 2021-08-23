@@ -138,6 +138,10 @@ class LCAConvBase:
         dims = tuple(range(1, len(error.shape)))
         return 0.5 * error.norm(p=2, dim=dims).mean()
 
+    def compute_perc_change(self, curr, prev):
+        ''' Computes percent change of a value from t-1 to t '''
+        return ((curr - prev) / prev).abs()
+
     def create_trackers(self):
         ''' Create placeholders to store different metrics '''
         l1_sparsity = torch.zeros(self.lca_iters, dtype=self.dtype, 
