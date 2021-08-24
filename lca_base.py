@@ -148,11 +148,14 @@ class LCAConvBase:
                                   device=self.device)
         l2_error = torch.zeros(self.lca_iters, dtype=self.dtype, 
                                device=self.device)
+        energy = torch.zeros(self.lca_iters, dtype=self.dtype, 
+                             device=self.device)
         timestep = np.zeros([self.lca_iters], dtype=np.int64)
         tau_vals = np.zeros([self.lca_iters], dtype=np.float32)
         return {
             'L1': l1_sparsity,
             'L2': l2_error,
+            'TotalEnergy': energy,
             'Timestep': timestep,
             'Tau': tau_vals
         }
@@ -177,10 +180,12 @@ class LCAConvBase:
             if self.track_metrics:
                 recon = self.compute_recon(a_t)
                 recon_error = x - recon
+                l2_rec_err = self.compute_l2_error(recon_error)
+                l1_sparsity = self.compute_l1_sparsity(a_t)
+                total_energy = l2_rec_err + l1_sparsity
                 tracks = self.update_tracks(tracks, self.ts, tau, 
-                                            self.compute_l1_sparsity(a_t),
-                                            self.compute_l2_error(recon_error), 
-                                            lca_iter)
+                                            l1_sparsity, l2_rec_err,
+                                            total_energy, lca_iter)
 
             tau = self.update_tau(tau)
             self.ts += 1
@@ -297,17 +302,17 @@ class LCAConvBase:
         ''' Update LCA time constant with given decay factor '''
         return tau - tau * self.tau_decay_factor
 
-    def update_tracks(self, tracks, timestep, tau, l1, l2, lca_iter):
+    def update_tracks(self, tracks, timestep, tau, l1, l2, energy, lca_iter):
         ''' Update dictionary that stores the tracked metrics '''
         tracks['L2'][lca_iter] = l2
         tracks['L1'][lca_iter] = l1
+        tracks['TotalEnergy'][lca_iter] = energy
         tracks['Timestep'][lca_iter] = timestep
         tracks['Tau'][lca_iter] = tau
         return tracks
 
     def write_tracks(self, tracker, ts_cutoff):
         ''' Write out objective values to file '''
-        tracker['TotalEnergy'] = tracker['L1'] + tracker['L2']
         for k,v in tracker.items():
             tracker[k] = v[:ts_cutoff]
             if k in ['L1', 'L2', 'TotalEnergy']:
