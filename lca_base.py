@@ -177,7 +177,7 @@ class LCAConvBase:
             du = (1 / tau) * (b_t - self.u_t - inhib + a_t)
             self.u_t += du
 
-            if self.track_metrics:
+            if self.track_metrics or lca_iter == self.lca_iters - 1:
                 recon = self.compute_recon(a_t)
                 recon_error = x - recon
                 l2_rec_err = self.compute_l2_error(recon_error)
@@ -195,10 +195,6 @@ class LCAConvBase:
 
         if self.track_metrics:
             self.write_tracks(tracks, lca_iter + 1)
-        else:
-            recon = self.compute_recon(a_t)
-            recon_error = x - recon
-
         return a_t, recon_error, recon
 
     def forward(self, x):
