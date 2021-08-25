@@ -136,7 +136,7 @@ class LCAConvBase:
     def compute_l2_error(self, error):
         ''' Compute l2 recon error term of objective function '''
         dims = tuple(range(1, len(error.shape)))
-        return 0.5 * error.norm(p=2, dim=dims).mean()
+        return 0.5 * (error.norm(p=2, dim=dims) ** 2).mean()
 
     def compute_perc_change(self, curr, prev):
         ''' Computes percent change of a value from t-1 to t '''
