@@ -188,10 +188,7 @@ class LCAConvBase:
                                             total_energy, lca_iter)
 
             tau = self.update_tau(tau)
-            self.ts += 1
-            if self.lca_tol is not None:
-                if du.norm() / self.u_t.norm() < self.lca_tol:
-                    break 
+            self.ts += 1 
 
         if self.track_metrics:
             self.write_tracks(tracks, lca_iter + 1)
