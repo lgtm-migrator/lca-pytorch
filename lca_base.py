@@ -56,7 +56,7 @@ class LCAConvBase:
             tau -= tau * tau_decay_factor. Empirically helps speed up
             convergence in most cases. Use 0.0 to use constant tau.
         lca_tol (float): Value to determine when to stop LCA loop. 
-            If du.norm() / u.norm() across the batch is less than this,
+            If the value of the objective function is less than this,
             LCA will terminate during that forward pass. Use None to 
             disable this and run for lca_iters iterations.
         d_update_clip (float): Dictionary updates will be clipped to
@@ -162,9 +162,6 @@ class LCAConvBase:
 
     def encode(self, x):
         ''' Computes sparse code given data x and dictionary D '''
-        if self.track_metrics:
-            tracks = self.create_trackers()
-
         b_t = self.compute_input_drive(x) 
         G = self.compute_lateral_connectivity()
         tau = self.tau 
@@ -177,15 +174,30 @@ class LCAConvBase:
             du = (1 / tau) * (b_t - self.u_t - inhib + a_t)
             self.u_t += du
 
-            if self.track_metrics or lca_iter == self.lca_iters - 1:
+            if (self.track_metrics 
+                    or lca_iter == self.lca_iters - 1
+                    or self.lca_tol is not None):
                 recon = self.compute_recon(a_t)
                 recon_error = x - recon
-                l2_rec_err = self.compute_l2_error(recon_error)
-                l1_sparsity = self.compute_l1_sparsity(a_t)
-                total_energy = l2_rec_err + l1_sparsity
-                tracks = self.update_tracks(tracks, self.ts, tau, 
-                                            l1_sparsity, l2_rec_err,
-                                            total_energy, lca_iter)
+                if self.track_metrics or self.lca_tol is not None:
+                    l2_rec_err = self.compute_l2_error(recon_error)
+                    l1_sparsity = self.compute_l1_sparsity(a_t)
+                    total_energy = l2_rec_err + l1_sparsity
+                    if lca_iter == 0:
+                        tracks = self.create_trackers()
+                    tracks = self.update_tracks(tracks, self.ts, tau, 
+                                                l1_sparsity, l2_rec_err,
+                                                total_energy, lca_iter)
+                    if self.lca_tol is not None:
+                        if lca_iter > 100:
+                            energy_curr = tracks['TotalEnergy'][
+                                lca_iter - 100 : lca_iter].mean()
+                            energy_prev = tracks['TotalEnergy'][
+                                lca_iter - 101 : lca_iter - 1].mean()
+                            perc_change = self.compute_perc_change(energy_curr, 
+                                                                   energy_prev)
+                            if perc_change < self.lca_tol:
+                                break
 
             tau = self.update_tau(tau)
             self.ts += 1 
