@@ -190,13 +190,7 @@ class LCAConvBase:
                                                 total_energy, lca_iter)
                     if self.lca_tol is not None:
                         if lca_iter > 100:
-                            energy_curr = tracks['TotalEnergy'][
-                                lca_iter - 100 : lca_iter].mean()
-                            energy_prev = tracks['TotalEnergy'][
-                                lca_iter - 101 : lca_iter - 1].mean()
-                            perc_change = self.compute_perc_change(energy_curr, 
-                                                                   energy_prev)
-                            if perc_change < self.lca_tol:
+                            if self.stop_lca(tracks['TotalEnergy'], lca_iter):
                                 break
 
             tau = self.update_tau(tau)
@@ -283,6 +277,19 @@ class LCAConvBase:
         batch = batch - batch.mean(dim=dims, keepdim=True)
         batch = batch / (batch.std(dim=dims, keepdim=True) + eps)
         return batch
+
+    def stop_lca(self, energy_history, lca_iter):
+        ''' Determines when to stop LCA loop early by comparing the 
+            percent change between a running avg of the objective value 
+            at time t and that at time t-1 and checking if it is less
+            then the user-defined lca_tol value '''
+        curr_avg = energy_history[lca_iter - 99 : lca_iter + 1].mean()
+        prev_avg = energy_history[lca_iter - 100 : lca_iter].mean()
+        perc_change = self.compute_perc_change(curr_avg, prev_avg)
+        if perc_change < self.lca_tol:
+            return True 
+        else:
+            return False
 
     def threshold(self, x):
         if self.thresh_type == 'soft':
