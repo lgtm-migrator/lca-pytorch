@@ -33,24 +33,6 @@ class LCAConvBase:
         thresh_type ('hard' or 'soft'): Hard or soft transfer function.
         samplewise_standardization (bool): If True, each sample in the
             batch will be standardized (i.e. mean zero and var 1).
-        dict_write_step (int): How often to write out dictionary 
-            features in terms of the number of forward passes 
-            through the model. -1 disables writing dict to disk.
-        recon_write_step (int): How often to write out recons in 
-            terms of the number of forward passes through the model.
-            -1 disables writing recons to disk.
-        act_write_step (int): How often to write out feature maps in 
-            terms of the number of forward passes through the model.
-            -1 disables writing feature maps to disk.
-        recon_error_write_step (int): How often to write out x-recon 
-            in terms of the number of forward passes through the model.
-            -1 disables writing to disk.
-        input_write_step (int): How often to write out inputs in terms
-            of the number of forward passes through the model. 
-            -1 disables writing out inputs to disk.
-        update_write_step (int): How often to write out dict updates
-            in terms of the number of forward passes through the model.
-            -1 disables writing out updates to disk.
         tau_decay_factor (float): Each lca loop, tau will start at tau
             and after each iteration will update according to 
             tau -= tau * tau_decay_factor. Empirically helps speed up
@@ -73,23 +55,17 @@ class LCAConvBase:
                  eta=1e-3, lca_iters=3000, pad='same', device=None, 
                  dtype=torch.float32, nonneg=False, learn_dict=True, 
                  track_metrics=True, thresh_type='hard',
-                 samplewise_standardization=True, dict_write_step=-1, 
-                 recon_write_step=-1, act_write_step=-1, 
-                 recon_error_write_step=-1, input_write_step=-1, 
-                 update_write_step=-1, tau_decay_factor=0.0, lca_tol=None,
-                 cudnn_benchmark=False, d_update_clip=np.inf,
+                 samplewise_standardization=True, tau_decay_factor=0.0, 
+                 lca_tol=None, cudnn_benchmark=False, d_update_clip=np.inf,
                  dict_load_fpath=None, keep_solution=False):
 
-        self.act_write_step = act_write_step 
         self.d_update_clip = d_update_clip
         self.device = device 
         self.dict_load_fpath = dict_load_fpath
-        self.dict_write_step = dict_write_step
         self.dtype = dtype 
         self.eta = eta 
         self.forward_pass = 0
         self.in_c = in_c 
-        self.input_write_step = input_write_step 
         self.keep_solution = keep_solution
         self.lca_iters = lca_iters 
         self.lca_tol = lca_tol
@@ -97,8 +73,6 @@ class LCAConvBase:
         self.n_neurons = n_neurons 
         self.nonneg = nonneg 
         self.pad = pad
-        self.recon_error_write_step = recon_error_write_step
-        self.recon_write_step = recon_write_step
         self.result_dir = result_dir 
         self.samplewise_standardization = samplewise_standardization
         self.tau = tau 
@@ -107,7 +81,6 @@ class LCAConvBase:
         self.thresh_type = thresh_type
         self.track_metrics = track_metrics
         self.ts = 0
-        self.update_write_step = update_write_step
 
         if cudnn_benchmark and torch.backends.cudnn.enabled: 
             torch.backends.cudnn.benchmark = True
@@ -208,26 +181,6 @@ class LCAConvBase:
         a, recon_error, recon = self.encode(x)
         if self.learn_dict:
             update = self.update_D(a, recon_error)
-
-        if self.forward_pass % self.dict_write_step == 0:
-            if self.dict_write_step != -1:
-                self.write_tensors('D_{}'.format(self.ts), self.D)
-        if self.forward_pass % self.act_write_step == 0:
-            if self.act_write_step != -1:
-                self.write_tensors('a_{}'.format(self.ts), a)
-        if self.forward_pass % self.recon_write_step == 0: 
-            if self.recon_write_step != -1:
-                self.write_tensors('recon_{}'.format(self.ts), recon)
-        if self.forward_pass % self.input_write_step == 0: 
-            if self.input_write_step != -1:
-                self.write_tensors('input_{}'.format(self.ts), x)
-        if self.forward_pass % self.recon_error_write_step == 0:
-            if self.recon_error_write_step != -1:
-                self.write_tensors('recon_error_{}'.format(self.ts), 
-                                   recon_error)
-        if self.forward_pass % self.update_write_step == 0:
-            if self.update_write_step != -1:
-                self.write_tensors('update_{}'.format(self.ts), update)
 
         self.forward_pass += 1
         return a
