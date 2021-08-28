@@ -50,6 +50,12 @@ class LCAConvBase:
             for training batch i will be initialized with those found
             on training batch i-1. This can sometimes allows for faster
             convergence when iterating sequentially over video data.
+        lca_write_step (int): How often to write out a_t, u_t, b_t,
+            recon, and recon_error within a single LCA loop. If None,
+            these will not be written to disk.
+        forward_write_step (int): How often to write out dictionary,
+            input, and dictionary update. If None, these will not be
+            written to disk.
     '''
     def __init__(self, n_neurons, in_c, result_dir, thresh=0.1, tau=1500, 
                  eta=1e-3, lca_iters=3000, pad='same', device=None, 
@@ -57,7 +63,8 @@ class LCAConvBase:
                  track_metrics=True, thresh_type='hard',
                  samplewise_standardization=True, tau_decay_factor=0.0, 
                  lca_tol=None, cudnn_benchmark=False, d_update_clip=np.inf,
-                 dict_load_fpath=None, keep_solution=False):
+                 dict_load_fpath=None, keep_solution=False,
+                 lca_write_step=None, forward_write_step=None):
 
         self.d_update_clip = d_update_clip
         self.device = device 
@@ -65,10 +72,12 @@ class LCAConvBase:
         self.dtype = dtype 
         self.eta = eta 
         self.forward_pass = 0
+        self.forward_write_step = forward_write_step
         self.in_c = in_c 
         self.keep_solution = keep_solution
         self.lca_iters = lca_iters 
         self.lca_tol = lca_tol
+        self.lca_write_step = lca_write_step
         self.learn_dict = learn_dict
         self.n_neurons = n_neurons 
         self.nonneg = nonneg 
@@ -149,9 +158,18 @@ class LCAConvBase:
 
             if (self.track_metrics 
                     or lca_iter == self.lca_iters - 1
-                    or self.lca_tol is not None):
+                    or self.lca_tol is not None
+                    or (self.lca_write_step is not None 
+                        and lca_iter % self.lca_write_step == 0)):
                 recon = self.compute_recon(a_t)
                 recon_error = x - recon
+                if (self.lca_write_step is not None 
+                        and lca_iter % self.lca_write_step == 0):
+                    self.write_tensors(
+                        ['a', 'b', 'u', 'recon', 'recon_error'],
+                        [a_t, b_t, self.u_t, recon, recon_error],
+                        lca_iter=lca_iter
+                    )
                 if self.track_metrics or self.lca_tol is not None:
                     l2_rec_err = self.compute_l2_error(recon_error)
                     l1_sparsity = self.compute_l1_sparsity(a_t)
@@ -181,6 +199,10 @@ class LCAConvBase:
         a, recon_error, recon = self.encode(x)
         if self.learn_dict:
             update = self.update_D(a, recon_error)
+
+        if (self.forward_write_step is not None
+                and self.forward_pass % self.forward_write_step == 0):
+            self.write_tensors(['D', 'input', 'update'], [self.D, x, update])
 
         self.forward_pass += 1
         return a
@@ -292,7 +314,9 @@ class LCAConvBase:
             mode='a'
         )
 
-    def write_tensors(self, key, data):
+    def write_tensors(self, keys, tensors, lca_iter=0):
         ''' Writes out tensors to a HDF5 file. '''
         with h5py.File(self.tensor_write_fpath, 'a') as h5file:
-            h5file.create_dataset(key, data=data.cpu().numpy())
+            for key, tensor in zip(keys, tensors):
+                h5file.create_dataset(key + f'_{self.forward_pass}_{lca_iter}',
+                                      data=tensor.cpu().numpy())
