@@ -98,6 +98,16 @@ class LCAConvBase:
         self.metric_fpath = os.path.join(self.result_dir, 'metrics.xz')
         self.tensor_write_fpath = os.path.join(self.result_dir, 'tensors.h5')
 
+    def _check_lca_write(self, lca_iter):
+        ''' Checks whether to write LCA tensors at a given LCA iter '''
+        write = False
+        if self.lca_write_step is not None:
+            if lca_iter % self.lca_write_step == 0:
+                if self.forward_write_step is not None:
+                    if self.forward_pass % self.forward_write_step == 0:
+                        write = True 
+        return write
+
     def compute_n_surround(self, G):
         ''' Computes the number of surround neurons for each dim '''
         G_shp = G.shape[2:]
@@ -159,12 +169,10 @@ class LCAConvBase:
             if (self.track_metrics 
                     or lca_iter == self.lca_iters - 1
                     or self.lca_tol is not None
-                    or (self.lca_write_step is not None 
-                        and lca_iter % self.lca_write_step == 0)):
+                    or self._check_lca_write(lca_iter)):
                 recon = self.compute_recon(a_t)
                 recon_error = x - recon
-                if (self.lca_write_step is not None 
-                        and lca_iter % self.lca_write_step == 0):
+                if self._check_lca_write(lca_iter):
                     self.write_tensors(
                         ['a', 'b', 'u', 'recon', 'recon_error'],
                         [a_t, b_t, self.u_t, recon, recon_error],
