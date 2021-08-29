@@ -202,7 +202,11 @@ class LCAConvBase:
 
         if (self.forward_write_step is not None
                 and self.forward_pass % self.forward_write_step == 0):
-            self.write_tensors(['D', 'input', 'update'], [self.D, x, update])
+            if self.learn_dict:
+                self.write_tensors(['D', 'input', 'update'], 
+                                   [self.D, x, update])
+            else:
+                self.write_tensors(['D', 'input'], [self.D, x])
 
         self.forward_pass += 1
         return a
