@@ -227,8 +227,8 @@ class LCAConvBase:
         with h5py.File(self.dict_load_fpath, 'r') as h5f:
             h5keys = list(h5f.keys())
             Dkeys = [key for key in h5keys if 'D_' in key]
-            ckpt_nums = sorted([int(key.split('_')[-1]) for key in Dkeys])
-            dict = h5f[f'D_{ckpt_nums[-1]}'][()]
+            ckpt_nums = sorted([int(key.split('_')[-2]) for key in Dkeys])
+            dict = h5f[f'D_{ckpt_nums[-1]}_0'][()]
             assert dict.shape == self.D.shape 
             self.D = torch.from_numpy(dict).type(self.dtype).to(self.device)
             self.normalize_D()
