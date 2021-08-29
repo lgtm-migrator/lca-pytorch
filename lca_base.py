@@ -123,33 +123,26 @@ class LCAConvBase:
     def compute_l1_sparsity(self, acts):
         ''' Compute l1 sparsity term of objective function '''
         dims = tuple(range(1, len(acts.shape)))
-        return self.thresh * acts.norm(p=1, dim=dims).mean()
+        return self.thresh * acts.norm(p=1, dim=dims).mean().item()
 
     def compute_l2_error(self, error):
         ''' Compute l2 recon error term of objective function '''
         dims = tuple(range(1, len(error.shape)))
-        return 0.5 * (error.norm(p=2, dim=dims) ** 2).mean()
+        return 0.5 * (error.norm(p=2, dim=dims) ** 2).mean().item()
 
     def compute_perc_change(self, curr, prev):
         ''' Computes percent change of a value from t-1 to t '''
-        return ((curr - prev) / prev).abs()
+        return abs((curr - prev) / prev)
 
     def create_trackers(self):
         ''' Create placeholders to store different metrics '''
-        l1_sparsity = torch.zeros(self.lca_iters, dtype=self.dtype, 
-                                  device=self.device)
-        l2_error = torch.zeros(self.lca_iters, dtype=self.dtype, 
-                               device=self.device)
-        energy = torch.zeros(self.lca_iters, dtype=self.dtype, 
-                             device=self.device)
-        timestep = np.zeros([self.lca_iters], dtype=np.int64)
-        tau_vals = np.zeros([self.lca_iters], dtype=np.float32)
+        float_tracker = np.zeros([self.lca_iters], dtype=np.float64)
         return {
-            'L1' : l1_sparsity,
-            'L2' : l2_error,
-            'TotalEnergy' : energy,
-            'Timestep' : timestep,
-            'Tau' : tau_vals
+            'L1' : float_tracker.copy(),
+            'L2' : float_tracker.copy(),
+            'TotalEnergy' : float_tracker.copy(),
+            'Timestep' : np.zeros([self.lca_iters], dtype=np.int64),
+            'Tau' : float_tracker.copy()
         }
 
     def encode(self, x):
@@ -310,8 +303,6 @@ class LCAConvBase:
         ''' Write out objective values to file '''
         for k,v in tracker.items():
             tracker[k] = v[:ts_cutoff]
-            if k in ['L1', 'L2', 'TotalEnergy']:
-                tracker[k] = tracker[k].float().cpu().numpy()
 
         obj_df = pd.DataFrame(tracker)
         obj_df['ForwardPass'] = self.forward_pass
