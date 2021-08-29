@@ -145,11 +145,11 @@ class LCAConvBase:
         timestep = np.zeros([self.lca_iters], dtype=np.int64)
         tau_vals = np.zeros([self.lca_iters], dtype=np.float32)
         return {
-            'L1': l1_sparsity,
-            'L2': l2_error,
-            'TotalEnergy': energy,
-            'Timestep': timestep,
-            'Tau': tau_vals
+            'L1' : l1_sparsity,
+            'L2' : l2_error,
+            'TotalEnergy' : energy,
+            'Timestep' : timestep,
+            'Tau' : tau_vals
         }
 
     def encode(self, x):
