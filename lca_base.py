@@ -89,7 +89,6 @@ class LCAConvBase:
         self.thresh = thresh 
         self.thresh_type = thresh_type
         self.track_metrics = track_metrics
-        self.ts = 0
 
         if cudnn_benchmark and torch.backends.cudnn.enabled: 
             torch.backends.cudnn.benchmark = True
@@ -147,7 +146,6 @@ class LCAConvBase:
             'L2' : float_tracker.copy(),
             'TotalEnergy' : float_tracker.copy(),
             'FractionActive' : float_tracker.copy(),
-            'Timestep' : np.zeros([self.lca_iters], dtype=np.int64),
             'Tau' : float_tracker.copy()
         }
 
@@ -181,14 +179,13 @@ class LCAConvBase:
                     if lca_iter == 0:
                         tracks = self.create_trackers()
                     tracks = self.update_tracks(tracks, lca_iter, a_t,
-                                                recon_error, self.ts, tau)
+                                                recon_error, tau)
                     if self.lca_tol is not None:
                         if lca_iter > 100:
                             if self.stop_lca(tracks['TotalEnergy'], lca_iter):
                                 break
 
-            tau = self.update_tau(tau)
-            self.ts += 1 
+            tau = self.update_tau(tau) 
 
         if self.track_metrics:
             self.write_tracks(tracks, lca_iter + 1)
@@ -292,7 +289,7 @@ class LCAConvBase:
         ''' Update LCA time constant with given decay factor '''
         return tau - tau * self.tau_decay_factor
 
-    def update_tracks(self, tracks, lca_iter, a, recon_error, timestep, tau):
+    def update_tracks(self, tracks, lca_iter, a, recon_error, tau):
         ''' Update dictionary that stores the tracked metrics '''
         l2_rec_err = self.compute_l2_error(recon_error)
         l1_sparsity = self.compute_l1_sparsity(a)
@@ -300,7 +297,6 @@ class LCAConvBase:
         tracks['L1'][lca_iter] = l1_sparsity
         tracks['TotalEnergy'][lca_iter] = l2_rec_err + l1_sparsity
         tracks['FractionActive'][lca_iter] = self.compute_frac_active(a)
-        tracks['Timestep'][lca_iter] = timestep
         tracks['Tau'][lca_iter] = tau
         return tracks
 
