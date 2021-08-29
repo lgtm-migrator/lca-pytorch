@@ -178,16 +178,10 @@ class LCAConvBase:
                         lca_iter=lca_iter
                     )
                 if self.track_metrics or self.lca_tol is not None:
-                    l2_rec_err = self.compute_l2_error(recon_error)
-                    l1_sparsity = self.compute_l1_sparsity(a_t)
-                    total_energy = l2_rec_err + l1_sparsity
-                    frac_active = self.compute_frac_active(a_t)
                     if lca_iter == 0:
                         tracks = self.create_trackers()
-                    tracks = self.update_tracks(tracks, self.ts, tau, 
-                                                l1_sparsity, l2_rec_err,
-                                                total_energy, frac_active,
-                                                lca_iter)
+                    tracks = self.update_tracks(tracks, lca_iter, a_t,
+                                                recon_error, self.ts, tau)
                     if self.lca_tol is not None:
                         if lca_iter > 100:
                             if self.stop_lca(tracks['TotalEnergy'], lca_iter):
@@ -298,13 +292,14 @@ class LCAConvBase:
         ''' Update LCA time constant with given decay factor '''
         return tau - tau * self.tau_decay_factor
 
-    def update_tracks(self, tracks, timestep, tau, l1, l2, energy, frac_active,
-                      lca_iter):
+    def update_tracks(self, tracks, lca_iter, a, recon_error, timestep, tau):
         ''' Update dictionary that stores the tracked metrics '''
-        tracks['L2'][lca_iter] = l2
-        tracks['L1'][lca_iter] = l1
-        tracks['TotalEnergy'][lca_iter] = energy
-        tracks['FractionActive'][lca_iter] = frac_active
+        l2_rec_err = self.compute_l2_error(recon_error)
+        l1_sparsity = self.compute_l1_sparsity(a)
+        tracks['L2'][lca_iter] = l2_rec_err
+        tracks['L1'][lca_iter] = l1_sparsity
+        tracks['TotalEnergy'][lca_iter] = l2_rec_err + l1_sparsity
+        tracks['FractionActive'][lca_iter] = self.compute_frac_active(a)
         tracks['Timestep'][lca_iter] = timestep
         tracks['Tau'][lca_iter] = tau
         return tracks
