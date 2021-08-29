@@ -108,6 +108,11 @@ class LCAConvBase:
                         write = True 
         return write
 
+    def compute_frac_active(self, a):
+        ''' Computes the number of active neurons relative to the total
+            number of neurons '''
+        return (a != 0.0).float().mean().item()
+
     def compute_n_surround(self, G):
         ''' Computes the number of surround neurons for each dim '''
         G_shp = G.shape[2:]
@@ -141,6 +146,7 @@ class LCAConvBase:
             'L1' : float_tracker.copy(),
             'L2' : float_tracker.copy(),
             'TotalEnergy' : float_tracker.copy(),
+            'FractionActive' : float_tracker.copy(),
             'Timestep' : np.zeros([self.lca_iters], dtype=np.int64),
             'Tau' : float_tracker.copy()
         }
@@ -175,11 +181,13 @@ class LCAConvBase:
                     l2_rec_err = self.compute_l2_error(recon_error)
                     l1_sparsity = self.compute_l1_sparsity(a_t)
                     total_energy = l2_rec_err + l1_sparsity
+                    frac_active = self.compute_frac_active(a_t)
                     if lca_iter == 0:
                         tracks = self.create_trackers()
                     tracks = self.update_tracks(tracks, self.ts, tau, 
                                                 l1_sparsity, l2_rec_err,
-                                                total_energy, lca_iter)
+                                                total_energy, frac_active,
+                                                lca_iter)
                     if self.lca_tol is not None:
                         if lca_iter > 100:
                             if self.stop_lca(tracks['TotalEnergy'], lca_iter):
@@ -290,11 +298,13 @@ class LCAConvBase:
         ''' Update LCA time constant with given decay factor '''
         return tau - tau * self.tau_decay_factor
 
-    def update_tracks(self, tracks, timestep, tau, l1, l2, energy, lca_iter):
+    def update_tracks(self, tracks, timestep, tau, l1, l2, energy, frac_active,
+                      lca_iter):
         ''' Update dictionary that stores the tracked metrics '''
         tracks['L2'][lca_iter] = l2
         tracks['L1'][lca_iter] = l1
         tracks['TotalEnergy'][lca_iter] = energy
+        tracks['FractionActive'][lca_iter] = frac_active
         tracks['Timestep'][lca_iter] = timestep
         tracks['Tau'][lca_iter] = tau
         return tracks
