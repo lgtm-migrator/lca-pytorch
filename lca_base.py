@@ -141,7 +141,7 @@ class LCAConvBase:
 
     def create_trackers(self):
         ''' Create placeholders to store different metrics '''
-        float_tracker = np.zeros([self.lca_iters], dtype=np.float64)
+        float_tracker = np.zeros([self.lca_iters], dtype=np.float32)
         return {
             'L1' : float_tracker.copy(),
             'L2' : float_tracker.copy(),
