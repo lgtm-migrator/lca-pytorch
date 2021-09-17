@@ -50,6 +50,9 @@ class LCAConvBase:
             for training batch i will be initialized with those found
             on training batch i-1. This can sometimes allows for faster
             convergence when iterating sequentially over video data.
+        lca_warmup (int): Number of iterations to run LCA before early
+            stopping criteria will be checked. Not used if lca_tol is 
+            None. 
         lca_write_step (int): How often to write out a_t, u_t, b_t,
             recon, and recon_error within a single LCA loop. If None,
             these will not be written to disk.
@@ -63,7 +66,7 @@ class LCAConvBase:
                  track_metrics=True, thresh_type='hard',
                  samplewise_standardization=True, tau_decay_factor=0.0, 
                  lca_tol=None, cudnn_benchmark=False, d_update_clip=np.inf,
-                 dict_load_fpath=None, keep_solution=False,
+                 dict_load_fpath=None, keep_solution=False, lca_warmup=200,
                  lca_write_step=None, forward_write_step=None):
 
         self.d_update_clip = d_update_clip
@@ -77,6 +80,7 @@ class LCAConvBase:
         self.keep_solution = keep_solution
         self.lca_iters = lca_iters 
         self.lca_tol = lca_tol
+        self.lca_warmup = lca_warmup
         self.lca_write_step = lca_write_step
         self.learn_dict = learn_dict
         self.n_neurons = n_neurons 
@@ -181,7 +185,7 @@ class LCAConvBase:
                     tracks = self.update_tracks(tracks, lca_iter, a_t,
                                                 recon_error, tau)
                     if self.lca_tol is not None:
-                        if lca_iter > 100:
+                        if lca_iter > self.lca_warmup:
                             if self.stop_lca(tracks['TotalEnergy'], lca_iter):
                                 break
 
