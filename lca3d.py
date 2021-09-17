@@ -1,3 +1,4 @@
+from copy import deepcopy
 import os
 from random import randint
 
@@ -42,6 +43,7 @@ class LCA3DConv(LCAConvBase):
         self.stride_h = stride_h 
         self.stride_t = stride_t 
         self.stride_w = stride_w
+        self.write_params(deepcopy(vars(self)))
 
         self.init_weight_tensor()
         self.compute_input_pad()

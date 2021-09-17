@@ -1,3 +1,4 @@
+import json
 import os
 
 import h5py
@@ -307,6 +308,12 @@ class LCAConvBase:
         tracks['FractionActive'][lca_iter] = self.compute_frac_active(a)
         tracks['Tau'][lca_iter] = tau
         return tracks
+
+    def write_params(self, arg_dict):
+        ''' Writes model params to file '''
+        arg_dict['dtype'] = str(arg_dict['dtype'])
+        with open(os.path.join(self.result_dir, 'params.json'), 'w+') as jsonf:
+            json.dump(arg_dict, jsonf, indent=4, sort_keys=True)
 
     def write_tracks(self, tracker, ts_cutoff):
         ''' Write out objective values to file '''
