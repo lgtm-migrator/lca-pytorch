@@ -142,9 +142,4 @@ class LCA3DConv(LCAConvBase):
         self.normalize_D()
 
     def lateral_competition(self, a, G):
-        return F.conv3d(
-            a,
-            G,
-            stride=1,
-            padding=self.surround
-        )
+        return F.conv3d(a, G, stride=1, padding=self.surround)
