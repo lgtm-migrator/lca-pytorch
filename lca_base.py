@@ -75,7 +75,7 @@ class LCAConvBase:
         self.dict_load_fpath = dict_load_fpath
         self.dtype = dtype 
         self.eta = eta 
-        self.forward_pass = 0
+        self.forward_pass = 1
         self.forward_write_step = forward_write_step
         self.in_c = in_c 
         self.keep_solution = keep_solution
@@ -159,7 +159,7 @@ class LCAConvBase:
         b_t = self.compute_input_drive(x) 
         G = self.compute_lateral_connectivity()
         tau = self.tau 
-        if not self.keep_solution or self.forward_pass == 0:
+        if not self.keep_solution or self.forward_pass == 1:
             self.u_t = torch.zeros_like(b_t)
 
         for lca_iter in range(self.lca_iters):
