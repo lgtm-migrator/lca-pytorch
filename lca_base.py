@@ -236,7 +236,7 @@ class LCAConvBase:
                 if self.reinit_u_every_n is None:
                     return self.u_t
                 else:
-                    if self.forward_pass % self.reinit_u_every_n == 0:
+                    if (self.forward_pass - 1) % self.reinit_u_every_n == 0:
                         return torch.zeros_like(b_t)
                     else:
                         return self.u_t
