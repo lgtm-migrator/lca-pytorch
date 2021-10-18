@@ -60,6 +60,10 @@ class LCAConvBase:
         forward_write_step (int): How often to write out dictionary,
             input, and dictionary update. If None, these will not be
             written to disk.
+        reinit_u_every_n (int): How often, in terms of the number of
+            forward passes, to reinitialize the membrane potentials
+            if keep_solution is True. Default is to never reinitialize
+            them. Only used if keep_solution is True.
     '''
     def __init__(self, n_neurons, in_c, result_dir, thresh=0.1, tau=1500, 
                  eta=1e-3, lca_iters=3000, pad='same', device=None, 
@@ -68,7 +72,8 @@ class LCAConvBase:
                  samplewise_standardization=True, tau_decay_factor=0.0, 
                  lca_tol=None, cudnn_benchmark=False, d_update_clip=np.inf,
                  dict_load_fpath=None, keep_solution=False, lca_warmup=200,
-                 lca_write_step=None, forward_write_step=None):
+                 lca_write_step=None, forward_write_step=None,
+                 reinit_u_every_n=None):
         assert lca_warmup >= 100
         self.d_update_clip = d_update_clip
         self.device = device 
@@ -87,6 +92,7 @@ class LCAConvBase:
         self.n_neurons = n_neurons 
         self.nonneg = nonneg 
         self.pad = pad
+        self.reinit_u_every_n = reinit_u_every_n
         self.result_dir = result_dir 
         self.samplewise_standardization = samplewise_standardization
         self.tau = tau 
@@ -227,7 +233,13 @@ class LCAConvBase:
         ''' Initialize the membrane potentials u(t) '''
         if self.keep_solution:
             if hasattr(self, 'u_t'):
-                return self.u_t
+                if self.reinit_u_every_n is None:
+                    return self.u_t
+                else:
+                    if self.forward_pass % self.reinit_u_every_n == 0:
+                        return torch.zeros_like(b_t)
+                    else:
+                        return self.u_t
             else:
                 return torch.zeros_like(b_t)
         else:
