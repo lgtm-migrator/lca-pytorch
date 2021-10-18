@@ -53,7 +53,7 @@ class LCAConvBase:
             convergence when iterating sequentially over video data.
         lca_warmup (int): Number of iterations to run LCA before early
             stopping criteria will be checked. Not used if lca_tol is 
-            None. 
+            None. Must be >= 100.
         lca_write_step (int): How often to write out a_t, u_t, b_t,
             recon, and recon_error within a single LCA loop. If None,
             these will not be written to disk.
@@ -69,7 +69,7 @@ class LCAConvBase:
                  lca_tol=None, cudnn_benchmark=False, d_update_clip=np.inf,
                  dict_load_fpath=None, keep_solution=False, lca_warmup=200,
                  lca_write_step=None, forward_write_step=None):
-
+        assert lca_warmup >= 100
         self.d_update_clip = d_update_clip
         self.device = device 
         self.dict_load_fpath = dict_load_fpath
