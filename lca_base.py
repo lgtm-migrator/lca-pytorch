@@ -162,14 +162,14 @@ class LCAConvBase:
         if not self.keep_solution or self.forward_pass == 1:
             self.u_t = torch.zeros_like(b_t)
 
-        for lca_iter in range(self.lca_iters):
+        for lca_iter in range(1, self.lca_iters + 1):
             a_t = self.threshold(self.u_t)
             inhib = self.lateral_competition(a_t, G)
             du = (1 / tau) * (b_t - self.u_t - inhib + a_t)
             self.u_t += du
 
             if (self.track_metrics 
-                    or lca_iter == self.lca_iters - 1
+                    or lca_iter == self.lca_iters
                     or self.lca_tol is not None
                     or self._check_lca_write(lca_iter)):
                 recon = self.compute_recon(a_t)
@@ -181,7 +181,7 @@ class LCAConvBase:
                         lca_iter=lca_iter
                     )
                 if self.track_metrics or self.lca_tol is not None:
-                    if lca_iter == 0:
+                    if lca_iter == 1:
                         tracks = self.create_trackers()
                     tracks = self.update_tracks(tracks, lca_iter, a_t,
                                                 recon_error, tau)
@@ -193,7 +193,7 @@ class LCAConvBase:
             tau = self.update_tau(tau) 
 
         if self.track_metrics:
-            self.write_tracks(tracks, lca_iter + 1)
+            self.write_tracks(tracks, lca_iter)
         return a_t, recon_error, recon
 
     def forward(self, x):
@@ -267,8 +267,8 @@ class LCAConvBase:
             percent change between a running avg of the objective value 
             at time t and that at time t-1 and checking if it is less
             then the user-defined lca_tol value '''
-        curr_avg = energy_history[lca_iter - 99 : lca_iter + 1].mean()
-        prev_avg = energy_history[lca_iter - 100 : lca_iter].mean()
+        curr_avg = energy_history[lca_iter - 100 : lca_iter].mean()
+        prev_avg = energy_history[lca_iter - 101 : lca_iter - 1].mean()
         perc_change = self.compute_perc_change(curr_avg, prev_avg)
         if perc_change < self.lca_tol:
             return True 
@@ -302,11 +302,11 @@ class LCAConvBase:
         ''' Update dictionary that stores the tracked metrics '''
         l2_rec_err = self.compute_l2_error(recon_error)
         l1_sparsity = self.compute_l1_sparsity(a)
-        tracks['L2'][lca_iter] = l2_rec_err
-        tracks['L1'][lca_iter] = l1_sparsity
-        tracks['TotalEnergy'][lca_iter] = l2_rec_err + l1_sparsity
-        tracks['FractionActive'][lca_iter] = self.compute_frac_active(a)
-        tracks['Tau'][lca_iter] = tau
+        tracks['L2'][lca_iter - 1] = l2_rec_err
+        tracks['L1'][lca_iter - 1] = l1_sparsity
+        tracks['TotalEnergy'][lca_iter - 1] = l2_rec_err + l1_sparsity
+        tracks['FractionActive'][lca_iter - 1] = self.compute_frac_active(a)
+        tracks['Tau'][lca_iter - 1] = tau
         return tracks
 
     def write_params(self, arg_dict):
