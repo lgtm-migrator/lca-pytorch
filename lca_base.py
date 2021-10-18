@@ -241,6 +241,9 @@ class LCAConvBase:
             assert dict.shape == self.D.shape 
             self.D = torch.from_numpy(dict).type(self.dtype).to(self.device)
             self.normalize_D()
+            if (os.path.abspath(self.result_dir) == 
+                    os.path.abspath(self.dict_load_fpath.split('/')[-2])):
+                self.forward_pass = ckpt_nums[-1] + 1
 
     def normalize_D(self, eps=1e-12):
         ''' Normalizes features such at each one has unit norm '''
