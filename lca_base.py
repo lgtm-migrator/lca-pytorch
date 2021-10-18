@@ -159,8 +159,7 @@ class LCAConvBase:
         b_t = self.compute_input_drive(x) 
         G = self.compute_lateral_connectivity()
         tau = self.tau 
-        if not self.keep_solution or self.forward_pass == 1:
-            self.u_t = torch.zeros_like(b_t)
+        self.u_t = self._init_u(b_t)
 
         for lca_iter in range(1, self.lca_iters + 1):
             a_t = self.threshold(self.u_t)
@@ -223,6 +222,16 @@ class LCAConvBase:
         else:
             return (F.threshold(x, self.thresh, 0.0) 
                     - F.threshold(-x, self.thresh, 0.0))
+
+    def _init_u(self, b_t):
+        ''' Initialize the membrane potentials u(t) '''
+        if self.keep_solution:
+            if hasattr(self, 'u_t'):
+                return self.u_t
+            else:
+                return torch.zeros_like(b_t)
+        else:
+            return torch.zeros_like(b_t)
 
     def init_weight_tensor(self):
         if self.dict_load_fpath is None:
