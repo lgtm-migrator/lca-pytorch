@@ -358,5 +358,4 @@ class LCAConvBase:
         with h5py.File(self.tensor_write_fpath, 'a') as h5file:
             for key, tensor in zip(keys, tensors):
                 h5file.create_dataset(key + f'_{self.forward_pass}_{lca_iter}',
-                                      data=tensor.cpu().numpy(),
-                                      compression='gzip', compression_opts=9)
+                                      data=tensor.cpu().numpy())
