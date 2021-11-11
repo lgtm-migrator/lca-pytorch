@@ -281,7 +281,12 @@ class LCAConvBase:
 
     def standardize_inputs(self, batch, eps=1e-12):
         ''' Standardize each sample in x '''
-        dims = tuple(range(1, len(batch.shape)))
+        if len(batch.shape) == 3:
+            dims = -1
+        elif len(batch.shape) in [4, 5]:
+            dims = (-2, -1)
+        else:
+            raise NotImplementedError
         batch = batch - batch.mean(dim=dims, keepdim=True)
         batch = batch / (batch.std(dim=dims, keepdim=True) + eps)
         return batch
