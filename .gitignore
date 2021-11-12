@@ -2,4 +2,4 @@ cifar/
 *.gif
 
 LCA_Test/*
-*__pycache__/*
+__pycache__/*
