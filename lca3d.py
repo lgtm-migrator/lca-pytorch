@@ -130,8 +130,8 @@ class LCA3DConv(LCAConvBase):
             self.kt,
             self.kh,
             self.kw,
-            device = self.device,
-            dtype = self.dtype
+            device=self.device,
+            dtype=self.dtype
         )
         self.D[:, :, 1:] = 0.0
         self.normalize_D()
