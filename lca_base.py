@@ -202,7 +202,6 @@ class LCAConvBase:
         return a_t, recon_error, recon
 
     def forward(self, x):
-        # x is of shape B x C x D x H x W
         if self.samplewise_standardization:
             x = self.standardize_inputs(x)
 
