@@ -222,12 +222,13 @@ class LCAConvBase:
 
     def _get_device(self, device):
         if type(device) == int:
+            assert device in range(torch.cuda.device_count())
             return [device]
         elif type(device) == list:
             n_devs = torch.cuda.device_count()
             assert all([dev in range(n_devs) for dev in device])
             return device 
-        elif device == 'cpu':
+        elif device in ['cpu', None]:
             return ['cpu']
         else:
             raise ValueError(
