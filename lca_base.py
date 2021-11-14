@@ -27,8 +27,6 @@ class LCAConvBase:
         dtype (torch.dtype): Data type to use.
         nonneg (bool): True for rectified activations, False for 
             non-rectified activations.
-        learn_dict (bool): True to update dict features in 
-            alternation with LCA, False to not update dict.
         track_metrics (bool): True to track and write out objective
             metrics over the run.
         thresh_type ('hard' or 'soft'): Hard or soft transfer function.
@@ -66,14 +64,13 @@ class LCAConvBase:
             them. Only used if keep_solution is True.
     '''
     def __init__(self, n_neurons, in_c, result_dir, thresh=0.1, tau=1500, 
-                 eta=1e-3, lca_iters=3000, pad='same', device='cpu', 
-                 dtype=torch.float32, nonneg=False, learn_dict=True, 
-                 track_metrics=True, thresh_type='hard',
-                 samplewise_standardization=True, tau_decay_factor=0.0, 
-                 lca_tol=None, cudnn_benchmark=False, d_update_clip=np.inf,
-                 dict_load_fpath=None, keep_solution=False, lca_warmup=200,
-                 lca_write_step=None, forward_write_step=None,
-                 reinit_u_every_n=None):
+                 eta=1e-3, lca_iters=3000, pad='same', device='cpu',
+                 dtype=torch.float32, nonneg=False, track_metrics=True,
+                 thresh_type='hard', samplewise_standardization=True,
+                 tau_decay_factor=0.0, lca_tol=None, cudnn_benchmark=False,
+                 d_update_clip=np.inf, dict_load_fpath=None,
+                 keep_solution=False, lca_warmup=200, lca_write_step=None,
+                 forward_write_step=None, reinit_u_every_n=None):
         assert lca_warmup >= 100
         self.d_update_clip = d_update_clip
         self.device = self._get_device(device) 
@@ -88,7 +85,6 @@ class LCAConvBase:
         self.lca_tol = lca_tol
         self.lca_warmup = lca_warmup
         self.lca_write_step = lca_write_step
-        self.learn_dict = learn_dict
         self.n_neurons = n_neurons 
         self.nonneg = nonneg 
         self.pad = pad
@@ -116,6 +112,15 @@ class LCAConvBase:
                 if self.forward_write_step is not None:
                     if self.forward_pass % self.forward_write_step == 0:
                         write = True 
+        return write
+
+    def _check_forward_write(self):
+        ''' Checks whether to write non-LCA-loop variables at a given
+            forward pass '''
+        write = False
+        if self.forward_write_step is not None:
+            if self.forward_pass % self.forward_write_step == 0:
+                write = True
         return write
 
     def compute_frac_active(self, a):
@@ -204,21 +209,11 @@ class LCAConvBase:
     def forward(self, x):
         if self.samplewise_standardization:
             x = self.standardize_inputs(x)
-
         a, recon_error, recon = self.encode(x)
-        if self.learn_dict:
-            update = self.update_D(a, recon_error)
-
-        if self.forward_write_step is not None:
-            if self.forward_pass % self.forward_write_step == 0:
-                if self.learn_dict:
-                    self.write_tensors(['D', 'input', 'update'], 
-                                    [self.D, x, update])
-                else:
-                    self.write_tensors(['D', 'input'], [self.D, x])
-
+        if self._check_forward_write():
+            self.write_tensors(['D', 'input'], [self.D, x])
         self.forward_pass += 1
-        return a
+        return a, recon, recon_error
 
     def _get_device(self, device):
         if type(device) == int:
@@ -325,7 +320,7 @@ class LCAConvBase:
         else:
             raise ValueError
 
-    def update_D(self, a, recon_error):
+    def update(self, a, recon_error):
         ''' Updates the dictionary given the computed gradient '''
         update = self.compute_update(a, recon_error)
         times_active = self.compute_times_active_by_feature(a)
@@ -334,7 +329,8 @@ class LCAConvBase:
                              max=self.d_update_clip)
         self.D += update
         self.normalize_D()
-        return update
+        if self._check_forward_write():
+            self.write_tensors(['update'], [update])
 
     def update_tau(self, tau):
         ''' Update LCA time constant with given decay factor '''
