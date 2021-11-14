@@ -130,7 +130,7 @@ class LCA3DConv(LCAConvBase):
             self.kt,
             self.kh,
             self.kw,
-            device=self.device,
+            device=self.device[0],
             dtype=self.dtype
         )
         self.D[:, :, 1:] = 0.0
