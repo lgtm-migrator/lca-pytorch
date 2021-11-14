@@ -23,7 +23,7 @@ class LCAConvBase:
         eta (float): Learning rate for dictionary updates.
         lca_iters (int): Number of LCA timesteps per forward pass.
         pad ('same' or 'valid'): Input padding method.
-        device (int or list): GPU(s) to run on. If None, will use CPU.
+        device (int, list, or 'cpu'): Device(s) to use.
         dtype (torch.dtype): Data type to use.
         nonneg (bool): True for rectified activations, False for 
             non-rectified activations.
@@ -66,7 +66,7 @@ class LCAConvBase:
             them. Only used if keep_solution is True.
     '''
     def __init__(self, n_neurons, in_c, result_dir, thresh=0.1, tau=1500, 
-                 eta=1e-3, lca_iters=3000, pad='same', device=None, 
+                 eta=1e-3, lca_iters=3000, pad='same', device='cpu', 
                  dtype=torch.float32, nonneg=False, learn_dict=True, 
                  track_metrics=True, thresh_type='hard',
                  samplewise_standardization=True, tau_decay_factor=0.0, 
@@ -227,6 +227,8 @@ class LCAConvBase:
             n_devs = torch.cuda.device_count()
             assert all([dev in range(n_devs) for dev in device])
             return device 
+        elif device == 'cpu':
+            return ['cpu']
         else:
             raise ValueError(
                 f'device should be int or list, not {type(device).__name__}.')
