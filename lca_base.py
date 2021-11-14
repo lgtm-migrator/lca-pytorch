@@ -23,7 +23,7 @@ class LCAConvBase:
         eta (float): Learning rate for dictionary updates.
         lca_iters (int): Number of LCA timesteps per forward pass.
         pad ('same' or 'valid'): Input padding method.
-        device (int): GPU to run on. 
+        device (int or list): GPU(s) to run on. If None, will use CPU.
         dtype (torch.dtype): Data type to use.
         nonneg (bool): True for rectified activations, False for 
             non-rectified activations.
@@ -76,7 +76,7 @@ class LCAConvBase:
                  reinit_u_every_n=None):
         assert lca_warmup >= 100
         self.d_update_clip = d_update_clip
-        self.device = device 
+        self.device = self._get_device(device) 
         self.dict_load_fpath = dict_load_fpath
         self.dtype = dtype 
         self.eta = eta 
@@ -219,6 +219,17 @@ class LCAConvBase:
 
         self.forward_pass += 1
         return a
+
+    def _get_device(self, device):
+        if type(device) == int:
+            return [device]
+        elif type(device) == list:
+            n_devs = torch.cuda.device_count()
+            assert all([dev in range(n_devs) for dev in device])
+            return device 
+        else:
+            raise ValueError(
+                f'device should be int or list, not {type(device).__name__}.')
 
     def hard_threshold(self, x):
         ''' Hard threshold transfer function '''
