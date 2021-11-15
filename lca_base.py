@@ -377,6 +377,7 @@ class LCAConvBase:
             tracker[k] = v[:ts_cutoff]
 
         obj_df = pd.DataFrame(tracker)
+        obj_df['LCAIter'] = np.arange(1, len(obj_df) + 1, dtype=np.int32)
         obj_df['ForwardPass'] = self.forward_pass
         obj_df.to_csv(
             self.metric_fpath,
