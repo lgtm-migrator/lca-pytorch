@@ -157,6 +157,9 @@ class LCAConvBase:
         ''' Computes percent change of a value from t-1 to t '''
         return abs((curr - prev) / prev)
 
+    def _copy_dict_to_devs(self):
+        return [self.D.clone().cpu().to(dev) for dev in self.device]
+
     def create_trackers(self):
         ''' Create placeholders to store different metrics '''
         float_tracker = np.zeros([self.lca_iters], dtype=np.float32)
