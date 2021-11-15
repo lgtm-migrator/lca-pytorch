@@ -87,6 +87,7 @@ class LCAConvBase:
         self.lca_tol = lca_tol
         self.lca_warmup = lca_warmup
         self.lca_write_step = lca_write_step
+        self.main_dev = self.device[0]
         self.n_neurons = n_neurons 
         self.nonneg = nonneg 
         self.pad = pad
@@ -281,6 +282,14 @@ class LCAConvBase:
         dims = tuple(range(1, len(self.D.shape)))
         scale = self.D.norm(p=2, dim=dims, keepdim=True)
         self.D = self.D / (scale + eps)
+
+    def _parse_mp_outputs(self, mp_out):
+        ''' Combines mp outputs into single tensors on same device '''
+        code = torch.cat([out[0].to(self.main_dev) for out in mp_out])
+        recon_error = torch.cat([out[1].to(self.main_dev) for out in mp_out])
+        recon = torch.cat([out[2].to(self.main_dev) for out in mp_out])
+        potentials = torch.cat([out[3].to(self.main_dev) for out in mp_out])
+        return code, recon_error, recon, potentials
 
     def soft_threshold(self, x):
         ''' Soft threshold transfer function '''
