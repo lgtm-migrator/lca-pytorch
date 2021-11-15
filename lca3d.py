@@ -63,12 +63,9 @@ class LCA3DConv(LCAConvBase):
 
     def compute_input_drive(self, x, D):
         assert x.shape[2] == self.kt
-        return F.conv3d(
-            x,
-            D,
-            stride=(self.stride_t, self.stride_h, self.stride_w),
-            padding=self.input_pad
-        )
+        return F.conv3d(x, D,
+                        stride=(self.stride_t, self.stride_h, self.stride_w),
+                        padding=self.input_pad)
 
     def compute_input_pad(self):
         ''' Computes padding for forward convolution '''
@@ -84,15 +81,11 @@ class LCA3DConv(LCAConvBase):
             raise ValueError
 
     def compute_lateral_connectivity(self, D):
-        G = F.conv3d(
-            D, 
-            D, 
-            stride=(self.stride_t, self.stride_h, self.stride_w), 
-            padding=self.lat_conn_pad
-        )
+        G = F.conv3d(D, D,
+                     stride=(self.stride_t, self.stride_h, self.stride_w),
+                     padding=self.lat_conn_pad)
         if not hasattr(self, 'surround'):
             self.compute_n_surround(G)
-
         return G
 
     def compute_recon(self, a, D):
@@ -124,15 +117,8 @@ class LCA3DConv(LCAConvBase):
         return torch.tensordot(a, error, dims=([0, 2, 3, 4], [0, 2, 3, 4]))
 
     def create_weight_tensor(self):
-        self.D = torch.randn(
-            self.n_neurons,
-            self.in_c,
-            self.kt,
-            self.kh,
-            self.kw,
-            device=self.device[0],
-            dtype=self.dtype
-        )
+        self.D = torch.randn(self.n_neurons, self.in_c, self.kt, self.kh,
+                             self.kw, device=self.device[0], dtype=self.dtype)
         self.D[:, :, 1:] = 0.0
         self.normalize_D()
 
