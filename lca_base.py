@@ -168,18 +168,16 @@ class LCAConvBase:
             'Tau' : float_tracker.copy()
         }
 
-    def encode(self, x, D):
+    def encode(self, x, D, u_t):
         ''' Computes sparse code given data x and dictionary D '''
         b_t = self.compute_input_drive(x, D) 
         G = self.compute_lateral_connectivity(D)
-        tau = self.tau 
-        self.u_t = self._init_u(b_t)
+        tau = self.tau
 
         for lca_iter in range(1, self.lca_iters + 1):
-            a_t = self.threshold(self.u_t)
+            a_t = self.threshold(u_t)
             inhib = self.lateral_competition(a_t, G)
-            du = (1 / tau) * (b_t - self.u_t - inhib + a_t)
-            self.u_t += du
+            u_t += (1 / tau) * (b_t - u_t - inhib + a_t)
 
             if (self.track_metrics 
                     or lca_iter == self.lca_iters
@@ -190,7 +188,7 @@ class LCAConvBase:
                 if self._check_lca_write(lca_iter):
                     self.write_tensors(
                         ['a', 'b', 'u', 'recon', 'recon_error'],
-                        [a_t, b_t, self.u_t, recon, recon_error],
+                        [a_t, b_t, u_t, recon, recon_error],
                         lca_iter=lca_iter
                     )
                 if self.track_metrics or self.lca_tol is not None:
@@ -207,12 +205,14 @@ class LCAConvBase:
 
         if self.track_metrics:
             self.write_tracks(tracks, lca_iter)
-        return a_t, recon_error, recon
+        return a_t, recon_error, recon, u_t
 
     def forward(self, x):
         if self.samplewise_standardization:
             x = self.standardize_inputs(x)
-        a, recon_error, recon = self.encode(x, self.D)
+        u_t = self._init_u(
+            self.compute_input_drive(x.to(self.main_dev), self.D))
+        a, recon_error, recon, self.u_t = self.encode(x, self.D, u_t)
         if self._check_forward_write():
             self.write_tensors(['D', 'input'], [self.D, x])
         self.forward_pass += 1
