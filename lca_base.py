@@ -288,11 +288,9 @@ class LCAConvBase:
 
     def _parse_mp_outputs(self, mp_out):
         ''' Combines mp outputs into single tensors on same device '''
-        code = torch.cat([out[0].to(self.main_dev) for out in mp_out])
-        recon_error = torch.cat([out[1].to(self.main_dev) for out in mp_out])
-        recon = torch.cat([out[2].to(self.main_dev) for out in mp_out])
-        potentials = torch.cat([out[3].to(self.main_dev) for out in mp_out])
-        return code, recon_error, recon, potentials
+        mp_out = [[out[i].clone().cpu().to(self.main_dev) for out in mp_out]
+                  for i in range(4)]
+        return [torch.cat(out) for out in mp_out]
 
     def soft_threshold(self, x):
         ''' Soft threshold transfer function '''
