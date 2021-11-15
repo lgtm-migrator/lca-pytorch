@@ -168,10 +168,10 @@ class LCAConvBase:
             'Tau' : float_tracker.copy()
         }
 
-    def encode(self, x):
+    def encode(self, x, D):
         ''' Computes sparse code given data x and dictionary D '''
-        b_t = self.compute_input_drive(x) 
-        G = self.compute_lateral_connectivity()
+        b_t = self.compute_input_drive(x, D) 
+        G = self.compute_lateral_connectivity(D)
         tau = self.tau 
         self.u_t = self._init_u(b_t)
 
@@ -185,7 +185,7 @@ class LCAConvBase:
                     or lca_iter == self.lca_iters
                     or self.lca_tol is not None
                     or self._check_lca_write(lca_iter)):
-                recon = self.compute_recon(a_t)
+                recon = self.compute_recon(a_t, D)
                 recon_error = x - recon
                 if self._check_lca_write(lca_iter):
                     self.write_tensors(

@@ -61,11 +61,11 @@ class LCA3DConv(LCAConvBase):
         
         self.lat_conn_pad = tuple(self.lat_conn_pad)        
 
-    def compute_input_drive(self, x):
+    def compute_input_drive(self, x, D):
         assert x.shape[2] == self.kt
         return F.conv3d(
             x,
-            self.D,
+            D,
             stride=(self.stride_t, self.stride_h, self.stride_w),
             padding=self.input_pad
         )
@@ -83,10 +83,10 @@ class LCA3DConv(LCAConvBase):
         else:
             raise ValueError
 
-    def compute_lateral_connectivity(self):
+    def compute_lateral_connectivity(self, D):
         G = F.conv3d(
-            self.D, 
-            self.D, 
+            D, 
+            D, 
             stride=(self.stride_t, self.stride_h, self.stride_w), 
             padding=self.lat_conn_pad
         )
@@ -95,11 +95,11 @@ class LCA3DConv(LCAConvBase):
 
         return G
 
-    def compute_recon(self, a):
+    def compute_recon(self, a, D):
         ''' Computes reconstruction given code '''
         return F.conv_transpose3d(
             a, 
-            self.D,
+            D,
             stride=(self.stride_t, self.stride_h, self.stride_w),
             padding=self.input_pad,
             output_padding=self.recon_output_pad
