@@ -302,7 +302,7 @@ class LCAConvBase:
         ''' Splits up a batch of inputs across specified devices '''
         bs = batch.shape[0]
         bs_per_dev = bs // len(self.device)
-        return [batch[ind : ind + bs_per_dev].to(dev)
+        return [batch[ind : ind + bs_per_dev].clone().to(dev)
                 for ind, dev in zip(range(0, bs, bs_per_dev), self.device)]
 
     def standardize_inputs(self, batch, eps=1e-12):
