@@ -212,7 +212,7 @@ class LCAConvBase:
     def forward(self, x):
         if self.samplewise_standardization:
             x = self.standardize_inputs(x)
-        a, recon_error, recon = self.encode(x)
+        a, recon_error, recon = self.encode(x, self.D)
         if self._check_forward_write():
             self.write_tensors(['D', 'input'], [self.D, x])
         self.forward_pass += 1
