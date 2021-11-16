@@ -207,7 +207,8 @@ class LCAConvBase:
             tau = self.update_tau(tau) 
 
         if self.track_metrics:
-            self.write_tracks(tracks, lca_iter)
+            self.write_tracks(tracks, lca_iter,
+                              -1 if x.device.type == 'cpu' else x.device.index)
         return a_t, recon_error, recon, u_t.clone()
 
     def forward(self, x):
@@ -376,7 +377,7 @@ class LCAConvBase:
         with open(os.path.join(self.result_dir, 'params.json'), 'w+') as jsonf:
             json.dump(arg_dict, jsonf, indent=4, sort_keys=True)
 
-    def write_tracks(self, tracker, ts_cutoff):
+    def write_tracks(self, tracker, ts_cutoff, dev):
         ''' Write out objective values to file '''
         for k,v in tracker.items():
             tracker[k] = v[:ts_cutoff]
@@ -384,6 +385,7 @@ class LCAConvBase:
         obj_df = pd.DataFrame(tracker)
         obj_df['LCAIter'] = np.arange(1, len(obj_df) + 1, dtype=np.int32)
         obj_df['ForwardPass'] = self.forward_pass
+        obj_df['Device'] = dev
         obj_df.to_csv(
             self.metric_fpath,
             header=True if not os.path.isfile(self.metric_fpath) else False,
