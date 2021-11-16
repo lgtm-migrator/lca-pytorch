@@ -15,7 +15,7 @@ class LCAConvBase:
     Base class for LCA models.
 
     Required Args:
-        n_neurons (int): Number of neurons / dictionary elements.
+        n_neurons (int): Number of dictionary elements.
         in_c (int): Number of channels / features in the input data.
         result_dir (str): Path to dir where results will be saved.
 
@@ -39,11 +39,12 @@ class LCAConvBase:
             tau -= tau * tau_decay_factor. Empirically helps speed up
             convergence in most cases. Use 0.0 to use constant tau.
         lca_tol (float): Value to determine when to stop LCA loop. 
-            If the value of the objective function is less than this,
-            LCA will terminate during that forward pass. Use None to 
-            disable this and run for lca_iters iterations.
+            If a running average of the objective function changes less
+            than lca_tol from one LCA iteration to the next, the LCA
+            loop will be terminated. Use None to disable this and run
+            for lca_iters iterations.
         d_update_clip (float): Dictionary updates will be clipped to
-            [-d_update_clip, d_update_clip].
+            [-d_update_clip, d_update_clip]. Default is no clipping.
         dict_load_fpath (str): Path to the tensors.h5 file with at 
             least 1 key starting with 'D_', which will be used to
             load in the dictionary tensor from the latest ckpt.
