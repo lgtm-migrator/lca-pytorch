@@ -397,5 +397,8 @@ class LCAConvBase:
         ''' Writes out tensors to a HDF5 file. '''
         with h5py.File(self.tensor_write_fpath, 'a') as h5file:
             for key, tensor in zip(keys, tensors):
-                h5file.create_dataset(key + f'_{self.forward_pass}_{lca_iter}',
-                                      data=tensor.cpu().numpy())
+                d = -1 if tensor.device.type == 'cpu' else tensor.device.index
+                h5file.create_dataset(
+                    f'{key}_{d}_{self.forward_pass}_{lca_iter}',
+                    data=tensor.cpu().numpy()
+                )
