@@ -118,7 +118,7 @@ class LCA3DConv(LCAConvBase):
 
     def create_weight_tensor(self):
         self.D = torch.randn(self.n_neurons, self.in_c, self.kt, self.kh,
-                             self.kw, device=self.device[0], dtype=self.dtype)
+                             self.kw, device=self.main_dev, dtype=self.dtype)
         self.D[:, :, 1:] = 0.0
         self.normalize_D()
 
