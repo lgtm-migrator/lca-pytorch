@@ -208,18 +208,22 @@ class LCAConvBase:
 
         if self.track_metrics:
             self.write_tracks(tracks, lca_iter)
-        return a_t, recon_error, recon, u_t
+        return a_t, recon_error, recon, u_t.clone()
 
     def forward(self, x):
         if self.samplewise_standardization:
             x = self.standardize_inputs(x)
         u_t = self._init_u(
             self.compute_input_drive(x.to(self.main_dev), self.D))
-        a, recon_error, recon, self.u_t = self.encode(x, self.D, u_t)
+        mp_out = ptmultiproc(self.encode, ['x', 'D', 'u_t'], len(self.device),
+                             x=self._split_batch_across_devs(x),
+                             D=self._copy_dict_to_devs(),
+                             u_t=self._split_batch_across_devs(u_t))
+        code, recon_error, recon, self.u_t = self._parse_mp_outputs(mp_out)
         if self._check_forward_write():
             self.write_tensors(['D', 'input'], [self.D, x])
         self.forward_pass += 1
-        return a, recon, recon_error
+        return code, recon, recon_error
 
     def _get_device(self, device):
         if type(device) == int:
