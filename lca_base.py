@@ -275,15 +275,15 @@ class LCAConvBase:
         self.create_weight_tensor()
         with h5py.File(self.dict_load_fpath, 'r') as h5f:
             h5keys = list(h5f.keys())
-            Dkeys = [key for key in h5keys if 'D_' in key]
-            ckpt_nums = sorted([int(key.split('_')[-2]) for key in Dkeys])
-            dict = h5f[f'D_{ckpt_nums[-1]}_0'][()]
+            last_ckpt = sorted([key for key in h5keys if 'D_' in key],
+                               key=lambda key : int(key.split('_')[-2]))[-1]
+            dict = h5f[last_ckpt][()]
             assert dict.shape == self.D.shape 
-            self.D = torch.from_numpy(dict).type(self.dtype).to(self.device)
+            self.D = torch.from_numpy(dict).type(self.dtype).to(self.main_dev)
             self.normalize_D()
             if (os.path.abspath(self.result_dir) == 
                     os.path.split(os.path.abspath(self.dict_load_fpath))[0]):
-                self.forward_pass = ckpt_nums[-1] + 1
+                self.forward_pass = int(last_ckpt.split('_')[-2]) + 1
 
     def normalize_D(self, eps=1e-12):
         ''' Normalizes features such at each one has unit norm '''
