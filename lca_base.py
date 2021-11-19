@@ -159,7 +159,7 @@ class LCAConvBase:
         return abs((curr - prev) / prev)
 
     def _copy_dict_to_devs(self):
-        return [self.D.clone().cpu().to(dev) for dev in self.device]
+        return [self.D.clone() for _ in self.device]
 
     def create_trackers(self):
         ''' Create placeholders to store different metrics '''
@@ -172,8 +172,9 @@ class LCAConvBase:
             'Tau' : float_tracker.copy()
         }
 
-    def encode(self, x, D, u_t):
+    def encode(self, x, D, u_t, dev):
         ''' Computes sparse code given data x and dictionary D '''
+        x, D, u_t = x.to(dev), D.to(dev), u_t.to(dev)
         b_t = self.compute_input_drive(x, D) 
         G = self.compute_lateral_connectivity(D)
         tau = self.tau
@@ -192,7 +193,7 @@ class LCAConvBase:
                 if self._check_lca_write(lca_iter):
                     self.write_tensors(
                         ['a', 'b', 'u', 'recon', 'recon_error'],
-                        [a_t, b_t, u_t, recon, recon_error],
+                        [a_t, b_t, u_t, recon, recon_error], dev,
                         lca_iter=lca_iter
                     )
                 if self.track_metrics or self.lca_tol is not None:
@@ -208,19 +209,20 @@ class LCAConvBase:
             tau = self.update_tau(tau) 
 
         if self.track_metrics:
-            self.write_tracks(tracks, lca_iter,
-                              -1 if x.device.type == 'cpu' else x.device.index)
-        return a_t, recon_error, recon, u_t.clone()
+            self.write_tracks(tracks, lca_iter, dev)
+        return a_t.cpu(), recon_error.cpu(), recon.cpu(), u_t.clone().cpu()
 
     def forward(self, x):
         if self.samplewise_standardization:
             x = self.standardize_inputs(x)
         u_t = self._init_u(
             self.compute_input_drive(x.to(self.main_dev), self.D))
-        mp_out = ptmultiproc(self.encode, ['x', 'D', 'u_t'], len(self.device),
+        mp_out = ptmultiproc(self.encode, ['x', 'D', 'u_t', 'dev'],
+                             len(self.device),
                              x=self._split_batch_across_devs(x),
                              D=self._copy_dict_to_devs(),
-                             u_t=self._split_batch_across_devs(u_t))
+                             u_t=self._split_batch_across_devs(u_t),
+                             dev=self.device)
         code, recon_error, recon, self.u_t = self._parse_mp_outputs(mp_out)
         if self._check_forward_write():
             self.write_tensors(['D', 'input'], [self.D, x])
@@ -294,9 +296,8 @@ class LCAConvBase:
 
     def _parse_mp_outputs(self, mp_out):
         ''' Combines mp outputs into single tensors on same device '''
-        mp_out = [[out[i].clone().cpu().to(self.main_dev) for out in mp_out]
-                  for i in range(4)]
-        return [torch.cat(out) for out in mp_out]
+        mp_out = [torch.cat([out[i] for out in mp_out]) for i in range(4)]
+        return [out.to(self.main_dev) for out in mp_out]
 
     def soft_threshold(self, x):
         ''' Soft threshold transfer function '''
@@ -309,8 +310,8 @@ class LCAConvBase:
         ''' Splits up a batch of inputs across specified devices '''
         bs = batch.shape[0]
         bs_per_dev = bs // len(self.device)
-        return [batch[ind : ind + bs_per_dev].clone().cpu().to(dev)
-                for ind, dev in zip(range(0, bs, bs_per_dev), self.device)]
+        return [batch[ind : ind + bs_per_dev].clone()
+                for ind in range(0, bs, bs_per_dev)]
 
     def standardize_inputs(self, batch, eps=1e-12):
         ''' Standardize each sample in x '''
@@ -394,12 +395,11 @@ class LCAConvBase:
             mode='a'
         )
 
-    def write_tensors(self, keys, tensors, lca_iter=0):
+    def write_tensors(self, keys, tensors, dev, lca_iter=0):
         ''' Writes out tensors to a HDF5 file. '''
         with h5py.File(self.tensor_write_fpath, 'a') as h5file:
             for key, tensor in zip(keys, tensors):
-                d = -1 if tensor.device.type == 'cpu' else tensor.device.index
                 h5file.create_dataset(
-                    f'{key}_{d}_{self.forward_pass}_{lca_iter}',
+                    f'{key}_{dev}_{self.forward_pass}_{lca_iter}',
                     data=tensor.cpu().numpy()
                 )
