@@ -172,9 +172,9 @@ class LCAConvBase:
             'Tau' : float_tracker.copy()
         }
 
-    def encode(self, x, D, u_t, dev):
+    def encode(self, x, u_t, dev):
         ''' Computes sparse code given data x and dictionary D '''
-        x, D, u_t = x.to(dev), D.to(dev), u_t.to(dev)
+        x, D, u_t = x.to(dev), self.D.to(dev, copy=True), u_t.to(dev)
         b_t = self.compute_input_drive(x, D) 
         G = self.compute_lateral_connectivity(D)
         tau = self.tau
@@ -217,10 +217,9 @@ class LCAConvBase:
             x = self.standardize_inputs(x)
         u_t = self._init_u(
             self.compute_input_drive(x.to(self.main_dev), self.D))
-        mp_out = ptmultiproc(self.encode, ['x', 'D', 'u_t', 'dev'],
+        mp_out = ptmultiproc(self.encode, ['x', 'u_t', 'dev'],
                              len(self.device),
                              x=self._split_batch_across_devs(x),
-                             D=self._copy_dict_to_devs(),
                              u_t=self._split_batch_across_devs(u_t),
                              dev=self.device)
         code, recon_error, recon, self.u_t = self._parse_mp_outputs(mp_out)
