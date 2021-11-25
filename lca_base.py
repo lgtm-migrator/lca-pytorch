@@ -225,7 +225,7 @@ class LCAConvBase:
                              dev=self.device)
         code, recon_error, recon, self.u_t = self._parse_mp_outputs(mp_out)
         if self._check_forward_write():
-            self.write_tensors(['D', 'input'], [self.D, x])
+            self.write_tensors(['D', 'input'], [self.D, x], self.main_dev)
         self.forward_pass += 1
         return code, recon, recon_error
 
@@ -356,7 +356,7 @@ class LCAConvBase:
         self.D += update
         self.normalize_D()
         if self._check_forward_write():
-            self.write_tensors(['update'], [update])
+            self.write_tensors(['update'], [update], self.main_dev)
 
     def update_tau(self, tau):
         ''' Update LCA time constant with given decay factor '''
