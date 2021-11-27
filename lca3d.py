@@ -50,12 +50,16 @@ class LCA3DConv(LCAConvBase):
         self.lat_conn_pad = [0]
 
         if self.kernel_odd or self.stride_h == 1:
-            self.lat_conn_pad.append(self.kh - 1)
+            self.lat_conn_pad.append((self.kh - 1)
+                                     // self.stride_h
+                                     * self.stride_h)
         else:
             self.lat_conn_pad.append(self.kh - self.stride_h)
 
         if self.kernel_odd or self.stride_w == 1:
-            self.lat_conn_pad.append(self.kw - 1)
+            self.lat_conn_pad.append((self.kw - 1)
+                                     // self.stride_w
+                                     * self.stride_w)
         else:
             self.lat_conn_pad.append(self.kw - self.stride_w)
         
