@@ -117,7 +117,6 @@ class LCA3DConv(LCAConvBase):
         error = error.unfold(-3, self.kt, self.stride_t)
         error = error.unfold(-3, self.kh, self.stride_h)
         error = error.unfold(-3, self.kw, self.stride_w)
-
         return torch.tensordot(a, error, dims=([0, 2, 3, 4], [0, 2, 3, 4]))
 
     def create_weight_tensor(self):
