@@ -82,6 +82,7 @@ class LCAConvBase:
         self.keep_solution = keep_solution
         self.lca_iters = lca_iters 
         self.lca_tol = lca_tol
+        self.lca_warmup = tau // 10 + 100
         self.lca_write_step = lca_write_step
         self.main_dev = 'cpu'
         self.n_neurons = n_neurons 
@@ -91,7 +92,6 @@ class LCAConvBase:
         self.result_dir = result_dir 
         self.samplewise_standardization = samplewise_standardization
         self.tau = tau 
-        self.lca_warmup = self.tau // 10 + 100
         self.tau_decay_factor = tau_decay_factor
         self.thresh = thresh 
         self.thresh_type = thresh_type
