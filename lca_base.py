@@ -88,7 +88,7 @@ class LCAConvBase:
         self.lca_tol = lca_tol
         self.lca_warmup = lca_warmup
         self.lca_write_step = lca_write_step
-        self.main_dev = self.device[0]
+        self.main_dev = 'cpu'
         self.n_neurons = n_neurons 
         self.nonneg = nonneg 
         self.pad = pad
