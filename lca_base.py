@@ -52,9 +52,6 @@ class LCAConvBase:
             for training batch i will be initialized with those found
             on training batch i-1. This can sometimes allows for faster
             convergence when iterating sequentially over video data.
-        lca_warmup (int): Number of iterations to run LCA before early
-            stopping criteria will be checked. Not used if lca_tol is 
-            None. Must be >= 100.
         lca_write_step (int): How often to write out a_t, u_t, b_t,
             recon, and recon_error within a single LCA loop. If None,
             these will not be written to disk.
@@ -72,9 +69,8 @@ class LCAConvBase:
                  thresh_type='hard', samplewise_standardization=True,
                  tau_decay_factor=0.0, lca_tol=None, cudnn_benchmark=False,
                  d_update_clip=np.inf, dict_load_fpath=None,
-                 keep_solution=False, lca_warmup=200, lca_write_step=None,
+                 keep_solution=False, lca_write_step=None,
                  forward_write_step=None, reinit_u_every_n=None):
-        assert lca_warmup >= 100
         self.d_update_clip = d_update_clip
         self.device = self._get_device(device) 
         self.dict_load_fpath = dict_load_fpath
@@ -86,7 +82,6 @@ class LCAConvBase:
         self.keep_solution = keep_solution
         self.lca_iters = lca_iters 
         self.lca_tol = lca_tol
-        self.lca_warmup = lca_warmup
         self.lca_write_step = lca_write_step
         self.main_dev = 'cpu'
         self.n_neurons = n_neurons 
@@ -96,6 +91,7 @@ class LCAConvBase:
         self.result_dir = result_dir 
         self.samplewise_standardization = samplewise_standardization
         self.tau = tau 
+        self.lca_warmup = self.tau // 10 + 100
         self.tau_decay_factor = tau_decay_factor
         self.thresh = thresh 
         self.thresh_type = thresh_type
