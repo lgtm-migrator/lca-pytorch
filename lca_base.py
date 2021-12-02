@@ -67,7 +67,7 @@ class LCAConvBase:
                  eta=1e-3, lca_iters=3000, pad='same', device='cpu',
                  dtype=torch.float32, nonneg=False, track_metrics=True,
                  thresh_type='hard', samplewise_standardization=True,
-                 tau_decay_factor=0.0, lca_tol=None, cudnn_benchmark=False,
+                 tau_decay_factor=0.0, lca_tol=None, cudnn_benchmark=True,
                  d_update_clip=np.inf, dict_load_fpath=None,
                  keep_solution=False, lca_write_step=None,
                  forward_write_step=None, reinit_u_every_n=None):
