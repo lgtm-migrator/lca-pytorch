@@ -66,7 +66,7 @@ class LCAConvBase:
     def __init__(self, n_neurons, in_c, result_dir, thresh=0.1, tau=1500, 
                  eta=1e-3, lca_iters=3000, pad='same', device='cpu',
                  dtype=torch.float32, nonneg=False, track_metrics=True,
-                 thresh_type='hard', samplewise_standardization=True,
+                 thresh_type='soft', samplewise_standardization=True,
                  tau_decay_factor=0.0, lca_tol=None, cudnn_benchmark=True,
                  d_update_clip=np.inf, dict_load_fpath=None,
                  keep_solution=False, lca_write_step=None,
