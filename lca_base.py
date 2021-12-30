@@ -48,6 +48,8 @@ class LCAConvBase:
         dict_load_fpath (str): Path to the tensors.h5 file with at 
             least 1 key starting with 'D_', which will be used to
             load in the dictionary tensor from the latest ckpt.
+        lr_schedule (function): Function which takes the training step
+            as input and returns a value for eta.
         keep_solution (bool): If True, the LCA membrane potentials 
             for training batch i will be initialized with those found
             on training batch i-1. This can sometimes allows for faster
@@ -68,7 +70,7 @@ class LCAConvBase:
                  dtype=torch.float32, nonneg=False, track_metrics=True,
                  thresh_type='soft', samplewise_standardization=True,
                  tau_decay_factor=0.0, lca_tol=None, cudnn_benchmark=True,
-                 d_update_clip=np.inf, dict_load_fpath=None,
+                 d_update_clip=np.inf, dict_load_fpath=None, lr_schedule=None,
                  keep_solution=False, lca_write_step=None,
                  forward_write_step=None, reinit_u_every_n=None):
         self.d_update_clip = d_update_clip
@@ -84,6 +86,8 @@ class LCAConvBase:
         self.lca_tol = lca_tol
         self.lca_warmup = tau // 10 + 100
         self.lca_write_step = lca_write_step
+        if lr_schedule is not None: assert callable(lr_schedule)
+        self.lr_schedule = lr_schedule
         self.main_dev = 'cpu'
         self.n_neurons = n_neurons 
         self.nonneg = nonneg 
@@ -350,6 +354,8 @@ class LCAConvBase:
                              max=self.d_update_clip)
         self.D += update
         self.normalize_D()
+        if self.lr_schedule is not None:
+            self.eta = self.lr_schedule(self.forward_pass)
         if self._check_forward_write():
             self.write_tensors(['update'], [update], self.main_dev)
 
@@ -371,6 +377,7 @@ class LCAConvBase:
     def write_params(self, arg_dict):
         ''' Writes model params to file '''
         arg_dict['dtype'] = str(arg_dict['dtype'])
+        del arg_dict['lr_schedule']
         with open(os.path.join(self.result_dir, 'params.json'), 'w+') as jsonf:
             json.dump(arg_dict, jsonf, indent=4, sort_keys=True)
 
