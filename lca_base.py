@@ -1,3 +1,4 @@
+from copy import deepcopy
 import json
 import os
 
@@ -102,6 +103,7 @@ class LCAConv:
         if lr_schedule is not None: assert callable(lr_schedule)
         self.lr_schedule = lr_schedule
         self.main_dev = 'cpu'
+        self.metric_fpath = os.path.join(result_dir, 'metrics.xz')
         self.n_neurons = n_neurons 
         self.nonneg = nonneg 
         self.pad = pad
@@ -113,18 +115,19 @@ class LCAConv:
         self.stride_w = stride_w
         self.tau = tau 
         self.tau_decay_factor = tau_decay_factor
+        self.tensor_write_fpath = os.path.join(result_dir, 'tensors.h5')
         self.thresh = thresh 
         self.thresh_type = thresh_type
         self.track_metrics = track_metrics
 
         self._check_conv_params()
+        self._compute_padding()
+        os.makedirs(self.result_dir, exist_ok=True)
+        self.write_params(deepcopy(vars(self)))
+        self.init_weight_tensor()
 
         if cudnn_benchmark and torch.backends.cudnn.enabled: 
             torch.backends.cudnn.benchmark = True
-
-        os.makedirs(self.result_dir, exist_ok=True)
-        self.metric_fpath = os.path.join(self.result_dir, 'metrics.xz')
-        self.tensor_write_fpath = os.path.join(self.result_dir, 'tensors.h5')
 
     def _check_lca_write(self, lca_iter):
         ''' Checks whether to write LCA tensors at a given LCA iter '''
@@ -152,6 +155,52 @@ class LCAConv:
                 f'but kh={self.kh} and kw={self.kw}.')
         assert self.stride_h == 1 or self.stride_h % 2 == 0
         assert self.stride_w == 1 or self.stride_w % 2 == 0
+
+    def _compute_inhib_pad(self):
+        ''' Computes padding for compute_lateral_connectivity '''
+        self.lat_conn_pad = [0]
+
+        if self.kernel_odd or self.stride_h == 1:
+            self.lat_conn_pad.append((self.kh - 1)
+                                     // self.stride_h
+                                     * self.stride_h)
+        else:
+            self.lat_conn_pad.append(self.kh - self.stride_h)
+
+        if self.kernel_odd or self.stride_w == 1:
+            self.lat_conn_pad.append((self.kw - 1)
+                                     // self.stride_w
+                                     * self.stride_w)
+        else:
+            self.lat_conn_pad.append(self.kw - self.stride_w)
+
+        self.lat_conn_pad = tuple(self.lat_conn_pad)
+
+    def _compute_input_pad(self):
+        ''' Computes padding for forward convolution '''
+        if self.pad == 'same':
+            if self.kernel_odd:
+                self.input_pad = (0, (self.kh - 1) // 2, (self.kw - 1) // 2)
+            else:
+                raise NotImplementedError(
+                    "Even kh and kw implemented only for 'valid' padding.")
+        elif self.pad == 'valid':
+            self.input_pad = (0, 0, 0)
+        else:
+            raise ValueError("Values for pad can either be 'same' or 'valid', "
+                             f"but got {self.pad}.")
+
+    def _compute_padding(self):
+        self._compute_input_pad()
+        self._compute_inhib_pad()
+        self._compute_recon_pad()
+
+    def _compute_recon_pad(self):
+        ''' Computes output padding for recon conv transpose '''
+        if self.kernel_odd:
+            self.recon_output_pad = (0, self.stride_h - 1, self.stride_w - 1)
+        else:
+            self.recon_output_pad = (0, 0, 0)
 
     def compute_frac_active(self, a):
         ''' Computes the number of active neurons relative to the total
@@ -197,6 +246,13 @@ class LCAConv:
             'FractionActive' : float_tracker.copy(),
             'Tau' : float_tracker.copy()
         }
+
+    def create_weight_tensor(self):
+        ''' Creates the dictionary D with random values '''
+        self.D = torch.randn(self.n_neurons, self.in_c, self.kt, self.kh,
+                             self.kw, device=self.main_dev, dtype=self.dtype)
+        self.D[:, :, 1:] = 0.0
+        self.normalize_D()
 
     def encode(self, x, u_t, dev):
         ''' Computes sparse code given data x and dictionary D '''
