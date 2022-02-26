@@ -91,6 +91,7 @@ class LCAConv:
         self.forward_write_step = forward_write_step
         self.in_c = in_c 
         self.keep_solution = keep_solution
+        self.kernel_odd = True if kh % 2 != 0 else False
         self.kh = kh
         self.kt = kt
         self.kw = kw
