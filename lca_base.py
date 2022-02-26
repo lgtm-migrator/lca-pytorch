@@ -207,18 +207,6 @@ class LCAConv:
             number of neurons '''
         return (a != 0.0).float().mean().item()
 
-    def compute_n_surround(self, G):
-        ''' Computes the number of surround neurons for each dim '''
-        G_shp = G.shape[2:]
-        self.surround = tuple([int(np.ceil((dim - 1) / 2)) for dim in G_shp])
-
-    def compute_times_active_by_feature(self, x):
-        ''' Computes number of active coefficients per feature '''
-        dims = list(range(len(x.shape)))
-        dims.remove(1)
-        times_active = (x != 0).float().sum(dim=dims) + 1
-        return times_active.reshape((x.shape[1],) + (1,) * len(dims))
-
     def compute_l1_sparsity(self, acts):
         ''' Compute l1 sparsity term of objective function '''
         dims = tuple(range(1, len(acts.shape)))
@@ -229,9 +217,21 @@ class LCAConv:
         dims = tuple(range(1, len(error.shape)))
         return 0.5 * (error.norm(p=2, dim=dims) ** 2).mean().item()
 
+    def compute_n_surround(self, G):
+        ''' Computes the number of surround neurons for each dim '''
+        G_shp = G.shape[2:]
+        self.surround = tuple([int(np.ceil((dim - 1) / 2)) for dim in G_shp])
+
     def compute_perc_change(self, curr, prev):
         ''' Computes percent change of a value from t-1 to t '''
         return abs((curr - prev) / prev)
+
+    def compute_times_active_by_feature(self, x):
+        ''' Computes number of active coefficients per feature '''
+        dims = list(range(len(x.shape)))
+        dims.remove(1)
+        times_active = (x != 0).float().sum(dim=dims) + 1
+        return times_active.reshape((x.shape[1],) + (1,) * len(dims))
 
     def _copy_dict_to_devs(self):
         return [self.D.clone() for _ in self.device]
