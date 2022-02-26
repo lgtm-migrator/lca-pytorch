@@ -116,6 +116,8 @@ class LCAConv:
         self.thresh_type = thresh_type
         self.track_metrics = track_metrics
 
+        self._check_conv_params()
+
         if cudnn_benchmark and torch.backends.cudnn.enabled: 
             torch.backends.cudnn.benchmark = True
 
@@ -141,6 +143,14 @@ class LCAConv:
             if self.forward_pass % self.forward_write_step == 0:
                 write = True
         return write
+
+    def _check_conv_params(self):
+        assert ((self.kh % 2 != 0 and self.kw % 2 != 0) or
+                (self.kh % 2 == 0 and self.kw % 2 == 0)), (
+                'kh and kw should either both be even or both be odd numbers, '
+                f'but kh={self.kh} and kw={self.kw}.')
+        assert self.stride_h == 1 or self.stride_h % 2 == 0
+        assert self.stride_w == 1 or self.stride_w % 2 == 0
 
     def compute_frac_active(self, a):
         ''' Computes the number of active neurons relative to the total
