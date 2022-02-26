@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from lcapt.utils import ptmultiproc
 
 
-class LCAConv:
+class LCAConv(torch.nn.Module):
     '''
     Base class for LCA models.
 
@@ -66,6 +66,10 @@ class LCAConv:
         lca_write_step (int): How often to write out a_t, u_t, b_t,
             recon, and recon_error within a single LCA loop. If None,
             these will not be written to disk.
+        req_grad (bool): If True, dictionary D will have
+            requires_grad set to True. Otherwise, it will be False.
+            This is useful for propagating gradient through the LCA
+            layer (e.g. for adversarial attacks).
         forward_write_step (int): How often to write out dictionary,
             input, and dictionary update. If None, these will not be
             written to disk.
@@ -81,7 +85,7 @@ class LCAConv:
                  thresh_type='soft', samplewise_standardization=True,
                  tau_decay_factor=0.0, lca_tol=None, cudnn_benchmark=True,
                  d_update_clip=np.inf, dict_load_fpath=None, lr_schedule=None,
-                 keep_solution=False, lca_write_step=None,
+                 keep_solution=False, lca_write_step=None, req_grad=False,
                  forward_write_step=None, reinit_u_every_n=None):
         self.d_update_clip = d_update_clip
         self.device = self._get_device(device) 
@@ -108,6 +112,7 @@ class LCAConv:
         self.nonneg = nonneg 
         self.pad = pad
         self.reinit_u_every_n = reinit_u_every_n
+        self.req_grad = req_grad
         self.result_dir = result_dir 
         self.samplewise_standardization = samplewise_standardization
         self.stride_h = stride_h
@@ -124,6 +129,7 @@ class LCAConv:
         self._compute_padding()
         os.makedirs(self.result_dir, exist_ok=True)
         self.write_params(deepcopy(vars(self)))
+        super(LCAConv, self).__init__()
         self.init_weight_tensor()
 
         if cudnn_benchmark and torch.backends.cudnn.enabled: 
@@ -386,6 +392,7 @@ class LCAConv:
             self.create_weight_tensor()
         else:
             self.load_weight_tensor()
+        self.D = torch.nn.Parameter(self.D, requires_grad=self.req_grad)
 
     def lateral_competition(self, a, G):
         return F.conv3d(a, G, stride=1, padding=self.surround)
