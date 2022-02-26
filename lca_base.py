@@ -20,6 +20,14 @@ class LCAConv:
         result_dir (str): Path to dir where results will be saved.
 
     Optional Args:
+        kh (int): Kernel height of the convolutional features.
+        kw (int): Kernel width of the convolutional features.
+        kt (int): Kernel depth of the convolutional features. For 1D
+            (e.g. raw audio) or 2D (e.g. images) inputs, keep this at
+            the default of 1.
+        stride_h (int): Vertical stride of each feature.
+        stride_w (int): Horizontal stride of each feature.
+        stride_t (int): Stride in depth (time) of each feature.
         thresh (float): Threshold for the LCA transfer function.
         tau (int): LCA time constant. 
         eta (float): Learning rate for dictionary updates.
@@ -65,7 +73,8 @@ class LCAConv:
             if keep_solution is True. Default is to never reinitialize
             them. Only used if keep_solution is True.
     '''
-    def __init__(self, n_neurons, in_c, result_dir, thresh=0.1, tau=1500, 
+    def __init__(self, n_neurons, in_c, result_dir, kh=7, kw=7, kt=1,
+                 stride_h=1, stride_w=1, stride_t=1, thresh=0.1, tau=1500,
                  eta=1e-3, lca_iters=3000, pad='same', device='cpu',
                  dtype=torch.float32, nonneg=False, track_metrics=True,
                  thresh_type='soft', samplewise_standardization=True,
@@ -82,6 +91,9 @@ class LCAConv:
         self.forward_write_step = forward_write_step
         self.in_c = in_c 
         self.keep_solution = keep_solution
+        self.kh = kh
+        self.kt = kt
+        self.kw = kw
         self.lca_iters = lca_iters 
         self.lca_tol = lca_tol
         self.lca_warmup = tau // 10 + 100
@@ -95,6 +107,9 @@ class LCAConv:
         self.reinit_u_every_n = reinit_u_every_n
         self.result_dir = result_dir 
         self.samplewise_standardization = samplewise_standardization
+        self.stride_h = stride_h
+        self.stride_t = stride_t
+        self.stride_w = stride_w
         self.tau = tau 
         self.tau_decay_factor = tau_decay_factor
         self.thresh = thresh 
