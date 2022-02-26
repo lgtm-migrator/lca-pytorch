@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from lcapt.utils import ptmultiproc
 
 
-class LCAConvBase:
+class LCAConv:
     '''
     Base class for LCA models.
 
