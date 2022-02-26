@@ -207,6 +207,12 @@ class LCAConv:
             number of neurons '''
         return (a != 0.0).float().mean().item()
 
+    def compute_input_drive(self, x, D):
+        assert x.shape[2] == self.kt
+        return F.conv3d(x, D,
+                        stride=(self.stride_t, self.stride_h, self.stride_w),
+                        padding=self.input_pad)
+
     def compute_l1_sparsity(self, acts):
         ''' Compute l1 sparsity term of objective function '''
         dims = tuple(range(1, len(acts.shape)))
@@ -217,6 +223,14 @@ class LCAConv:
         dims = tuple(range(1, len(error.shape)))
         return 0.5 * (error.norm(p=2, dim=dims) ** 2).mean().item()
 
+    def compute_lateral_connectivity(self, D):
+        G = F.conv3d(D, D,
+                     stride=(self.stride_t, self.stride_h, self.stride_w),
+                     padding=self.lat_conn_pad)
+        if not hasattr(self, 'surround'):
+            self.compute_n_surround(G)
+        return G
+
     def compute_n_surround(self, G):
         ''' Computes the number of surround neurons for each dim '''
         G_shp = G.shape[2:]
@@ -226,12 +240,31 @@ class LCAConv:
         ''' Computes percent change of a value from t-1 to t '''
         return abs((curr - prev) / prev)
 
+    def compute_recon(self, a, D):
+        ''' Computes reconstruction given code '''
+        return F.conv_transpose3d(
+            a,
+            D,
+            stride=(self.stride_t, self.stride_h, self.stride_w),
+            padding=self.input_pad,
+            output_padding=self.recon_output_pad)
+
     def compute_times_active_by_feature(self, x):
         ''' Computes number of active coefficients per feature '''
         dims = list(range(len(x.shape)))
         dims.remove(1)
         times_active = (x != 0).float().sum(dim=dims) + 1
         return times_active.reshape((x.shape[1],) + (1,) * len(dims))
+
+    def compute_update(self, a, error):
+        error = F.pad(error, (self.input_pad[2], self.input_pad[2],
+                              self.input_pad[1], self.input_pad[1],
+                              self.input_pad[0], self.input_pad[0]
+            ))
+        error = error.unfold(-3, self.kt, self.stride_t)
+        error = error.unfold(-3, self.kh, self.stride_h)
+        error = error.unfold(-3, self.kw, self.stride_w)
+        return torch.tensordot(a, error, dims=([0, 2, 3, 4], [0, 2, 3, 4]))
 
     def _copy_dict_to_devs(self):
         return [self.D.clone() for _ in self.device]
@@ -353,6 +386,9 @@ class LCAConv:
             self.create_weight_tensor()
         else:
             self.load_weight_tensor()
+
+    def lateral_competition(self, a, G):
+        return F.conv3d(a, G, stride=1, padding=self.surround)
 
     def load_weight_tensor(self):
         ''' Loads in dictionary from latest ckpt in result file '''
