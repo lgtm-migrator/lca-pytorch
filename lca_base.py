@@ -80,7 +80,7 @@ class LCAConv(torch.nn.Module):
     '''
     def __init__(self, n_neurons, in_c, result_dir, kh=7, kw=7, kt=1,
                  stride_h=1, stride_w=1, stride_t=1, thresh=0.1, tau=1500,
-                 eta=1e-3, lca_iters=3000, pad='same', device='cpu',
+                 eta=1e-3, lca_iters=3000, pad='same',
                  dtype=torch.float32, nonneg=False, track_metrics=True,
                  thresh_type='soft', samplewise_standardization=True,
                  tau_decay_factor=0.0, lca_tol=None, cudnn_benchmark=True,
@@ -88,7 +88,6 @@ class LCAConv(torch.nn.Module):
                  keep_solution=False, lca_write_step=None, req_grad=False,
                  forward_write_step=None, reinit_u_every_n=None):
         self.d_update_clip = d_update_clip
-        self.device = self._get_device(device) 
         self.dict_load_fpath = dict_load_fpath
         self.dtype = dtype 
         self.eta = eta 
@@ -106,7 +105,6 @@ class LCAConv(torch.nn.Module):
         self.lca_write_step = lca_write_step
         if lr_schedule is not None: assert callable(lr_schedule)
         self.lr_schedule = lr_schedule
-        self.main_dev = 'cpu'
         self.metric_fpath = os.path.join(result_dir, 'metrics.xz')
         self.n_neurons = n_neurons 
         self.nonneg = nonneg 
@@ -272,9 +270,6 @@ class LCAConv(torch.nn.Module):
         error = error.unfold(-3, self.kw, self.stride_w)
         return torch.tensordot(a, error, dims=([0, 2, 3, 4], [0, 2, 3, 4]))
 
-    def _copy_dict_to_devs(self):
-        return [self.D.clone() for _ in self.device]
-
     def create_trackers(self):
         ''' Create placeholders to store different metrics '''
         float_tracker = np.zeros([self.lca_iters], dtype=np.float32)
@@ -289,7 +284,7 @@ class LCAConv(torch.nn.Module):
     def create_weight_tensor(self):
         ''' Creates the dictionary D with random values '''
         self.D = torch.randn(self.n_neurons, self.in_c, self.kt, self.kh,
-                             self.kw, device=self.main_dev, dtype=self.dtype)
+                             self.kw, dtype=self.dtype)
         self.D[:, :, 1:] = 0.0
         self.normalize_D()
 
@@ -340,20 +335,6 @@ class LCAConv(torch.nn.Module):
         self.forward_pass += 1
         return code, recon, recon_error
 
-    def _get_device(self, device):
-        if type(device) == int:
-            assert device in range(torch.cuda.device_count())
-            return [device]
-        elif type(device) == list:
-            n_devs = torch.cuda.device_count()
-            assert all([dev in range(n_devs) for dev in device])
-            return device 
-        elif device in ['cpu', None]:
-            return ['cpu']
-        else:
-            raise ValueError(
-                f'device should be int or list, not {type(device).__name__}.')
-
     def hard_threshold(self, x):
         ''' Hard threshold transfer function '''
         if self.nonneg:
@@ -361,22 +342,6 @@ class LCAConv(torch.nn.Module):
         else:
             return (F.threshold(x, self.thresh, 0.0) 
                     - F.threshold(-x, self.thresh, 0.0))
-
-    def _init_u(self, b_t):
-        ''' Initialize the membrane potentials u(t) '''
-        if self.keep_solution:
-            if hasattr(self, 'u_t'):
-                if self.reinit_u_every_n is None:
-                    return self.u_t
-                else:
-                    if (self.forward_pass - 1) % self.reinit_u_every_n == 0:
-                        return torch.zeros_like(b_t)
-                    else:
-                        return self.u_t
-            else:
-                return torch.zeros_like(b_t)
-        else:
-            return torch.zeros_like(b_t)
 
     def init_weight_tensor(self):
         if self.dict_load_fpath is None:
@@ -397,7 +362,7 @@ class LCAConv(torch.nn.Module):
                                key=lambda key : int(key.split('_')[-2]))[-1]
             dict = h5f[last_ckpt][()]
             assert dict.shape == self.D.shape 
-            self.D = torch.from_numpy(dict).type(self.dtype).to(self.main_dev)
+            self.D = torch.from_numpy(dict).type(self.dtype)
             self.normalize_D()
             if (os.path.abspath(self.result_dir) == 
                     os.path.split(os.path.abspath(self.dict_load_fpath))[0]):
@@ -409,24 +374,12 @@ class LCAConv(torch.nn.Module):
         scale = self.D.norm(p=2, dim=dims, keepdim=True)
         self.D = self.D / (scale + eps)
 
-    def _parse_mp_outputs(self, mp_out):
-        ''' Combines mp outputs into single tensors on same device '''
-        mp_out = [torch.cat([out[i] for out in mp_out]) for i in range(4)]
-        return [out.to(self.main_dev) for out in mp_out]
-
     def soft_threshold(self, x):
         ''' Soft threshold transfer function '''
         if self.nonneg:
             return F.relu(x - self.thresh)
         else:
             return F.relu(x - self.thresh) - F.relu(-x - self.thresh)
-
-    def _split_batch_across_devs(self, batch):
-        ''' Splits up a batch of inputs across specified devices '''
-        bs = batch.shape[0]
-        bs_per_dev = bs // len(self.device)
-        return [batch[ind : ind + bs_per_dev].clone()
-                for ind in range(0, bs, bs_per_dev)]
 
     def standardize_inputs(self, batch, eps=1e-12):
         ''' Standardize each sample in x '''
