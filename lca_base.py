@@ -8,8 +8,6 @@ import pandas as pd
 import torch 
 import torch.nn.functional as F
 
-from lcapt.utils import ptmultiproc
-
 
 class LCAConv(torch.nn.Module):
     '''
