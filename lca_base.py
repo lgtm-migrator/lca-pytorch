@@ -293,11 +293,11 @@ class LCAConv(torch.nn.Module):
         self.D[:, :, 1:] = 0.0
         self.normalize_D()
 
-    def encode(self, x, u_t, dev):
+    def encode(self, x):
         ''' Computes sparse code given data x and dictionary D '''
-        x, D, u_t = x.to(dev), self.D.to(dev, copy=True), u_t.to(dev)
-        b_t = self.compute_input_drive(x, D) 
-        G = self.compute_lateral_connectivity(D)
+        b_t = self.compute_input_drive(x, self.D)
+        u_t = torch.zeros_like(b_t, requires_grad=self.req_grad)
+        G = self.compute_lateral_connectivity(self.D)
         tau = self.tau
 
         for lca_iter in range(1, self.lca_iters + 1):
@@ -309,7 +309,7 @@ class LCAConv(torch.nn.Module):
                     or lca_iter == self.lca_iters
                     or self.lca_tol is not None
                     or self._check_lca_write(lca_iter)):
-                recon = self.compute_recon(a_t, D)
+                recon = self.compute_recon(a_t, self.D)
                 recon_error = x - recon
                 if self._check_lca_write(lca_iter):
                     self.write_tensors(
@@ -329,19 +329,12 @@ class LCAConv(torch.nn.Module):
 
         if self.track_metrics:
             self.write_tracks(tracks, lca_iter, x.device.index)
-        return a_t.cpu(), recon_error.cpu(), recon.cpu(), u_t.clone().cpu()
+        return a_t, recon, recon_error
 
     def forward(self, x):
         if self.samplewise_standardization:
             x = self.standardize_inputs(x)
-        u_t = self._init_u(
-            self.compute_input_drive(x.to(self.main_dev), self.D))
-        mp_out = ptmultiproc(self.encode, ['x', 'u_t', 'dev'],
-                             len(self.device),
-                             x=self._split_batch_across_devs(x),
-                             u_t=self._split_batch_across_devs(u_t),
-                             dev=self.device)
-        code, recon_error, recon, self.u_t = self._parse_mp_outputs(mp_out)
+        code, recon, recon_error = self.encode(x)
         if self._check_forward_write():
             self.write_tensors(['D', 'input'], [self.D, x])
         self.forward_pass += 1
