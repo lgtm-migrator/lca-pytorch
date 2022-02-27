@@ -463,8 +463,7 @@ class LCAConv(torch.nn.Module):
             self.metric_fpath,
             header=True if not os.path.isfile(self.metric_fpath) else False,
             index=False,
-            mode='a'
-        )
+            mode='a')
 
     def write_tensors(self, keys, tensors, lca_iter=0):
         ''' Writes out tensors to a HDF5 file. '''
