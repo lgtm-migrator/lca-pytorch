@@ -314,9 +314,7 @@ class LCAConv(torch.nn.Module):
                 if self._check_lca_write(lca_iter):
                     self.write_tensors(
                         ['a', 'b', 'u', 'recon', 'recon_error'],
-                        [a_t, b_t, u_t, recon, recon_error], dev,
-                        lca_iter=lca_iter
-                    )
+                        [a_t, b_t, u_t, recon, recon_error], lca_iter)
                 if self.track_metrics or self.lca_tol is not None:
                     if lca_iter == 1:
                         tracks = self.create_trackers()
@@ -345,7 +343,7 @@ class LCAConv(torch.nn.Module):
                              dev=self.device)
         code, recon_error, recon, self.u_t = self._parse_mp_outputs(mp_out)
         if self._check_forward_write():
-            self.write_tensors(['D', 'input'], [self.D, x], self.main_dev)
+            self.write_tensors(['D', 'input'], [self.D, x])
         self.forward_pass += 1
         return code, recon, recon_error
 
@@ -482,7 +480,7 @@ class LCAConv(torch.nn.Module):
         if self.lr_schedule is not None:
             self.eta = self.lr_schedule(self.forward_pass)
         if self._check_forward_write():
-            self.write_tensors(['update'], [update], self.main_dev)
+            self.write_tensors(['update'], [update])
 
     def update_tau(self, tau):
         ''' Update LCA time constant with given decay factor '''
@@ -522,11 +520,10 @@ class LCAConv(torch.nn.Module):
             mode='a'
         )
 
-    def write_tensors(self, keys, tensors, dev, lca_iter=0):
+    def write_tensors(self, keys, tensors, lca_iter=0):
         ''' Writes out tensors to a HDF5 file. '''
         with h5py.File(self.tensor_write_fpath, 'a') as h5file:
             for key, tensor in zip(keys, tensors):
                 h5file.create_dataset(
-                    f'{key}_{dev}_{self.forward_pass}_{lca_iter}',
-                    data=tensor.cpu().numpy()
-                )
+                    f'{key}_{self.forward_pass}_{lca_iter}',
+                    data=tensor.cpu().numpy())
