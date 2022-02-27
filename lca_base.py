@@ -328,7 +328,7 @@ class LCAConv(torch.nn.Module):
             tau = self.update_tau(tau) 
 
         if self.track_metrics:
-            self.write_tracks(tracks, lca_iter, dev)
+            self.write_tracks(tracks, lca_iter, x.device.index)
         return a_t.cpu(), recon_error.cpu(), recon.cpu(), u_t.clone().cpu()
 
     def forward(self, x):
