@@ -303,7 +303,7 @@ class LCAConv(torch.nn.Module):
         for lca_iter in range(1, self.lca_iters + 1):
             a_t = self.threshold(u_t)
             inhib = self.lateral_competition(a_t, G)
-            u_t += (1 / tau) * (b_t - u_t - inhib + a_t)
+            u_t = u_t + (1 / tau) * (b_t - u_t - inhib + a_t)
 
             if (self.track_metrics 
                     or lca_iter == self.lca_iters
