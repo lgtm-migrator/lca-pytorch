@@ -57,10 +57,6 @@ class LCAConv(torch.nn.Module):
             load in the dictionary tensor from the latest ckpt.
         lr_schedule (function): Function which takes the training step
             as input and returns a value for eta.
-        keep_solution (bool): If True, the LCA membrane potentials 
-            for training batch i will be initialized with those found
-            on training batch i-1. This can sometimes allows for faster
-            convergence when iterating sequentially over video data.
         lca_write_step (int): How often to write out a_t, u_t, b_t,
             recon, and recon_error within a single LCA loop. If None,
             these will not be written to disk.
@@ -71,10 +67,6 @@ class LCAConv(torch.nn.Module):
         forward_write_step (int): How often to write out dictionary,
             input, and dictionary update. If None, these will not be
             written to disk.
-        reinit_u_every_n (int): How often, in terms of the number of
-            forward passes, to reinitialize the membrane potentials
-            if keep_solution is True. Default is to never reinitialize
-            them. Only used if keep_solution is True.
     '''
     def __init__(self, n_neurons, in_c, result_dir, kh=7, kw=7, kt=1,
                  stride_h=1, stride_w=1, stride_t=1, thresh=0.1, tau=1500,
@@ -83,8 +75,7 @@ class LCAConv(torch.nn.Module):
                  thresh_type='soft', samplewise_standardization=True,
                  tau_decay_factor=0.0, lca_tol=None, cudnn_benchmark=True,
                  d_update_clip=np.inf, dict_load_fpath=None, lr_schedule=None,
-                 keep_solution=False, lca_write_step=None, req_grad=False,
-                 forward_write_step=None, reinit_u_every_n=None):
+                 lca_write_step=None, req_grad=False, forward_write_step=None):
         self.d_update_clip = d_update_clip
         self.dict_load_fpath = dict_load_fpath
         self.dtype = dtype 
@@ -92,7 +83,6 @@ class LCAConv(torch.nn.Module):
         self.forward_pass = 1
         self.forward_write_step = forward_write_step
         self.in_c = in_c 
-        self.keep_solution = keep_solution
         self.kernel_odd = True if kh % 2 != 0 else False
         self.kh = kh
         self.kt = kt
@@ -107,7 +97,6 @@ class LCAConv(torch.nn.Module):
         self.n_neurons = n_neurons 
         self.nonneg = nonneg 
         self.pad = pad
-        self.reinit_u_every_n = reinit_u_every_n
         self.req_grad = req_grad
         self.result_dir = result_dir 
         self.samplewise_standardization = samplewise_standardization
