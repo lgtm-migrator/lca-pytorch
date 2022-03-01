@@ -316,11 +316,11 @@ class LCAConv(torch.nn.Module):
     def forward(self, x):
         if self.samplewise_standardization:
             x = self.standardize_inputs(x)
-        code, recon, recon_error = self.encode(x)
+        code, _, _ = self.encode(x)
         if self._check_forward_write():
             self.write_tensors(['D', 'input'], [self.D, x])
         self.forward_pass += 1
-        return code, recon, recon_error
+        return code
 
     def hard_threshold(self, x):
         ''' Hard threshold transfer function '''
