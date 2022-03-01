@@ -140,8 +140,8 @@ class LCAConv(torch.nn.Module):
         return write
 
     def _check_conv_params(self):
-        assert ((self.kh % 2 != 0 and self.kw % 2 != 0) or
-                (self.kh % 2 == 0 and self.kw % 2 == 0)), (
+        assert ((self.kh % 2 != 0 and self.kw % 2 != 0)
+                or (self.kh % 2 == 0 and self.kw % 2 == 0)), (
                 'kh and kw should either both be even or both be odd numbers, '
                 f'but kh={self.kh} and kw={self.kw}.')
         assert self.stride_h == 1 or self.stride_h % 2 == 0
