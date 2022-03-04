@@ -410,17 +410,18 @@ class LCAConv(torch.nn.Module):
 
     def update(self, a, recon_error):
         ''' Updates the dictionary given the computed gradient '''
-        update = self.compute_update(a, recon_error)
-        times_active = self.compute_times_active_by_feature(a)
-        update *= (self.eta / times_active)
-        update = torch.clamp(update, min=-self.d_update_clip, 
-                             max=self.d_update_clip)
-        self.D += update
-        self.normalize_D()
-        if self.lr_schedule is not None:
-            self.eta = self.lr_schedule(self.forward_pass)
-        if self._check_forward_write():
-            self.write_tensors(['update'], [update])
+        with torch.no_grad():
+            update = self.compute_update(a, recon_error)
+            times_active = self.compute_times_active_by_feature(a)
+            update *= (self.eta / times_active)
+            update = torch.clamp(update, min=-self.d_update_clip,
+                                max=self.d_update_clip)
+            self.D.copy_(self.D + update)
+            self.normalize_D()
+            if self.lr_schedule is not None:
+                self.eta = self.lr_schedule(self.forward_pass)
+            if self._check_forward_write():
+                self.write_tensors(['update'], [update])
 
     def update_tau(self, tau):
         ''' Update LCA time constant with given decay factor '''
