@@ -54,9 +54,6 @@ class LCAConv(torch.nn.Module):
             for lca_iters iterations.
         d_update_clip (float): Dictionary updates will be clipped to
             [-d_update_clip, d_update_clip]. Default is no clipping.
-        dict_load_fpath (str): Path to the tensors.h5 file with at 
-            least 1 key starting with 'D_', which will be used to
-            load in the dictionary tensor from the latest ckpt.
         lr_schedule (function): Function which takes the training step
             as input and returns a value for eta.
         lca_write_step (int): How often to write out a_t, u_t, b_t,
@@ -76,10 +73,9 @@ class LCAConv(torch.nn.Module):
                  dtype=torch.float32, nonneg=False, track_metrics=True,
                  thresh_type='soft', samplewise_standardization=True,
                  tau_decay_factor=0.0, lca_tol=None, cudnn_benchmark=True,
-                 d_update_clip=np.inf, dict_load_fpath=None, lr_schedule=None,
-                 lca_write_step=None, req_grad=False, forward_write_step=None):
+                 d_update_clip=np.inf, lr_schedule=None, lca_write_step=None,
+                 req_grad=False, forward_write_step=None):
         self.d_update_clip = d_update_clip
-        self.dict_load_fpath = dict_load_fpath
         self.dtype = dtype 
         self.eta = eta 
         self.forward_pass = 1
@@ -338,21 +334,6 @@ class LCAConv(torch.nn.Module):
 
     def lateral_competition(self, a, G):
         return F.conv3d(a, G, stride=1, padding=self.surround)
-
-    def load_weight_tensor(self):
-        ''' Loads in dictionary from latest ckpt in result file '''
-        self.create_weight_tensor()
-        with h5py.File(self.dict_load_fpath, 'r') as h5f:
-            h5keys = list(h5f.keys())
-            last_ckpt = sorted([key for key in h5keys if 'D_' in key],
-                               key=lambda key : int(key.split('_')[-2]))[-1]
-            dict = h5f[last_ckpt][()]
-            assert dict.shape == self.D.shape 
-            self.D = torch.from_numpy(dict).type(self.dtype)
-            self.normalize_D()
-            if (os.path.abspath(self.result_dir) == 
-                    os.path.split(os.path.abspath(self.dict_load_fpath))[0]):
-                self.forward_pass = int(last_ckpt.split('_')[-2]) + 1
 
     def normalize_D(self, eps=1e-6):
         ''' Normalizes features such at each one has unit norm '''
