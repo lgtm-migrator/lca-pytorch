@@ -415,7 +415,7 @@ class LCAConv(torch.nn.Module):
             times_active = self.compute_times_active_by_feature(a)
             update *= (self.eta / times_active)
             update = torch.clamp(update, min=-self.d_update_clip,
-                                max=self.d_update_clip)
+                                 max=self.d_update_clip)
             self.D.copy_(self.D + update)
             self.normalize_D()
             if self.lr_schedule is not None:
