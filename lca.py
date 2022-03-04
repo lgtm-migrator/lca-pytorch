@@ -78,7 +78,6 @@ class LCAConv(torch.nn.Module):
         self.d_update_clip = d_update_clip
         self.dtype = dtype 
         self.eta = eta 
-        self.forward_pass = 1
         self.forward_write_step = forward_write_step
         self.in_c = in_c 
         self.kernel_odd = True if kh % 2 != 0 else False
@@ -115,6 +114,7 @@ class LCAConv(torch.nn.Module):
         self.write_params(deepcopy(vars(self)))
         super(LCAConv, self).__init__()
         self.init_weight_tensor()
+        self.register_buffer('forward_pass', torch.tensor(1))
 
         if cudnn_benchmark and torch.backends.cudnn.enabled: 
             torch.backends.cudnn.benchmark = True
@@ -309,6 +309,7 @@ class LCAConv(torch.nn.Module):
         if self.samplewise_standardization:
             x = self.standardize_inputs(x)
         code, recon, recon_error = self.encode(x)
+        self.forward_pass += 1
         if self.return_recon:
             return code, recon, recon_error
         else:
@@ -423,7 +424,7 @@ class LCAConv(torch.nn.Module):
 
         obj_df = pd.DataFrame(tracker)
         obj_df['LCAIter'] = np.arange(1, len(obj_df) + 1, dtype=np.int32)
-        obj_df['ForwardPass'] = self.forward_pass
+        obj_df['ForwardPass'] = self.forward_pass.item()
         obj_df['Device'] = dev
         obj_df.to_csv(
             self.metric_fpath,
