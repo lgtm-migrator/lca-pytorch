@@ -32,6 +32,8 @@ class LCAConv(torch.nn.Module):
         eta (float): Learning rate for dictionary updates.
         lca_iters (int): Number of LCA timesteps per forward pass.
         pad ('same' or 'valid'): Input padding method.
+        return_recon (bool): If True, calling forward will return code,
+            recon, and input - recon. If False, will just return code.
         device (int, list, or 'cpu'): Device(s) to use.
         dtype (torch.dtype): Data type to use.
         nonneg (bool): True for rectified activations, False for 
@@ -70,7 +72,7 @@ class LCAConv(torch.nn.Module):
     '''
     def __init__(self, n_neurons, in_c, result_dir, kh=7, kw=7, kt=1,
                  stride_h=1, stride_w=1, stride_t=1, thresh=0.1, tau=1500,
-                 eta=1e-3, lca_iters=3000, pad='same',
+                 eta=1e-3, lca_iters=3000, pad='same', return_recon=False,
                  dtype=torch.float32, nonneg=False, track_metrics=True,
                  thresh_type='soft', samplewise_standardization=True,
                  tau_decay_factor=0.0, lca_tol=None, cudnn_benchmark=True,
@@ -99,6 +101,7 @@ class LCAConv(torch.nn.Module):
         self.pad = pad
         self.req_grad = req_grad
         self.result_dir = result_dir 
+        self.return_recon = return_recon
         self.samplewise_standardization = samplewise_standardization
         self.stride_h = stride_h
         self.stride_t = stride_t
@@ -316,11 +319,14 @@ class LCAConv(torch.nn.Module):
     def forward(self, x):
         if self.samplewise_standardization:
             x = self.standardize_inputs(x)
-        code, _, _ = self.encode(x)
+        code, recon, recon_error = self.encode(x)
         if self._check_forward_write():
             self.write_tensors(['D', 'input'], [self.D, x])
         self.forward_pass += 1
-        return code
+        if self.return_recon:
+            return code, recon, recon_error
+        else:
+            return code
 
     def hard_threshold(self, x):
         ''' Hard threshold transfer function '''
