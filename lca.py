@@ -206,12 +206,12 @@ class LCAConv(torch.nn.Module):
     def compute_l1_sparsity(self, acts):
         ''' Compute l1 sparsity term of objective function '''
         dims = tuple(range(1, len(acts.shape)))
-        return self.thresh * acts.norm(p=1, dim=dims).mean().item()
+        return self.thresh * acts.norm(p=1, dim=dims).mean()
 
     def compute_l2_error(self, error):
         ''' Compute l2 recon error term of objective function '''
         dims = tuple(range(1, len(error.shape)))
-        return 0.5 * (error.norm(p=2, dim=dims) ** 2).mean().item()
+        return 0.5 * (error.norm(p=2, dim=dims) ** 2).mean()
 
     def compute_lateral_connectivity(self, D):
         G = F.conv3d(D, D,
@@ -401,8 +401,8 @@ class LCAConv(torch.nn.Module):
 
     def update_tracks(self, tracks, lca_iter, a, recon_error, tau):
         ''' Update dictionary that stores the tracked metrics '''
-        l2_rec_err = self.compute_l2_error(recon_error)
-        l1_sparsity = self.compute_l1_sparsity(a)
+        l2_rec_err = self.compute_l2_error(recon_error).item()
+        l1_sparsity = self.compute_l1_sparsity(a).item()
         tracks['L2'][lca_iter - 1] = l2_rec_err
         tracks['L1'][lca_iter - 1] = l1_sparsity
         tracks['TotalEnergy'][lca_iter - 1] = l2_rec_err + l1_sparsity
