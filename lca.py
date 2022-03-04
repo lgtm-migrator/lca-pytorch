@@ -271,13 +271,6 @@ class LCAConv(torch.nn.Module):
             'Tau' : float_tracker.copy()
         }
 
-    def create_weight_tensor(self):
-        ''' Creates the dictionary D with random values '''
-        self.D = torch.randn(self.n_neurons, self.in_c, self.kt, self.kh,
-                             self.kw, dtype=self.dtype)
-        self.D[:, :, 1:] = 0.0
-        self.normalize_D()
-
     def encode(self, x):
         ''' Computes sparse code given data x and dictionary D '''
         b_t = self.compute_input_drive(x, self.D)
@@ -337,10 +330,10 @@ class LCAConv(torch.nn.Module):
                     - F.threshold(-x, self.thresh, 0.0))
 
     def init_weight_tensor(self):
-        if self.dict_load_fpath is None:
-            self.create_weight_tensor()
-        else:
-            self.load_weight_tensor()
+        self.D = torch.randn(self.n_neurons, self.in_c, self.kt, self.kh,
+                             self.kw, dtype=self.dtype)
+        self.D[:, :, 1:] = 0.0
+        self.normalize_D()
         self.D = torch.nn.Parameter(self.D, requires_grad=self.req_grad)
 
     def lateral_competition(self, a, G):
