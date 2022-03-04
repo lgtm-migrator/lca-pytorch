@@ -361,11 +361,12 @@ class LCAConv(torch.nn.Module):
                     os.path.split(os.path.abspath(self.dict_load_fpath))[0]):
                 self.forward_pass = int(last_ckpt.split('_')[-2]) + 1
 
-    def normalize_D(self, eps=1e-12):
+    def normalize_D(self, eps=1e-6):
         ''' Normalizes features such at each one has unit norm '''
-        dims = tuple(range(1, len(self.D.shape)))
-        scale = self.D.norm(p=2, dim=dims, keepdim=True)
-        self.D = self.D / (scale + eps)
+        with torch.no_grad():
+            dims = tuple(range(1, len(self.D.shape)))
+            scale = self.D.norm(p=2, dim=dims, keepdim=True)
+            self.D.copy_(self.D / (scale + eps))
 
     def soft_threshold(self, x):
         ''' Soft threshold transfer function '''
