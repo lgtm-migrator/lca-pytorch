@@ -1,3 +1,4 @@
+from copy import deepcopy
 import json
 import os
 
@@ -7,10 +8,8 @@ import pandas as pd
 import torch 
 import torch.nn.functional as F
 
-from lcapt.utils import ptmultiproc
 
-
-class LCAConvBase:
+class LCAConv(torch.nn.Module):
     '''
     Base class for LCA models.
 
@@ -20,11 +19,21 @@ class LCAConvBase:
         result_dir (str): Path to dir where results will be saved.
 
     Optional Args:
+        kh (int): Kernel height of the convolutional features.
+        kw (int): Kernel width of the convolutional features.
+        kt (int): Kernel depth of the convolutional features. For 1D
+            (e.g. raw audio) or 2D (e.g. images) inputs, keep this at
+            the default of 1.
+        stride_h (int): Vertical stride of each feature.
+        stride_w (int): Horizontal stride of each feature.
+        stride_t (int): Stride in depth (time) of each feature.
         thresh (float): Threshold for the LCA transfer function.
         tau (int): LCA time constant. 
         eta (float): Learning rate for dictionary updates.
         lca_iters (int): Number of LCA timesteps per forward pass.
         pad ('same' or 'valid'): Input padding method.
+        return_recon (bool): If True, calling forward will return code,
+            recon, and input - recon. If False, will just return code.
         device (int, list, or 'cpu'): Device(s) to use.
         dtype (torch.dtype): Data type to use.
         nonneg (bool): True for rectified activations, False for 
@@ -45,68 +54,70 @@ class LCAConvBase:
             for lca_iters iterations.
         d_update_clip (float): Dictionary updates will be clipped to
             [-d_update_clip, d_update_clip]. Default is no clipping.
-        dict_load_fpath (str): Path to the tensors.h5 file with at 
-            least 1 key starting with 'D_', which will be used to
-            load in the dictionary tensor from the latest ckpt.
         lr_schedule (function): Function which takes the training step
             as input and returns a value for eta.
-        keep_solution (bool): If True, the LCA membrane potentials 
-            for training batch i will be initialized with those found
-            on training batch i-1. This can sometimes allows for faster
-            convergence when iterating sequentially over video data.
         lca_write_step (int): How often to write out a_t, u_t, b_t,
             recon, and recon_error within a single LCA loop. If None,
             these will not be written to disk.
+        req_grad (bool): If True, dictionary D will have
+            requires_grad set to True. Otherwise, it will be False.
+            This is useful for propagating gradient through the LCA
+            layer (e.g. for adversarial attacks).
         forward_write_step (int): How often to write out dictionary,
             input, and dictionary update. If None, these will not be
             written to disk.
-        reinit_u_every_n (int): How often, in terms of the number of
-            forward passes, to reinitialize the membrane potentials
-            if keep_solution is True. Default is to never reinitialize
-            them. Only used if keep_solution is True.
     '''
-    def __init__(self, n_neurons, in_c, result_dir, thresh=0.1, tau=1500, 
-                 eta=1e-3, lca_iters=3000, pad='same', device='cpu',
+    def __init__(self, n_neurons, in_c, result_dir, kh=7, kw=7, kt=1,
+                 stride_h=1, stride_w=1, stride_t=1, thresh=0.1, tau=1500,
+                 eta=1e-3, lca_iters=3000, pad='same', return_recon=False,
                  dtype=torch.float32, nonneg=False, track_metrics=True,
                  thresh_type='soft', samplewise_standardization=True,
                  tau_decay_factor=0.0, lca_tol=None, cudnn_benchmark=True,
-                 d_update_clip=np.inf, dict_load_fpath=None, lr_schedule=None,
-                 keep_solution=False, lca_write_step=None,
-                 forward_write_step=None, reinit_u_every_n=None):
+                 d_update_clip=np.inf, lr_schedule=None, lca_write_step=None,
+                 req_grad=False, forward_write_step=None):
         self.d_update_clip = d_update_clip
-        self.device = self._get_device(device) 
-        self.dict_load_fpath = dict_load_fpath
         self.dtype = dtype 
         self.eta = eta 
-        self.forward_pass = 1
         self.forward_write_step = forward_write_step
         self.in_c = in_c 
-        self.keep_solution = keep_solution
+        self.kernel_odd = True if kh % 2 != 0 else False
+        self.kh = kh
+        self.kt = kt
+        self.kw = kw
         self.lca_iters = lca_iters 
         self.lca_tol = lca_tol
         self.lca_warmup = tau // 10 + 100
         self.lca_write_step = lca_write_step
         if lr_schedule is not None: assert callable(lr_schedule)
         self.lr_schedule = lr_schedule
-        self.main_dev = 'cpu'
+        self.metric_fpath = os.path.join(result_dir, 'metrics.xz')
         self.n_neurons = n_neurons 
         self.nonneg = nonneg 
         self.pad = pad
-        self.reinit_u_every_n = reinit_u_every_n
+        self.req_grad = req_grad
         self.result_dir = result_dir 
+        self.return_recon = return_recon
         self.samplewise_standardization = samplewise_standardization
+        self.stride_h = stride_h
+        self.stride_t = stride_t
+        self.stride_w = stride_w
         self.tau = tau 
         self.tau_decay_factor = tau_decay_factor
+        self.tensor_write_fpath = os.path.join(result_dir, 'tensors.h5')
         self.thresh = thresh 
         self.thresh_type = thresh_type
         self.track_metrics = track_metrics
 
+        self._check_conv_params()
+        self._compute_padding()
+        os.makedirs(self.result_dir, exist_ok=True)
+        self.write_params(deepcopy(vars(self)))
+        super(LCAConv, self).__init__()
+        self.init_weight_tensor()
+        self.register_buffer('forward_pass', torch.tensor(1))
+
         if cudnn_benchmark and torch.backends.cudnn.enabled: 
             torch.backends.cudnn.benchmark = True
-
-        os.makedirs(self.result_dir, exist_ok=True)
-        self.metric_fpath = os.path.join(self.result_dir, 'metrics.xz')
-        self.tensor_write_fpath = os.path.join(self.result_dir, 'tensors.h5')
 
     def _check_lca_write(self, lca_iter):
         ''' Checks whether to write LCA tensors at a given LCA iter '''
@@ -127,15 +138,106 @@ class LCAConvBase:
                 write = True
         return write
 
+    def _check_conv_params(self):
+        assert ((self.kh % 2 != 0 and self.kw % 2 != 0)
+                or (self.kh % 2 == 0 and self.kw % 2 == 0)), (
+                'kh and kw should either both be even or both be odd numbers, '
+                f'but kh={self.kh} and kw={self.kw}.')
+        assert self.stride_h == 1 or self.stride_h % 2 == 0
+        assert self.stride_w == 1 or self.stride_w % 2 == 0
+
+    def _compute_inhib_pad(self):
+        ''' Computes padding for compute_lateral_connectivity '''
+        self.lat_conn_pad = [0]
+
+        if self.kernel_odd or self.stride_h == 1:
+            self.lat_conn_pad.append((self.kh - 1)
+                                     // self.stride_h
+                                     * self.stride_h)
+        else:
+            self.lat_conn_pad.append(self.kh - self.stride_h)
+
+        if self.kernel_odd or self.stride_w == 1:
+            self.lat_conn_pad.append((self.kw - 1)
+                                     // self.stride_w
+                                     * self.stride_w)
+        else:
+            self.lat_conn_pad.append(self.kw - self.stride_w)
+
+        self.lat_conn_pad = tuple(self.lat_conn_pad)
+
+    def _compute_input_pad(self):
+        ''' Computes padding for forward convolution '''
+        if self.pad == 'same':
+            if self.kernel_odd:
+                self.input_pad = (0, (self.kh - 1) // 2, (self.kw - 1) // 2)
+            else:
+                raise NotImplementedError(
+                    "Even kh and kw implemented only for 'valid' padding.")
+        elif self.pad == 'valid':
+            self.input_pad = (0, 0, 0)
+        else:
+            raise ValueError("Values for pad can either be 'same' or 'valid', "
+                             f"but got {self.pad}.")
+
+    def _compute_padding(self):
+        self._compute_input_pad()
+        self._compute_inhib_pad()
+        self._compute_recon_pad()
+
+    def _compute_recon_pad(self):
+        ''' Computes output padding for recon conv transpose '''
+        if self.kernel_odd:
+            self.recon_output_pad = (0, self.stride_h - 1, self.stride_w - 1)
+        else:
+            self.recon_output_pad = (0, 0, 0)
+
     def compute_frac_active(self, a):
         ''' Computes the number of active neurons relative to the total
             number of neurons '''
         return (a != 0.0).float().mean().item()
 
+    def compute_input_drive(self, x, D):
+        assert x.shape[2] == self.kt
+        return F.conv3d(x, D,
+                        stride=(self.stride_t, self.stride_h, self.stride_w),
+                        padding=self.input_pad)
+
+    def compute_l1_sparsity(self, acts):
+        ''' Compute l1 sparsity term of objective function '''
+        dims = tuple(range(1, len(acts.shape)))
+        return self.thresh * acts.norm(p=1, dim=dims).mean()
+
+    def compute_l2_error(self, error):
+        ''' Compute l2 recon error term of objective function '''
+        dims = tuple(range(1, len(error.shape)))
+        return 0.5 * (error.norm(p=2, dim=dims) ** 2).mean()
+
+    def compute_lateral_connectivity(self, D):
+        G = F.conv3d(D, D,
+                     stride=(self.stride_t, self.stride_h, self.stride_w),
+                     padding=self.lat_conn_pad)
+        if not hasattr(self, 'surround'):
+            self.compute_n_surround(G)
+        return G
+
     def compute_n_surround(self, G):
         ''' Computes the number of surround neurons for each dim '''
         G_shp = G.shape[2:]
         self.surround = tuple([int(np.ceil((dim - 1) / 2)) for dim in G_shp])
+
+    def compute_perc_change(self, curr, prev):
+        ''' Computes percent change of a value from t-1 to t '''
+        return abs((curr - prev) / prev)
+
+    def compute_recon(self, a, D):
+        ''' Computes reconstruction given code '''
+        return F.conv_transpose3d(
+            a,
+            D,
+            stride=(self.stride_t, self.stride_h, self.stride_w),
+            padding=self.input_pad,
+            output_padding=self.recon_output_pad)
 
     def compute_times_active_by_feature(self, x):
         ''' Computes number of active coefficients per feature '''
@@ -144,22 +246,15 @@ class LCAConvBase:
         times_active = (x != 0).float().sum(dim=dims) + 1
         return times_active.reshape((x.shape[1],) + (1,) * len(dims))
 
-    def compute_l1_sparsity(self, acts):
-        ''' Compute l1 sparsity term of objective function '''
-        dims = tuple(range(1, len(acts.shape)))
-        return self.thresh * acts.norm(p=1, dim=dims).mean().item()
-
-    def compute_l2_error(self, error):
-        ''' Compute l2 recon error term of objective function '''
-        dims = tuple(range(1, len(error.shape)))
-        return 0.5 * (error.norm(p=2, dim=dims) ** 2).mean().item()
-
-    def compute_perc_change(self, curr, prev):
-        ''' Computes percent change of a value from t-1 to t '''
-        return abs((curr - prev) / prev)
-
-    def _copy_dict_to_devs(self):
-        return [self.D.clone() for _ in self.device]
+    def compute_update(self, a, error):
+        error = F.pad(error, (self.input_pad[2], self.input_pad[2],
+                              self.input_pad[1], self.input_pad[1],
+                              self.input_pad[0], self.input_pad[0]
+            ))
+        error = error.unfold(-3, self.kt, self.stride_t)
+        error = error.unfold(-3, self.kh, self.stride_h)
+        error = error.unfold(-3, self.kw, self.stride_w)
+        return torch.tensordot(a, error, dims=([0, 2, 3, 4], [0, 2, 3, 4]))
 
     def create_trackers(self):
         ''' Create placeholders to store different metrics '''
@@ -172,30 +267,28 @@ class LCAConvBase:
             'Tau' : float_tracker.copy()
         }
 
-    def encode(self, x, u_t, dev):
+    def encode(self, x):
         ''' Computes sparse code given data x and dictionary D '''
-        x, D, u_t = x.to(dev), self.D.to(dev, copy=True), u_t.to(dev)
-        b_t = self.compute_input_drive(x, D) 
-        G = self.compute_lateral_connectivity(D)
+        b_t = self.compute_input_drive(x, self.D)
+        u_t = torch.zeros_like(b_t, requires_grad=self.req_grad)
+        G = self.compute_lateral_connectivity(self.D)
         tau = self.tau
 
         for lca_iter in range(1, self.lca_iters + 1):
             a_t = self.threshold(u_t)
             inhib = self.lateral_competition(a_t, G)
-            u_t += (1 / tau) * (b_t - u_t - inhib + a_t)
+            u_t = u_t + (1 / tau) * (b_t - u_t - inhib + a_t)
 
             if (self.track_metrics 
                     or lca_iter == self.lca_iters
                     or self.lca_tol is not None
                     or self._check_lca_write(lca_iter)):
-                recon = self.compute_recon(a_t, D)
+                recon = self.compute_recon(a_t, self.D)
                 recon_error = x - recon
                 if self._check_lca_write(lca_iter):
                     self.write_tensors(
                         ['a', 'b', 'u', 'recon', 'recon_error'],
-                        [a_t, b_t, u_t, recon, recon_error], dev,
-                        lca_iter=lca_iter
-                    )
+                        [a_t, b_t, u_t, recon, recon_error], lca_iter)
                 if self.track_metrics or self.lca_tol is not None:
                     if lca_iter == 1:
                         tracks = self.create_trackers()
@@ -209,38 +302,18 @@ class LCAConvBase:
             tau = self.update_tau(tau) 
 
         if self.track_metrics:
-            self.write_tracks(tracks, lca_iter, dev)
-        return a_t.cpu(), recon_error.cpu(), recon.cpu(), u_t.clone().cpu()
+            self.write_tracks(tracks, lca_iter, x.device.index)
+        return a_t, recon, recon_error
 
     def forward(self, x):
         if self.samplewise_standardization:
             x = self.standardize_inputs(x)
-        u_t = self._init_u(
-            self.compute_input_drive(x.to(self.main_dev), self.D))
-        mp_out = ptmultiproc(self.encode, ['x', 'u_t', 'dev'],
-                             len(self.device),
-                             x=self._split_batch_across_devs(x),
-                             u_t=self._split_batch_across_devs(u_t),
-                             dev=self.device)
-        code, recon_error, recon, self.u_t = self._parse_mp_outputs(mp_out)
-        if self._check_forward_write():
-            self.write_tensors(['D', 'input'], [self.D, x], self.main_dev)
+        code, recon, recon_error = self.encode(x)
         self.forward_pass += 1
-        return code, recon, recon_error
-
-    def _get_device(self, device):
-        if type(device) == int:
-            assert device in range(torch.cuda.device_count())
-            return [device]
-        elif type(device) == list:
-            n_devs = torch.cuda.device_count()
-            assert all([dev in range(n_devs) for dev in device])
-            return device 
-        elif device in ['cpu', None]:
-            return ['cpu']
+        if self.return_recon:
+            return code, recon, recon_error
         else:
-            raise ValueError(
-                f'device should be int or list, not {type(device).__name__}.')
+            return code
 
     def hard_threshold(self, x):
         ''' Hard threshold transfer function '''
@@ -250,53 +323,22 @@ class LCAConvBase:
             return (F.threshold(x, self.thresh, 0.0) 
                     - F.threshold(-x, self.thresh, 0.0))
 
-    def _init_u(self, b_t):
-        ''' Initialize the membrane potentials u(t) '''
-        if self.keep_solution:
-            if hasattr(self, 'u_t'):
-                if self.reinit_u_every_n is None:
-                    return self.u_t
-                else:
-                    if (self.forward_pass - 1) % self.reinit_u_every_n == 0:
-                        return torch.zeros_like(b_t)
-                    else:
-                        return self.u_t
-            else:
-                return torch.zeros_like(b_t)
-        else:
-            return torch.zeros_like(b_t)
-
     def init_weight_tensor(self):
-        if self.dict_load_fpath is None:
-            self.create_weight_tensor()
-        else:
-            self.load_weight_tensor()
+        self.D = torch.randn(self.n_neurons, self.in_c, self.kt, self.kh,
+                             self.kw, dtype=self.dtype)
+        self.D[:, :, 1:] = 0.0
+        self.normalize_D()
+        self.D = torch.nn.Parameter(self.D, requires_grad=self.req_grad)
 
-    def load_weight_tensor(self):
-        ''' Loads in dictionary from latest ckpt in result file '''
-        self.create_weight_tensor()
-        with h5py.File(self.dict_load_fpath, 'r') as h5f:
-            h5keys = list(h5f.keys())
-            last_ckpt = sorted([key for key in h5keys if 'D_' in key],
-                               key=lambda key : int(key.split('_')[-2]))[-1]
-            dict = h5f[last_ckpt][()]
-            assert dict.shape == self.D.shape 
-            self.D = torch.from_numpy(dict).type(self.dtype).to(self.main_dev)
-            self.normalize_D()
-            if (os.path.abspath(self.result_dir) == 
-                    os.path.split(os.path.abspath(self.dict_load_fpath))[0]):
-                self.forward_pass = int(last_ckpt.split('_')[-2]) + 1
+    def lateral_competition(self, a, G):
+        return F.conv3d(a, G, stride=1, padding=self.surround)
 
-    def normalize_D(self, eps=1e-12):
+    def normalize_D(self, eps=1e-6):
         ''' Normalizes features such at each one has unit norm '''
-        dims = tuple(range(1, len(self.D.shape)))
-        scale = self.D.norm(p=2, dim=dims, keepdim=True)
-        self.D = self.D / (scale + eps)
-
-    def _parse_mp_outputs(self, mp_out):
-        ''' Combines mp outputs into single tensors on same device '''
-        mp_out = [torch.cat([out[i] for out in mp_out]) for i in range(4)]
-        return [out.to(self.main_dev) for out in mp_out]
+        with torch.no_grad():
+            dims = tuple(range(1, len(self.D.shape)))
+            scale = self.D.norm(p=2, dim=dims, keepdim=True)
+            self.D.copy_(self.D / (scale + eps))
 
     def soft_threshold(self, x):
         ''' Soft threshold transfer function '''
@@ -304,13 +346,6 @@ class LCAConvBase:
             return F.relu(x - self.thresh)
         else:
             return F.relu(x - self.thresh) - F.relu(-x - self.thresh)
-
-    def _split_batch_across_devs(self, batch):
-        ''' Splits up a batch of inputs across specified devices '''
-        bs = batch.shape[0]
-        bs_per_dev = bs // len(self.device)
-        return [batch[ind : ind + bs_per_dev].clone()
-                for ind in range(0, bs, bs_per_dev)]
 
     def standardize_inputs(self, batch, eps=1e-12):
         ''' Standardize each sample in x '''
@@ -347,17 +382,18 @@ class LCAConvBase:
 
     def update(self, a, recon_error):
         ''' Updates the dictionary given the computed gradient '''
-        update = self.compute_update(a, recon_error)
-        times_active = self.compute_times_active_by_feature(a)
-        update *= (self.eta / times_active)
-        update = torch.clamp(update, min=-self.d_update_clip, 
-                             max=self.d_update_clip)
-        self.D += update
-        self.normalize_D()
-        if self.lr_schedule is not None:
-            self.eta = self.lr_schedule(self.forward_pass)
-        if self._check_forward_write():
-            self.write_tensors(['update'], [update], self.main_dev)
+        with torch.no_grad():
+            update = self.compute_update(a, recon_error)
+            times_active = self.compute_times_active_by_feature(a)
+            update *= (self.eta / times_active)
+            update = torch.clamp(update, min=-self.d_update_clip,
+                                 max=self.d_update_clip)
+            self.D.copy_(self.D + update)
+            self.normalize_D()
+            if self.lr_schedule is not None:
+                self.eta = self.lr_schedule(self.forward_pass)
+            if self._check_forward_write():
+                self.write_tensors(['update'], [update])
 
     def update_tau(self, tau):
         ''' Update LCA time constant with given decay factor '''
@@ -365,8 +401,8 @@ class LCAConvBase:
 
     def update_tracks(self, tracks, lca_iter, a, recon_error, tau):
         ''' Update dictionary that stores the tracked metrics '''
-        l2_rec_err = self.compute_l2_error(recon_error)
-        l1_sparsity = self.compute_l1_sparsity(a)
+        l2_rec_err = self.compute_l2_error(recon_error).item()
+        l1_sparsity = self.compute_l1_sparsity(a).item()
         tracks['L2'][lca_iter - 1] = l2_rec_err
         tracks['L1'][lca_iter - 1] = l1_sparsity
         tracks['TotalEnergy'][lca_iter - 1] = l2_rec_err + l1_sparsity
@@ -388,20 +424,18 @@ class LCAConvBase:
 
         obj_df = pd.DataFrame(tracker)
         obj_df['LCAIter'] = np.arange(1, len(obj_df) + 1, dtype=np.int32)
-        obj_df['ForwardPass'] = self.forward_pass
+        obj_df['ForwardPass'] = self.forward_pass.item()
         obj_df['Device'] = dev
         obj_df.to_csv(
             self.metric_fpath,
             header=True if not os.path.isfile(self.metric_fpath) else False,
             index=False,
-            mode='a'
-        )
+            mode='a')
 
-    def write_tensors(self, keys, tensors, dev, lca_iter=0):
+    def write_tensors(self, keys, tensors, lca_iter=0):
         ''' Writes out tensors to a HDF5 file. '''
         with h5py.File(self.tensor_write_fpath, 'a') as h5file:
             for key, tensor in zip(keys, tensors):
                 h5file.create_dataset(
-                    f'{key}_{dev}_{self.forward_pass}_{lca_iter}',
-                    data=tensor.cpu().numpy()
-                )
+                    f'{key}_{self.forward_pass}_{lca_iter}',
+                    data=tensor.cpu().numpy())
