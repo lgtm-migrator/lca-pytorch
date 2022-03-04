@@ -309,9 +309,6 @@ class LCAConv(torch.nn.Module):
         if self.samplewise_standardization:
             x = self.standardize_inputs(x)
         code, recon, recon_error = self.encode(x)
-        if self._check_forward_write():
-            self.write_tensors(['D', 'input'], [self.D, x])
-        self.forward_pass += 1
         if self.return_recon:
             return code, recon, recon_error
         else:
