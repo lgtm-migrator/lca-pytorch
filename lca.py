@@ -10,6 +10,7 @@ import torch
 import torch.nn.functional as F
 
 
+Parameter = torch.nn.parameter.Parameter
 Tensor = torch.Tensor
 
 
@@ -258,7 +259,8 @@ class LCAConv(torch.nn.Module):
         ''' Computes percent change of a value from t-1 to t '''
         return abs((curr - prev) / prev)
 
-    def compute_recon(self, acts: Tensor, weights: Tensor) -> Tensor:
+    def compute_recon(self, acts: Tensor,
+                      weights: Union[Tensor, Parameter]) -> Tensor:
         ''' Computes reconstruction given code '''
         return F.conv_transpose3d(
             acts,
