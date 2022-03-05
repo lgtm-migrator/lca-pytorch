@@ -1,7 +1,7 @@
 from copy import deepcopy
 import json
 import os
-from typing import Optional, Union
+from typing import Callable, Optional, Union
 
 import h5py
 import numpy as np
