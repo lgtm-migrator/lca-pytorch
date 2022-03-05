@@ -1,7 +1,7 @@
 from copy import deepcopy
-import json
 import os
 from typing import Callable, Optional, Union
+import yaml
 
 import h5py
 import numpy as np
@@ -448,8 +448,8 @@ class LCAConv(torch.nn.Module):
         del arg_dict['lr_schedule']
         if callable(self.transfer_func):
             arg_dict['transfer_func'] = self.transfer_func.__name__
-        with open(os.path.join(self.result_dir, 'params.json'), 'w+') as jsonf:
-            json.dump(arg_dict, jsonf, indent=4, sort_keys=True)
+        with open(os.path.join(self.result_dir, 'params.yaml'), 'w') as yamlf:
+            yaml.dump(arg_dict, yamlf, sort_keys=True)
 
     def write_tracks(self, tracker, ts_cutoff, dev):
         ''' Write out objective values to file '''
