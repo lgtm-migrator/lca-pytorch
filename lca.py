@@ -416,7 +416,7 @@ class LCAConv(torch.nn.Module):
         ''' Updates the dictionary given the computed gradient '''
         with torch.no_grad():
             update = self.compute_update(acts, recon_error)
-            times_active = self.compute_times_active_by_feature(a) + 1
+            times_active = self.compute_times_active_by_feature(acts) + 1
             update *= (self.eta / times_active)
             update = torch.clamp(update, min=-self.d_update_clip,
                                  max=self.d_update_clip)
