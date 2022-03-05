@@ -245,17 +245,18 @@ class LCAConv(torch.nn.Module):
 
     def compute_lateral_connectivity(
             self, weights: Union[Tensor, Parameter]) -> Tensor:
-        G = F.conv3d(weights, weights,
-                     stride=(self.stride_t, self.stride_h, self.stride_w),
-                     padding=self.lat_conn_pad)
+        conns = F.conv3d(weights, weights,
+                         stride=(self.stride_t, self.stride_h, self.stride_w),
+                         padding=self.lat_conn_pad)
         if not hasattr(self, 'surround'):
-            self.compute_n_surround(G)
-        return G
+            self.compute_n_surround(conns)
+        return conns
 
-    def compute_n_surround(self, G):
+    def compute_n_surround(self, conns):
         ''' Computes the number of surround neurons for each dim '''
-        G_shp = G.shape[2:]
-        self.surround = tuple([int(np.ceil((dim - 1) / 2)) for dim in G_shp])
+        conn_shp = conns.shape[2:]
+        self.surround = tuple(
+            [int(np.ceil((dim - 1) / 2)) for dim in conn_shp])
 
     def compute_perc_change(self, curr, prev):
         ''' Computes percent change of a value from t-1 to t '''
@@ -303,12 +304,12 @@ class LCAConv(torch.nn.Module):
         ''' Computes sparse code given data x and dictionary D '''
         input_drive = self.compute_input_drive(inputs, self.weights)
         states = torch.zeros_like(input_drive, requires_grad=self.req_grad)
-        G = self.compute_lateral_connectivity(self.weights)
+        connectivity = self.compute_lateral_connectivity(self.weights)
         tau = self.tau
 
         for lca_iter in range(1, self.lca_iters + 1):
             acts = self.transfer(states)
-            inhib = self.lateral_competition(acts, G)
+            inhib = self.lateral_competition(acts, connectivity)
             states = states + (1 / tau) * (input_drive - states - inhib + acts)
 
             if (self.track_metrics 
@@ -325,7 +326,7 @@ class LCAConv(torch.nn.Module):
                         'states': states,
                         'recon': recon,
                         'recon_error': recon_error,
-                        'lateral_connectivity': G
+                        'lateral_connectivity': connectivity
                     }, lca_iter)
                 if self.track_metrics or self.lca_tol is not None:
                     if lca_iter == 1:
@@ -369,8 +370,8 @@ class LCAConv(torch.nn.Module):
         self.weights = torch.nn.Parameter(weights, requires_grad=self.req_grad)
         self.normalize_weights()
 
-    def lateral_competition(self, acts, G):
-        return F.conv3d(acts, G, stride=1, padding=self.surround)
+    def lateral_competition(self, acts, conns):
+        return F.conv3d(acts, conns, stride=1, padding=self.surround)
 
     def normalize_weights(self, eps=1e-6):
         ''' Normalizes features such at each one has unit norm '''
