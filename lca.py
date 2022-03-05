@@ -71,21 +71,39 @@ class LCAConv(torch.nn.Module):
             input, and dictionary update. If None, these will not be
             written to disk.
     '''
-    def __init__(self, n_neurons: int, in_c: int, result_dir: str, kh: int = 7,
-                 kw: int = 7, kt: int = 1, stride_h: int = 1,
-                 stride_w: int = 1, stride_t: int = 1, lambda_: float = 0.1,
-                 tau: Union[float, int] = 1500, eta: float = 1e-3,
-                 lca_iters: int = 3000, pad: str = 'same',
-                 return_recon: bool = False, dtype: torch.dtype = torch.float32,
-                 nonneg: bool = False, track_metrics: bool = True,
-                 transfer_func: Union[
-                     str, Callable[[Tensor], Tensor]] = 'soft_threshold',
-                 samplewise_standardization: bool = True,
-                 tau_decay_factor: float = 0.0, lca_tol: Optional[float] = None,
-                 cudnn_benchmark: bool = True, d_update_clip: float = np.inf,
-                 lr_schedule: Optional[Callable[[int], float]] = None,
-                 lca_write_step: Optional[int] = None, req_grad: bool = False,
-                 forward_write_step: Optional[int] = None):
+    def __init__(
+        self,
+        n_neurons: int,
+        in_c: int,
+        result_dir: str,
+        kh: int = 7,
+        kw: int = 7,
+        kt: int = 1,
+        stride_h: int = 1,
+        stride_w: int = 1,
+        stride_t: int = 1,
+        lambda_: float = 0.25,
+        tau: Union[float, int] = 1000,
+        eta: float = 0.01,
+        lca_iters: int = 3000,
+        pad: str = 'same',
+        return_recon: bool = False,
+        dtype: torch.dtype = torch.float32,
+        nonneg: bool = True,
+        track_metrics: bool = False,
+        transfer_func: Union[
+            str, Callable[[Tensor], Tensor]] = 'soft_threshold',
+        samplewise_standardization: bool = True,
+        tau_decay_factor: float = 0.0,
+        lca_tol: Optional[float] = None,
+        cudnn_benchmark: bool = True,
+        d_update_clip: float = np.inf,
+        lr_schedule: Optional[Callable[[int], float]] = None,
+        lca_write_step: Optional[int] = None,
+        forward_write_step: Optional[int] = None,
+        req_grad: bool = False,
+    ) -> None:
+
         self.d_update_clip = d_update_clip
         self.dtype = dtype 
         self.eta = eta 
