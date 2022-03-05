@@ -78,7 +78,8 @@ class LCAConv(torch.nn.Module):
                  lca_iters: int = 3000, pad: str = 'same',
                  return_recon: bool = False, dtype: torch.dtype = torch.float32,
                  nonneg: bool = False, track_metrics: bool = True,
-                 thresh_type: str = 'soft',
+                 transfer_func: Union[
+                     str, Callable[[Tensor], Tensor]] = 'soft_threshold',
                  samplewise_standardization: bool = True,
                  tau_decay_factor: float = 0.0, lca_tol: Optional[float] = None,
                  cudnn_benchmark: bool = True, d_update_clip: float = np.inf,
@@ -115,8 +116,8 @@ class LCAConv(torch.nn.Module):
         self.tau = tau 
         self.tau_decay_factor = tau_decay_factor
         self.tensor_write_fpath = os.path.join(result_dir, 'tensors.h5')
-        self.thresh_type = thresh_type
         self.track_metrics = track_metrics
+        self.transfer_func = transfer_func
 
         self._check_conv_params()
         self._compute_padding()
@@ -386,9 +387,9 @@ class LCAConv(torch.nn.Module):
             return False
 
     def threshold(self, x: torch.Tensor) -> torch.Tensor:
-        if self.thresh_type == 'soft':
+        if self.transfer_func == 'soft_threshold':
             return self.soft_threshold(x)
-        elif self.thresh_type == 'hard': 
+        elif self.transfer_func == 'hard_threshold':
             return self.hard_threshold(x)
         else:
             raise ValueError
