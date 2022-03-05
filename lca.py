@@ -1,6 +1,6 @@
 from copy import deepcopy
 import os
-from typing import Callable, Optional, Union
+from typing import Any, Callable, Optional, Union
 import yaml
 
 import h5py
@@ -441,7 +441,9 @@ class LCAConv(torch.nn.Module):
         ''' Update LCA time constant with given decay factor '''
         return tau - tau * self.tau_decay_factor
 
-    def update_tracks(self, tracks, lca_iter, acts, recon_error, tau):
+    def update_tracks(self, tracks: dict[str, np.ndarray], lca_iter: int,
+                      acts: Tensor, recon_error: Tensor,
+                      tau: Union[int, float]) -> dict[str, np.ndarray]:
         ''' Update dictionary that stores the tracked metrics '''
         l2_rec_err = self.compute_l2_error(recon_error).item()
         l1_sparsity = self.compute_l1_sparsity(acts).item()
@@ -452,7 +454,7 @@ class LCAConv(torch.nn.Module):
         tracks['Tau'][lca_iter - 1] = tau
         return tracks
 
-    def write_params(self, arg_dict):
+    def write_params(self, arg_dict: dict[str, Any]) -> None:
         ''' Writes model params to file '''
         arg_dict['dtype'] = str(arg_dict['dtype'])
         del arg_dict['lr_schedule']
@@ -461,7 +463,8 @@ class LCAConv(torch.nn.Module):
         with open(os.path.join(self.result_dir, 'params.yaml'), 'w') as yamlf:
             yaml.dump(arg_dict, yamlf, sort_keys=True)
 
-    def write_tracks(self, tracker, ts_cutoff, dev):
+    def write_tracks(self, tracker: dict[str, np.ndarray], ts_cutoff: int,
+                     dev: Union[int, None]) -> None:
         ''' Write out objective values to file '''
         for k,v in tracker.items():
             tracker[k] = v[:ts_cutoff]
