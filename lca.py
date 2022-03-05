@@ -243,7 +243,7 @@ class LCAConv(torch.nn.Module):
         dims = tuple(range(1, len(error.shape)))
         return 0.5 * (error.norm(p=2, dim=dims) ** 2).mean()
 
-    def compute_lateral_connectivity(self, weights):
+    def compute_lateral_connectivity(self, weights: Union[Tensor, Parameter]) -> Tensor:
         G = F.conv3d(weights, weights,
                      stride=(self.stride_t, self.stride_h, self.stride_w),
                      padding=self.lat_conn_pad)
