@@ -153,9 +153,8 @@ class LCAConv(torch.nn.Module):
         write = False
         if self.lca_write_step is not None:
             if lca_iter % self.lca_write_step == 0:
-                if self.forward_write_step is not None:
-                    if self.forward_pass % self.forward_write_step == 0:
-                        write = True 
+                if self._check_forward_write():
+                    write = True
         return write
 
     def _check_forward_write(self):
