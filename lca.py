@@ -297,15 +297,15 @@ class LCAConv(torch.nn.Module):
 
     def encode(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor]:
         ''' Computes sparse code given data x and dictionary D '''
-        b_t = self.compute_input_drive(x, self.weights)
-        u_t = torch.zeros_like(b_t, requires_grad=self.req_grad)
+        input_drive = self.compute_input_drive(x, self.weights)
+        u_t = torch.zeros_like(input_drive, requires_grad=self.req_grad)
         G = self.compute_lateral_connectivity(self.weights)
         tau = self.tau
 
         for lca_iter in range(1, self.lca_iters + 1):
             acts = self.transfer(u_t)
             inhib = self.lateral_competition(acts, G)
-            u_t = u_t + (1 / tau) * (b_t - u_t - inhib + acts)
+            u_t = u_t + (1 / tau) * (input_drive - u_t - inhib + acts)
 
             if (self.track_metrics 
                     or lca_iter == self.lca_iters
@@ -315,8 +315,8 @@ class LCAConv(torch.nn.Module):
                 recon_error = x - recon
                 if self._check_lca_write(lca_iter):
                     self.write_tensors(
-                        ['acts', 'b', 'u', 'recon', 'recon_error'],
-                        [acts, b_t, u_t, recon, recon_error], lca_iter)
+                        ['acts', 'input_drive', 'u', 'recon', 'recon_error'],
+                        [acts, input_drive, u_t, recon, recon_error], lca_iter)
                 if self.track_metrics or self.lca_tol is not None:
                     if lca_iter == 1:
                         tracks = self.create_trackers()
