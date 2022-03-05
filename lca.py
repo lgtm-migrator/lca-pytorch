@@ -279,7 +279,7 @@ class LCAConv(torch.nn.Module):
         times_active = (acts != 0).float().sum(dim=dims)
         return times_active.reshape((acts.shape[1],) + (1,) * len(dims))
 
-    def compute_update(self, acts, error):
+    def compute_update(self, acts: Tensor, error: Tensor) -> Tensor:
         error = F.pad(error, (self.input_pad[2], self.input_pad[2],
                               self.input_pad[1], self.input_pad[1],
                               self.input_pad[0], self.input_pad[0]))
