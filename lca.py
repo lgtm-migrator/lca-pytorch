@@ -271,12 +271,12 @@ class LCAConv(torch.nn.Module):
             padding=self.input_pad,
             output_padding=self.recon_output_pad)
 
-    def compute_times_active_by_feature(self, x: Tensor) -> Tensor:
+    def compute_times_active_by_feature(self, acts: Tensor) -> Tensor:
         ''' Computes number of active coefficients per feature '''
-        dims = list(range(len(x.shape)))
+        dims = list(range(len(acts.shape)))
         dims.remove(1)
-        times_active = (x != 0).float().sum(dim=dims)
-        return times_active.reshape((x.shape[1],) + (1,) * len(dims))
+        times_active = (acts != 0).float().sum(dim=dims)
+        return times_active.reshape((acts.shape[1],) + (1,) * len(dims))
 
     def compute_update(self, acts, error):
         error = F.pad(error, (self.input_pad[2], self.input_pad[2],
