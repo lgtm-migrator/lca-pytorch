@@ -323,14 +323,16 @@ class LCAConv(torch.nn.Module):
                             'input_drive',
                             'states',
                             'recon',
-                            'recon_error'
+                            'recon_error',
+                            'inputs'
                         ],
                         [
                             acts,
                             input_drive,
                             states,
                             recon,
-                            recon_error
+                            recon_error,
+                            inputs
                         ], lca_iter)
                 if self.track_metrics or self.lca_tol is not None:
                     if lca_iter == 1:
