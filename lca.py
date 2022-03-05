@@ -282,8 +282,7 @@ class LCAConv(torch.nn.Module):
     def compute_update(self, acts, error):
         error = F.pad(error, (self.input_pad[2], self.input_pad[2],
                               self.input_pad[1], self.input_pad[1],
-                              self.input_pad[0], self.input_pad[0]
-            ))
+                              self.input_pad[0], self.input_pad[0]))
         error = error.unfold(-3, self.kt, self.stride_t)
         error = error.unfold(-3, self.kh, self.stride_h)
         error = error.unfold(-3, self.kw, self.stride_w)
