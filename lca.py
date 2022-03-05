@@ -287,7 +287,7 @@ class LCAConv(torch.nn.Module):
         tau = self.tau
 
         for lca_iter in range(1, self.lca_iters + 1):
-            a_t = self.threshold(u_t)
+            a_t = self.transfer(u_t)
             inhib = self.lateral_competition(a_t, G)
             u_t = u_t + (1 / tau) * (b_t - u_t - inhib + a_t)
 
@@ -386,13 +386,16 @@ class LCAConv(torch.nn.Module):
         else:
             return False
 
-    def threshold(self, x: torch.Tensor) -> torch.Tensor:
-        if self.transfer_func == 'soft_threshold':
-            return self.soft_threshold(x)
-        elif self.transfer_func == 'hard_threshold':
-            return self.hard_threshold(x)
-        else:
-            raise ValueError
+    def transfer(self, x: torch.Tensor) -> torch.Tensor:
+        if type(self.transfer_func) == str:
+            if self.transfer_func == 'soft_threshold':
+                return self.soft_threshold(x)
+            elif self.transfer_func == 'hard_threshold':
+                return self.hard_threshold(x)
+            else:
+                raise ValueError
+        elif callable(self.transfer_func):
+            return self.transfer_func(x)
 
     def update(self, a: torch.Tensor, recon_error: torch.Tensor) -> None:
         ''' Updates the dictionary given the computed gradient '''
@@ -428,6 +431,8 @@ class LCAConv(torch.nn.Module):
         ''' Writes model params to file '''
         arg_dict['dtype'] = str(arg_dict['dtype'])
         del arg_dict['lr_schedule']
+        if callable(self.transfer_func):
+            arg_dict['transfer_func'] = self.transfer_func.__name__
         with open(os.path.join(self.result_dir, 'params.json'), 'w+') as jsonf:
             json.dump(arg_dict, jsonf, indent=4, sort_keys=True)
 
