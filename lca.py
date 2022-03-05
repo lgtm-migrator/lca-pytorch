@@ -293,11 +293,11 @@ class LCAConv(torch.nn.Module):
         ''' Create placeholders to store different metrics '''
         float_tracker = np.zeros([self.lca_iters], dtype=np.float32)
         return {
-            'L1' : float_tracker.copy(),
-            'L2' : float_tracker.copy(),
-            'TotalEnergy' : float_tracker.copy(),
-            'FractionActive' : float_tracker.copy(),
-            'Tau' : float_tracker.copy()
+            'L1': float_tracker.copy(),
+            'L2': float_tracker.copy(),
+            'TotalEnergy': float_tracker.copy(),
+            'FractionActive': float_tracker.copy(),
+            'Tau': float_tracker.copy()
         }
 
     def encode(self, inputs: Tensor) -> tuple[Tensor, Tensor, Tensor]:
