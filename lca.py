@@ -252,7 +252,7 @@ class LCAConv(torch.nn.Module):
             self.compute_n_surround(conns)
         return conns
 
-    def compute_n_surround(self, conns):
+    def compute_n_surround(self, conns: Tensor) -> tuple:
         ''' Computes the number of surround neurons for each dim '''
         conn_shp = conns.shape[2:]
         self.surround = tuple(
@@ -370,7 +370,7 @@ class LCAConv(torch.nn.Module):
         self.weights = torch.nn.Parameter(weights, requires_grad=self.req_grad)
         self.normalize_weights()
 
-    def lateral_competition(self, acts, conns):
+    def lateral_competition(self, acts: Tensor, conns: Tensor) -> Tensor:
         return F.conv3d(acts, conns, stride=1, padding=self.surround)
 
     def normalize_weights(self, eps=1e-6):
