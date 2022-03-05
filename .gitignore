@@ -1,7 +1,1 @@
-cifar/
-*.gif
-
-LCA_Test/*
-*__pycache__/*
-*.zip 
-*.png
+__pycache__
