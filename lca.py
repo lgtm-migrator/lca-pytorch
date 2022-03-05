@@ -225,9 +225,9 @@ class LCAConv(torch.nn.Module):
             number of neurons '''
         return (a != 0.0).float().mean().item()
 
-    def compute_input_drive(self, x, D):
+    def compute_input_drive(self, x, weights):
         assert x.shape[2] == self.kt
-        return F.conv3d(x, D,
+        return F.conv3d(x, weights,
                         stride=(self.stride_t, self.stride_h, self.stride_w),
                         padding=self.input_pad)
 
@@ -241,8 +241,8 @@ class LCAConv(torch.nn.Module):
         dims = tuple(range(1, len(error.shape)))
         return 0.5 * (error.norm(p=2, dim=dims) ** 2).mean()
 
-    def compute_lateral_connectivity(self, D):
-        G = F.conv3d(D, D,
+    def compute_lateral_connectivity(self, weights):
+        G = F.conv3d(weights, weights,
                      stride=(self.stride_t, self.stride_h, self.stride_w),
                      padding=self.lat_conn_pad)
         if not hasattr(self, 'surround'):
@@ -258,11 +258,11 @@ class LCAConv(torch.nn.Module):
         ''' Computes percent change of a value from t-1 to t '''
         return abs((curr - prev) / prev)
 
-    def compute_recon(self, a: Tensor, D: Tensor) -> Tensor:
+    def compute_recon(self, a: Tensor, weights: Tensor) -> Tensor:
         ''' Computes reconstruction given code '''
         return F.conv_transpose3d(
             a,
-            D,
+            weights,
             stride=(self.stride_t, self.stride_h, self.stride_w),
             padding=self.input_pad,
             output_padding=self.recon_output_pad)
@@ -297,9 +297,9 @@ class LCAConv(torch.nn.Module):
 
     def encode(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor]:
         ''' Computes sparse code given data x and dictionary D '''
-        b_t = self.compute_input_drive(x, self.D)
+        b_t = self.compute_input_drive(x, self.weights)
         u_t = torch.zeros_like(b_t, requires_grad=self.req_grad)
-        G = self.compute_lateral_connectivity(self.D)
+        G = self.compute_lateral_connectivity(self.weights)
         tau = self.tau
 
         for lca_iter in range(1, self.lca_iters + 1):
@@ -311,7 +311,7 @@ class LCAConv(torch.nn.Module):
                     or lca_iter == self.lca_iters
                     or self.lca_tol is not None
                     or self._check_lca_write(lca_iter)):
-                recon = self.compute_recon(a_t, self.D)
+                recon = self.compute_recon(a_t, self.weights)
                 recon_error = x - recon
                 if self._check_lca_write(lca_iter):
                     self.write_tensors(
@@ -353,21 +353,21 @@ class LCAConv(torch.nn.Module):
                     - F.threshold(-x, self.lambda_, 0.0))
 
     def init_weight_tensor(self):
-        self.D = torch.randn(self.n_neurons, self.in_c, self.kt, self.kh,
-                             self.kw, dtype=self.dtype)
-        self.D[:, :, 1:] = 0.0
-        self.normalize_D()
-        self.D = torch.nn.Parameter(self.D, requires_grad=self.req_grad)
+        weights = torch.randn(self.n_neurons, self.in_c, self.kt, self.kh,
+                              self.kw, dtype=self.dtype)
+        weights[:, :, 1:] = 0.0
+        self.weights = torch.nn.Parameter(weights, requires_grad=self.req_grad)
+        self.normalize_weights()
 
     def lateral_competition(self, a, G):
         return F.conv3d(a, G, stride=1, padding=self.surround)
 
-    def normalize_D(self, eps=1e-6):
+    def normalize_weights(self, eps=1e-6):
         ''' Normalizes features such at each one has unit norm '''
         with torch.no_grad():
-            dims = tuple(range(1, len(self.D.shape)))
-            scale = self.D.norm(p=2, dim=dims, keepdim=True)
-            self.D.copy_(self.D / (scale + eps))
+            dims = tuple(range(1, len(self.weights.shape)))
+            scale = self.weights.norm(p=2, dim=dims, keepdim=True)
+            self.weights.copy_(self.weights / (scale + eps))
 
     def soft_threshold(self, x: Tensor) -> Tensor:
         ''' Soft threshold transfer function '''
@@ -420,8 +420,8 @@ class LCAConv(torch.nn.Module):
             update *= (self.eta / times_active)
             update = torch.clamp(update, min=-self.d_update_clip,
                                  max=self.d_update_clip)
-            self.D.copy_(self.D + update)
-            self.normalize_D()
+            self.weights.copy_(self.weights + update)
+            self.normalize_weights()
             if self.lr_schedule is not None:
                 self.eta = self.lr_schedule(self.forward_pass)
             if self._check_forward_write():
