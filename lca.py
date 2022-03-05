@@ -1,6 +1,6 @@
 from copy import deepcopy
 import os
-from typing import Callable, Optional, Union
+from typing import Any, Callable, Optional, Union
 import yaml
 
 import h5py
@@ -10,6 +10,7 @@ import torch
 import torch.nn.functional as F
 
 
+Parameter = torch.nn.parameter.Parameter
 Tensor = torch.Tensor
 
 
@@ -220,14 +221,15 @@ class LCAConv(torch.nn.Module):
         else:
             self.recon_output_pad = (0, 0, 0)
 
-    def compute_frac_active(self, a: Tensor) -> float:
+    def compute_frac_active(self, acts: Tensor) -> float:
         ''' Computes the number of active neurons relative to the total
             number of neurons '''
-        return (a != 0.0).float().mean().item()
+        return (acts != 0.0).float().mean().item()
 
-    def compute_input_drive(self, x, D):
-        assert x.shape[2] == self.kt
-        return F.conv3d(x, D,
+    def compute_input_drive(self, inputs: Tensor,
+                            weights: Union[Tensor, Parameter]) -> Tensor:
+        assert inputs.shape[2] == self.kt
+        return F.conv3d(inputs, weights,
                         stride=(self.stride_t, self.stride_h, self.stride_w),
                         padding=self.input_pad)
 
@@ -241,86 +243,94 @@ class LCAConv(torch.nn.Module):
         dims = tuple(range(1, len(error.shape)))
         return 0.5 * (error.norm(p=2, dim=dims) ** 2).mean()
 
-    def compute_lateral_connectivity(self, D):
-        G = F.conv3d(D, D,
-                     stride=(self.stride_t, self.stride_h, self.stride_w),
-                     padding=self.lat_conn_pad)
+    def compute_lateral_connectivity(
+            self, weights: Union[Tensor, Parameter]) -> Tensor:
+        conns = F.conv3d(weights, weights,
+                         stride=(self.stride_t, self.stride_h, self.stride_w),
+                         padding=self.lat_conn_pad)
         if not hasattr(self, 'surround'):
-            self.compute_n_surround(G)
-        return G
+            self.compute_n_surround(conns)
+        return conns
 
-    def compute_n_surround(self, G):
+    def compute_n_surround(self, conns: Tensor) -> tuple:
         ''' Computes the number of surround neurons for each dim '''
-        G_shp = G.shape[2:]
-        self.surround = tuple([int(np.ceil((dim - 1) / 2)) for dim in G_shp])
+        conn_shp = conns.shape[2:]
+        self.surround = tuple(
+            [int(np.ceil((dim - 1) / 2)) for dim in conn_shp])
 
     def compute_perc_change(self, curr, prev):
         ''' Computes percent change of a value from t-1 to t '''
         return abs((curr - prev) / prev)
 
-    def compute_recon(self, a: Tensor, D: Tensor) -> Tensor:
+    def compute_recon(self, acts: Tensor,
+                      weights: Union[Tensor, Parameter]) -> Tensor:
         ''' Computes reconstruction given code '''
         return F.conv_transpose3d(
-            a,
-            D,
+            acts,
+            weights,
             stride=(self.stride_t, self.stride_h, self.stride_w),
             padding=self.input_pad,
             output_padding=self.recon_output_pad)
 
-    def compute_times_active_by_feature(self, x: Tensor) -> Tensor:
+    def compute_times_active_by_feature(self, acts: Tensor) -> Tensor:
         ''' Computes number of active coefficients per feature '''
-        dims = list(range(len(x.shape)))
+        dims = list(range(len(acts.shape)))
         dims.remove(1)
-        times_active = (x != 0).float().sum(dim=dims)
-        return times_active.reshape((x.shape[1],) + (1,) * len(dims))
+        times_active = (acts != 0).float().sum(dim=dims)
+        return times_active.reshape((acts.shape[1],) + (1,) * len(dims))
 
-    def compute_update(self, a, error):
+    def compute_update(self, acts: Tensor, error: Tensor) -> Tensor:
         error = F.pad(error, (self.input_pad[2], self.input_pad[2],
                               self.input_pad[1], self.input_pad[1],
-                              self.input_pad[0], self.input_pad[0]
-            ))
+                              self.input_pad[0], self.input_pad[0]))
         error = error.unfold(-3, self.kt, self.stride_t)
         error = error.unfold(-3, self.kh, self.stride_h)
         error = error.unfold(-3, self.kw, self.stride_w)
-        return torch.tensordot(a, error, dims=([0, 2, 3, 4], [0, 2, 3, 4]))
+        return torch.tensordot(acts, error, dims=([0, 2, 3, 4], [0, 2, 3, 4]))
 
     def create_trackers(self):
         ''' Create placeholders to store different metrics '''
         float_tracker = np.zeros([self.lca_iters], dtype=np.float32)
         return {
-            'L1' : float_tracker.copy(),
-            'L2' : float_tracker.copy(),
-            'TotalEnergy' : float_tracker.copy(),
-            'FractionActive' : float_tracker.copy(),
-            'Tau' : float_tracker.copy()
+            'L1': float_tracker.copy(),
+            'L2': float_tracker.copy(),
+            'TotalEnergy': float_tracker.copy(),
+            'FractionActive': float_tracker.copy(),
+            'Tau': float_tracker.copy()
         }
 
-    def encode(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor]:
+    def encode(self, inputs: Tensor) -> tuple[Tensor, Tensor, Tensor]:
         ''' Computes sparse code given data x and dictionary D '''
-        b_t = self.compute_input_drive(x, self.D)
-        u_t = torch.zeros_like(b_t, requires_grad=self.req_grad)
-        G = self.compute_lateral_connectivity(self.D)
+        input_drive = self.compute_input_drive(inputs, self.weights)
+        states = torch.zeros_like(input_drive, requires_grad=self.req_grad)
+        connectivity = self.compute_lateral_connectivity(self.weights)
         tau = self.tau
 
         for lca_iter in range(1, self.lca_iters + 1):
-            a_t = self.transfer(u_t)
-            inhib = self.lateral_competition(a_t, G)
-            u_t = u_t + (1 / tau) * (b_t - u_t - inhib + a_t)
+            acts = self.transfer(states)
+            inhib = self.lateral_competition(acts, connectivity)
+            states = states + (1 / tau) * (input_drive - states - inhib + acts)
 
             if (self.track_metrics 
                     or lca_iter == self.lca_iters
                     or self.lca_tol is not None
                     or self._check_lca_write(lca_iter)):
-                recon = self.compute_recon(a_t, self.D)
-                recon_error = x - recon
+                recon = self.compute_recon(acts, self.weights)
+                recon_error = inputs - recon
                 if self._check_lca_write(lca_iter):
-                    self.write_tensors(
-                        ['a', 'b', 'u', 'recon', 'recon_error'],
-                        [a_t, b_t, u_t, recon, recon_error], lca_iter)
+                    self.write_tensors({
+                        'acts': acts,
+                        'input_drive': input_drive,
+                        'input': inputs,
+                        'states': states,
+                        'recon': recon,
+                        'recon_error': recon_error,
+                        'lateral_connectivity': connectivity
+                    }, lca_iter)
                 if self.track_metrics or self.lca_tol is not None:
                     if lca_iter == 1:
                         tracks = self.create_trackers()
-                    tracks = self.update_tracks(tracks, lca_iter, a_t,
+                    tracks = self.update_tracks(tracks, lca_iter, acts,
                                                 recon_error, tau)
                     if self.lca_tol is not None:
                         if lca_iter > self.lca_warmup:
@@ -330,19 +340,19 @@ class LCAConv(torch.nn.Module):
             tau = self.update_tau(tau) 
 
         if self.track_metrics:
-            self.write_tracks(tracks, lca_iter, x.device.index)
-        return a_t, recon, recon_error
+            self.write_tracks(tracks, lca_iter, inputs.device.index)
+        return acts, recon, recon_error
 
-    def forward(self, x: Tensor) -> Union[
+    def forward(self, inputs: Tensor) -> Union[
             Tensor, tuple[Tensor, Tensor, Tensor]]:
         if self.samplewise_standardization:
-            x = self.standardize_inputs(x)
-        code, recon, recon_error = self.encode(x)
+            inputs = self.standardize_inputs(inputs)
+        acts, recon, recon_error = self.encode(inputs)
         self.forward_pass += 1
         if self.return_recon:
-            return code, recon, recon_error
+            return acts, recon, recon_error
         else:
-            return code
+            return acts
 
     def hard_threshold(self, x: Tensor) -> Tensor:
         ''' Hard threshold transfer function '''
@@ -353,21 +363,21 @@ class LCAConv(torch.nn.Module):
                     - F.threshold(-x, self.lambda_, 0.0))
 
     def init_weight_tensor(self):
-        self.D = torch.randn(self.n_neurons, self.in_c, self.kt, self.kh,
-                             self.kw, dtype=self.dtype)
-        self.D[:, :, 1:] = 0.0
-        self.normalize_D()
-        self.D = torch.nn.Parameter(self.D, requires_grad=self.req_grad)
+        weights = torch.randn(self.n_neurons, self.in_c, self.kt, self.kh,
+                              self.kw, dtype=self.dtype)
+        weights[:, :, 1:] = 0.0
+        self.weights = torch.nn.Parameter(weights, requires_grad=self.req_grad)
+        self.normalize_weights()
 
-    def lateral_competition(self, a, G):
-        return F.conv3d(a, G, stride=1, padding=self.surround)
+    def lateral_competition(self, acts: Tensor, conns: Tensor) -> Tensor:
+        return F.conv3d(acts, conns, stride=1, padding=self.surround)
 
-    def normalize_D(self, eps=1e-6):
+    def normalize_weights(self, eps=1e-6):
         ''' Normalizes features such at each one has unit norm '''
         with torch.no_grad():
-            dims = tuple(range(1, len(self.D.shape)))
-            scale = self.D.norm(p=2, dim=dims, keepdim=True)
-            self.D.copy_(self.D / (scale + eps))
+            dims = tuple(range(1, len(self.weights.shape)))
+            scale = self.weights.norm(p=2, dim=dims, keepdim=True)
+            self.weights.copy_(self.weights / (scale + eps))
 
     def soft_threshold(self, x: Tensor) -> Tensor:
         ''' Soft threshold transfer function '''
@@ -412,37 +422,39 @@ class LCAConv(torch.nn.Module):
         elif callable(self.transfer_func):
             return self.transfer_func(x)
 
-    def update(self, a: Tensor, recon_error: Tensor) -> None:
+    def update(self, acts: Tensor, recon_error: Tensor) -> None:
         ''' Updates the dictionary given the computed gradient '''
         with torch.no_grad():
-            update = self.compute_update(a, recon_error)
-            times_active = self.compute_times_active_by_feature(a) + 1
+            update = self.compute_update(acts, recon_error)
+            times_active = self.compute_times_active_by_feature(acts) + 1
             update *= (self.eta / times_active)
             update = torch.clamp(update, min=-self.d_update_clip,
                                  max=self.d_update_clip)
-            self.D.copy_(self.D + update)
-            self.normalize_D()
+            self.weights.copy_(self.weights + update)
+            self.normalize_weights()
             if self.lr_schedule is not None:
                 self.eta = self.lr_schedule(self.forward_pass)
             if self._check_forward_write():
-                self.write_tensors(['update'], [update])
+                self.write_tensors({'weight_update': update})
 
-    def update_tau(self, tau):
+    def update_tau(self, tau: Union[int, float]) -> float:
         ''' Update LCA time constant with given decay factor '''
         return tau - tau * self.tau_decay_factor
 
-    def update_tracks(self, tracks, lca_iter, a, recon_error, tau):
+    def update_tracks(self, tracks: dict[str, np.ndarray], lca_iter: int,
+                      acts: Tensor, recon_error: Tensor,
+                      tau: Union[int, float]) -> dict[str, np.ndarray]:
         ''' Update dictionary that stores the tracked metrics '''
         l2_rec_err = self.compute_l2_error(recon_error).item()
-        l1_sparsity = self.compute_l1_sparsity(a).item()
+        l1_sparsity = self.compute_l1_sparsity(acts).item()
         tracks['L2'][lca_iter - 1] = l2_rec_err
         tracks['L1'][lca_iter - 1] = l1_sparsity
         tracks['TotalEnergy'][lca_iter - 1] = l2_rec_err + l1_sparsity
-        tracks['FractionActive'][lca_iter - 1] = self.compute_frac_active(a)
+        tracks['FractionActive'][lca_iter - 1] = self.compute_frac_active(acts)
         tracks['Tau'][lca_iter - 1] = tau
         return tracks
 
-    def write_params(self, arg_dict):
+    def write_params(self, arg_dict: dict[str, Any]) -> None:
         ''' Writes model params to file '''
         arg_dict['dtype'] = str(arg_dict['dtype'])
         del arg_dict['lr_schedule']
@@ -451,7 +463,8 @@ class LCAConv(torch.nn.Module):
         with open(os.path.join(self.result_dir, 'params.yaml'), 'w') as yamlf:
             yaml.dump(arg_dict, yamlf, sort_keys=True)
 
-    def write_tracks(self, tracker, ts_cutoff, dev):
+    def write_tracks(self, tracker: dict[str, np.ndarray], ts_cutoff: int,
+                     dev: Union[int, None]) -> None:
         ''' Write out objective values to file '''
         for k,v in tracker.items():
             tracker[k] = v[:ts_cutoff]
@@ -466,10 +479,11 @@ class LCAConv(torch.nn.Module):
             index=False,
             mode='a')
 
-    def write_tensors(self, keys, tensors, lca_iter=0):
+    def write_tensors(self, tensor_dict: dict[str, Tensor],
+                      lca_iter: int = 0) -> None:
         ''' Writes out tensors to a HDF5 file. '''
         with h5py.File(self.tensor_write_fpath, 'a') as h5file:
-            for key, tensor in zip(keys, tensors):
+            for name, tensor in tensor_dict.items():
                 h5file.create_dataset(
-                    f'{key}_{self.forward_pass}_{lca_iter}',
-                    data=tensor.cpu().numpy())
+                    f'{name}_{self.forward_pass}_{lca_iter}',
+                    data=tensor.detach().cpu().numpy())
