@@ -70,7 +70,7 @@ class LCAConv(torch.nn.Module):
     '''
     def __init__(self, n_neurons: int, in_c: int, result_dir: str, kh: int = 7,
                  kw: int = 7, kt: int = 1, stride_h: int = 1,
-                 stride_w: int = 1, stride_t: int = 1, thresh: float = 0.1,
+                 stride_w: int = 1, stride_t: int = 1, lambda_: float = 0.1,
                  tau: Union[float, int] = 1500, eta: float = 1e-3,
                  lca_iters: int = 3000, pad: str = 'same',
                  return_recon: bool = False, dtype: torch.dtype = torch.float32,
@@ -91,6 +91,7 @@ class LCAConv(torch.nn.Module):
         self.kh = kh
         self.kt = kt
         self.kw = kw
+        self.lambda_ = lambda_
         self.lca_iters = lca_iters 
         self.lca_tol = lca_tol
         self.lca_warmup = tau // 10 + 100
@@ -111,7 +112,6 @@ class LCAConv(torch.nn.Module):
         self.tau = tau 
         self.tau_decay_factor = tau_decay_factor
         self.tensor_write_fpath = os.path.join(result_dir, 'tensors.h5')
-        self.thresh = thresh 
         self.thresh_type = thresh_type
         self.track_metrics = track_metrics
 
@@ -213,7 +213,7 @@ class LCAConv(torch.nn.Module):
     def compute_l1_sparsity(self, acts: torch.Tensor) -> torch.Tensor:
         ''' Compute l1 sparsity term of objective function '''
         dims = tuple(range(1, len(acts.shape)))
-        return self.thresh * acts.norm(p=1, dim=dims).mean()
+        return self.lambda_ * acts.norm(p=1, dim=dims).mean()
 
     def compute_l2_error(self, error: torch.Tensor) -> torch.Tensor:
         ''' Compute l2 recon error term of objective function '''
@@ -327,10 +327,10 @@ class LCAConv(torch.nn.Module):
     def hard_threshold(self, x: torch.Tensor) -> torch.Tensor:
         ''' Hard threshold transfer function '''
         if self.nonneg:
-            return F.threshold(x, self.thresh, 0.0)
+            return F.threshold(x, self.lambda_, 0.0)
         else:
-            return (F.threshold(x, self.thresh, 0.0) 
-                    - F.threshold(-x, self.thresh, 0.0))
+            return (F.threshold(x, self.lambda_, 0.0) 
+                    - F.threshold(-x, self.lambda_, 0.0))
 
     def init_weight_tensor(self):
         self.D = torch.randn(self.n_neurons, self.in_c, self.kt, self.kh,
@@ -352,9 +352,9 @@ class LCAConv(torch.nn.Module):
     def soft_threshold(self, x: torch.Tensor) -> torch.Tensor:
         ''' Soft threshold transfer function '''
         if self.nonneg:
-            return F.relu(x - self.thresh)
+            return F.relu(x - self.lambda_)
         else:
-            return F.relu(x - self.thresh) - F.relu(-x - self.thresh)
+            return F.relu(x - self.lambda_) - F.relu(-x - self.lambda_)
 
     def standardize_inputs(self, batch: torch.Tensor,
             eps: float = 1e-6) -> torch.Tensor:
