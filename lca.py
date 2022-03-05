@@ -10,6 +10,9 @@ import torch
 import torch.nn.functional as F
 
 
+Tensor = torch.Tensor
+
+
 class LCAConv(torch.nn.Module):
     '''
     Base class for LCA models.
