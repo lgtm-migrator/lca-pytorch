@@ -484,10 +484,10 @@ class LCAConv(torch.nn.Module):
             index=False,
             mode='a')
 
-    def write_tensors(self, keys, tensors, lca_iter=0):
+    def write_tensors(self, tensor_dict, lca_iter=0):
         ''' Writes out tensors to a HDF5 file. '''
         with h5py.File(self.tensor_write_fpath, 'a') as h5file:
-            for key, tensor in zip(keys, tensors):
+            for name, tensor in tensor_dict.items():
                 h5file.create_dataset(
-                    f'{key}_{self.forward_pass}_{lca_iter}',
-                    data=tensor.cpu().numpy())
+                    f'{name}_{self.forward_pass}_{lca_iter}',
+                    data=tensor.detach().cpu().numpy())
