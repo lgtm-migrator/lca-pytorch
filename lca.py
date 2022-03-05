@@ -315,8 +315,20 @@ class LCAConv(torch.nn.Module):
                 recon_error = x - recon
                 if self._check_lca_write(lca_iter):
                     self.write_tensors(
-                        ['acts', 'input_drive', 'states', 'recon', 'recon_error'],
-                        [acts, input_drive, states, recon, recon_error], lca_iter)
+                        [
+                            'acts',
+                            'input_drive',
+                            'states',
+                            'recon',
+                            'recon_error'
+                        ],
+                        [
+                            acts,
+                            input_drive,
+                            states,
+                            recon,
+                            recon_error
+                        ], lca_iter)
                 if self.track_metrics or self.lca_tol is not None:
                     if lca_iter == 1:
                         tracks = self.create_trackers()
