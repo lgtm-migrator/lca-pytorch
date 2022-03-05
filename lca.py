@@ -68,14 +68,20 @@ class LCAConv(torch.nn.Module):
             input, and dictionary update. If None, these will not be
             written to disk.
     '''
-    def __init__(self, n_neurons, in_c, result_dir, kh=7, kw=7, kt=1,
-                 stride_h=1, stride_w=1, stride_t=1, thresh=0.1, tau=1500,
-                 eta=1e-3, lca_iters=3000, pad='same', return_recon=False,
-                 dtype=torch.float32, nonneg=False, track_metrics=True,
-                 thresh_type='soft', samplewise_standardization=True,
-                 tau_decay_factor=0.0, lca_tol=None, cudnn_benchmark=True,
-                 d_update_clip=np.inf, lr_schedule=None, lca_write_step=None,
-                 req_grad=False, forward_write_step=None):
+    def __init__(self, n_neurons: int, in_c: int, result_dir: str, kh: int = 7,
+                 kw: int = 7, kt: int = 1, stride_h: int = 1,
+                 stride_w: int = 1, stride_t: int = 1, thresh: float = 0.1,
+                 tau: Union[float, int] = 1500, eta: float = 1e-3,
+                 lca_iters: int = 3000, pad: str = 'same',
+                 return_recon: bool = False, dtype: torch.dtype = torch.float32,
+                 nonneg: bool = False, track_metrics: bool = True,
+                 thresh_type: str = 'soft',
+                 samplewise_standardization: bool = True,
+                 tau_decay_factor: float = 0.0, lca_tol: Optional[float] = None,
+                 cudnn_benchmark: bool = True, d_update_clip: float = np.inf,
+                 lr_schedule: Optional[Callable[[int], float]] = None,
+                 lca_write_step: Optional[int] = None, req_grad: bool = False,
+                 forward_write_step: Optional[int] = None):
         self.d_update_clip = d_update_clip
         self.dtype = dtype 
         self.eta = eta 
