@@ -220,10 +220,10 @@ class LCAConv(torch.nn.Module):
         else:
             self.recon_output_pad = (0, 0, 0)
 
-    def compute_frac_active(self, a: Tensor) -> float:
+    def compute_frac_active(self, acts: Tensor) -> float:
         ''' Computes the number of active neurons relative to the total
             number of neurons '''
-        return (a != 0.0).float().mean().item()
+        return (acts != 0.0).float().mean().item()
 
     def compute_input_drive(self, x, weights):
         assert x.shape[2] == self.kt
@@ -258,10 +258,10 @@ class LCAConv(torch.nn.Module):
         ''' Computes percent change of a value from t-1 to t '''
         return abs((curr - prev) / prev)
 
-    def compute_recon(self, a: Tensor, weights: Tensor) -> Tensor:
+    def compute_recon(self, acts: Tensor, weights: Tensor) -> Tensor:
         ''' Computes reconstruction given code '''
         return F.conv_transpose3d(
-            a,
+            acts,
             weights,
             stride=(self.stride_t, self.stride_h, self.stride_w),
             padding=self.input_pad,
@@ -274,7 +274,7 @@ class LCAConv(torch.nn.Module):
         times_active = (x != 0).float().sum(dim=dims)
         return times_active.reshape((x.shape[1],) + (1,) * len(dims))
 
-    def compute_update(self, a, error):
+    def compute_update(self, acts, error):
         error = F.pad(error, (self.input_pad[2], self.input_pad[2],
                               self.input_pad[1], self.input_pad[1],
                               self.input_pad[0], self.input_pad[0]
@@ -282,7 +282,7 @@ class LCAConv(torch.nn.Module):
         error = error.unfold(-3, self.kt, self.stride_t)
         error = error.unfold(-3, self.kh, self.stride_h)
         error = error.unfold(-3, self.kw, self.stride_w)
-        return torch.tensordot(a, error, dims=([0, 2, 3, 4], [0, 2, 3, 4]))
+        return torch.tensordot(acts, error, dims=([0, 2, 3, 4], [0, 2, 3, 4]))
 
     def create_trackers(self):
         ''' Create placeholders to store different metrics '''
@@ -303,24 +303,24 @@ class LCAConv(torch.nn.Module):
         tau = self.tau
 
         for lca_iter in range(1, self.lca_iters + 1):
-            a_t = self.transfer(u_t)
-            inhib = self.lateral_competition(a_t, G)
-            u_t = u_t + (1 / tau) * (b_t - u_t - inhib + a_t)
+            acts = self.transfer(u_t)
+            inhib = self.lateral_competition(acts, G)
+            u_t = u_t + (1 / tau) * (b_t - u_t - inhib + acts)
 
             if (self.track_metrics 
                     or lca_iter == self.lca_iters
                     or self.lca_tol is not None
                     or self._check_lca_write(lca_iter)):
-                recon = self.compute_recon(a_t, self.weights)
+                recon = self.compute_recon(acts, self.weights)
                 recon_error = x - recon
                 if self._check_lca_write(lca_iter):
                     self.write_tensors(
-                        ['a', 'b', 'u', 'recon', 'recon_error'],
-                        [a_t, b_t, u_t, recon, recon_error], lca_iter)
+                        ['acts', 'b', 'u', 'recon', 'recon_error'],
+                        [acts, b_t, u_t, recon, recon_error], lca_iter)
                 if self.track_metrics or self.lca_tol is not None:
                     if lca_iter == 1:
                         tracks = self.create_trackers()
-                    tracks = self.update_tracks(tracks, lca_iter, a_t,
+                    tracks = self.update_tracks(tracks, lca_iter, acts,
                                                 recon_error, tau)
                     if self.lca_tol is not None:
                         if lca_iter > self.lca_warmup:
@@ -331,18 +331,18 @@ class LCAConv(torch.nn.Module):
 
         if self.track_metrics:
             self.write_tracks(tracks, lca_iter, x.device.index)
-        return a_t, recon, recon_error
+        return acts, recon, recon_error
 
     def forward(self, x: Tensor) -> Union[
             Tensor, tuple[Tensor, Tensor, Tensor]]:
         if self.samplewise_standardization:
             x = self.standardize_inputs(x)
-        code, recon, recon_error = self.encode(x)
+        acts, recon, recon_error = self.encode(x)
         self.forward_pass += 1
         if self.return_recon:
-            return code, recon, recon_error
+            return acts, recon, recon_error
         else:
-            return code
+            return acts
 
     def hard_threshold(self, x: Tensor) -> Tensor:
         ''' Hard threshold transfer function '''
@@ -359,8 +359,8 @@ class LCAConv(torch.nn.Module):
         self.weights = torch.nn.Parameter(weights, requires_grad=self.req_grad)
         self.normalize_weights()
 
-    def lateral_competition(self, a, G):
-        return F.conv3d(a, G, stride=1, padding=self.surround)
+    def lateral_competition(self, acts, G):
+        return F.conv3d(acts, G, stride=1, padding=self.surround)
 
     def normalize_weights(self, eps=1e-6):
         ''' Normalizes features such at each one has unit norm '''
@@ -412,10 +412,10 @@ class LCAConv(torch.nn.Module):
         elif callable(self.transfer_func):
             return self.transfer_func(x)
 
-    def update(self, a: Tensor, recon_error: Tensor) -> None:
+    def update(self, acts: Tensor, recon_error: Tensor) -> None:
         ''' Updates the dictionary given the computed gradient '''
         with torch.no_grad():
-            update = self.compute_update(a, recon_error)
+            update = self.compute_update(acts, recon_error)
             times_active = self.compute_times_active_by_feature(a) + 1
             update *= (self.eta / times_active)
             update = torch.clamp(update, min=-self.d_update_clip,
@@ -431,14 +431,14 @@ class LCAConv(torch.nn.Module):
         ''' Update LCA time constant with given decay factor '''
         return tau - tau * self.tau_decay_factor
 
-    def update_tracks(self, tracks, lca_iter, a, recon_error, tau):
+    def update_tracks(self, tracks, lca_iter, acts, recon_error, tau):
         ''' Update dictionary that stores the tracked metrics '''
         l2_rec_err = self.compute_l2_error(recon_error).item()
-        l1_sparsity = self.compute_l1_sparsity(a).item()
+        l1_sparsity = self.compute_l1_sparsity(acts).item()
         tracks['L2'][lca_iter - 1] = l2_rec_err
         tracks['L1'][lca_iter - 1] = l1_sparsity
         tracks['TotalEnergy'][lca_iter - 1] = l2_rec_err + l1_sparsity
-        tracks['FractionActive'][lca_iter - 1] = self.compute_frac_active(a)
+        tracks['FractionActive'][lca_iter - 1] = self.compute_frac_active(acts)
         tracks['Tau'][lca_iter - 1] = tau
         return tracks
 
