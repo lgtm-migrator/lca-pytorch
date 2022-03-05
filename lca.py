@@ -1,6 +1,7 @@
 from copy import deepcopy
 import json
 import os
+from typing import Callable, Optional, Union
 
 import h5py
 import numpy as np
@@ -67,14 +68,20 @@ class LCAConv(torch.nn.Module):
             input, and dictionary update. If None, these will not be
             written to disk.
     '''
-    def __init__(self, n_neurons, in_c, result_dir, kh=7, kw=7, kt=1,
-                 stride_h=1, stride_w=1, stride_t=1, thresh=0.1, tau=1500,
-                 eta=1e-3, lca_iters=3000, pad='same', return_recon=False,
-                 dtype=torch.float32, nonneg=False, track_metrics=True,
-                 thresh_type='soft', samplewise_standardization=True,
-                 tau_decay_factor=0.0, lca_tol=None, cudnn_benchmark=True,
-                 d_update_clip=np.inf, lr_schedule=None, lca_write_step=None,
-                 req_grad=False, forward_write_step=None):
+    def __init__(self, n_neurons: int, in_c: int, result_dir: str, kh: int = 7,
+                 kw: int = 7, kt: int = 1, stride_h: int = 1,
+                 stride_w: int = 1, stride_t: int = 1, thresh: float = 0.1,
+                 tau: Union[float, int] = 1500, eta: float = 1e-3,
+                 lca_iters: int = 3000, pad: str = 'same',
+                 return_recon: bool = False, dtype: torch.dtype = torch.float32,
+                 nonneg: bool = False, track_metrics: bool = True,
+                 thresh_type: str = 'soft',
+                 samplewise_standardization: bool = True,
+                 tau_decay_factor: float = 0.0, lca_tol: Optional[float] = None,
+                 cudnn_benchmark: bool = True, d_update_clip: float = np.inf,
+                 lr_schedule: Optional[Callable[[int], float]] = None,
+                 lca_write_step: Optional[int] = None, req_grad: bool = False,
+                 forward_write_step: Optional[int] = None):
         self.d_update_clip = d_update_clip
         self.dtype = dtype 
         self.eta = eta 
@@ -192,7 +199,7 @@ class LCAConv(torch.nn.Module):
         else:
             self.recon_output_pad = (0, 0, 0)
 
-    def compute_frac_active(self, a):
+    def compute_frac_active(self, a: torch.Tensor) -> float:
         ''' Computes the number of active neurons relative to the total
             number of neurons '''
         return (a != 0.0).float().mean().item()
@@ -203,12 +210,12 @@ class LCAConv(torch.nn.Module):
                         stride=(self.stride_t, self.stride_h, self.stride_w),
                         padding=self.input_pad)
 
-    def compute_l1_sparsity(self, acts):
+    def compute_l1_sparsity(self, acts: torch.Tensor) -> torch.Tensor:
         ''' Compute l1 sparsity term of objective function '''
         dims = tuple(range(1, len(acts.shape)))
         return self.thresh * acts.norm(p=1, dim=dims).mean()
 
-    def compute_l2_error(self, error):
+    def compute_l2_error(self, error: torch.Tensor) -> torch.Tensor:
         ''' Compute l2 recon error term of objective function '''
         dims = tuple(range(1, len(error.shape)))
         return 0.5 * (error.norm(p=2, dim=dims) ** 2).mean()
@@ -230,7 +237,7 @@ class LCAConv(torch.nn.Module):
         ''' Computes percent change of a value from t-1 to t '''
         return abs((curr - prev) / prev)
 
-    def compute_recon(self, a, D):
+    def compute_recon(self, a: torch.Tensor, D: torch.Tensor) -> torch.Tensor:
         ''' Computes reconstruction given code '''
         return F.conv_transpose3d(
             a,
@@ -239,11 +246,11 @@ class LCAConv(torch.nn.Module):
             padding=self.input_pad,
             output_padding=self.recon_output_pad)
 
-    def compute_times_active_by_feature(self, x):
+    def compute_times_active_by_feature(self, x: torch.Tensor) -> torch.Tensor:
         ''' Computes number of active coefficients per feature '''
         dims = list(range(len(x.shape)))
         dims.remove(1)
-        times_active = (x != 0).float().sum(dim=dims) + 1
+        times_active = (x != 0).float().sum(dim=dims)
         return times_active.reshape((x.shape[1],) + (1,) * len(dims))
 
     def compute_update(self, a, error):
@@ -267,7 +274,8 @@ class LCAConv(torch.nn.Module):
             'Tau' : float_tracker.copy()
         }
 
-    def encode(self, x):
+    def encode(self, x: torch.Tensor) -> tuple[
+            torch.Tensor, torch.Tensor, torch.Tensor]:
         ''' Computes sparse code given data x and dictionary D '''
         b_t = self.compute_input_drive(x, self.D)
         u_t = torch.zeros_like(b_t, requires_grad=self.req_grad)
@@ -305,7 +313,8 @@ class LCAConv(torch.nn.Module):
             self.write_tracks(tracks, lca_iter, x.device.index)
         return a_t, recon, recon_error
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> Union[torch.Tensor, 
+            tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
         if self.samplewise_standardization:
             x = self.standardize_inputs(x)
         code, recon, recon_error = self.encode(x)
@@ -315,7 +324,7 @@ class LCAConv(torch.nn.Module):
         else:
             return code
 
-    def hard_threshold(self, x):
+    def hard_threshold(self, x: torch.Tensor) -> torch.Tensor:
         ''' Hard threshold transfer function '''
         if self.nonneg:
             return F.threshold(x, self.thresh, 0.0)
@@ -340,14 +349,15 @@ class LCAConv(torch.nn.Module):
             scale = self.D.norm(p=2, dim=dims, keepdim=True)
             self.D.copy_(self.D / (scale + eps))
 
-    def soft_threshold(self, x):
+    def soft_threshold(self, x: torch.Tensor) -> torch.Tensor:
         ''' Soft threshold transfer function '''
         if self.nonneg:
             return F.relu(x - self.thresh)
         else:
             return F.relu(x - self.thresh) - F.relu(-x - self.thresh)
 
-    def standardize_inputs(self, batch, eps=1e-12):
+    def standardize_inputs(self, batch: torch.Tensor,
+            eps: float = 1e-6) -> torch.Tensor:
         ''' Standardize each sample in x '''
         if len(batch.shape) == 3:
             dims = -1
@@ -372,7 +382,7 @@ class LCAConv(torch.nn.Module):
         else:
             return False
 
-    def threshold(self, x):
+    def threshold(self, x: torch.Tensor) -> torch.Tensor:
         if self.thresh_type == 'soft':
             return self.soft_threshold(x)
         elif self.thresh_type == 'hard': 
@@ -380,11 +390,11 @@ class LCAConv(torch.nn.Module):
         else:
             raise ValueError
 
-    def update(self, a, recon_error):
+    def update(self, a: torch.Tensor, recon_error: torch.Tensor) -> None:
         ''' Updates the dictionary given the computed gradient '''
         with torch.no_grad():
             update = self.compute_update(a, recon_error)
-            times_active = self.compute_times_active_by_feature(a)
+            times_active = self.compute_times_active_by_feature(a) + 1
             update *= (self.eta / times_active)
             update = torch.clamp(update, min=-self.d_update_clip,
                                  max=self.d_update_clip)
