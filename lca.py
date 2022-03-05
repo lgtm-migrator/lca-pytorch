@@ -226,9 +226,10 @@ class LCAConv(torch.nn.Module):
             number of neurons '''
         return (acts != 0.0).float().mean().item()
 
-    def compute_input_drive(self, x, weights):
-        assert x.shape[2] == self.kt
-        return F.conv3d(x, weights,
+    def compute_input_drive(self, inputs: Tensor,
+                            weights: Union[Tensor, Parameter]) -> Tensor:
+        assert inputs.shape[2] == self.kt
+        return F.conv3d(inputs, weights,
                         stride=(self.stride_t, self.stride_h, self.stride_w),
                         padding=self.input_pad)
 
@@ -297,9 +298,9 @@ class LCAConv(torch.nn.Module):
             'Tau' : float_tracker.copy()
         }
 
-    def encode(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor]:
+    def encode(self, inputs: Tensor) -> tuple[Tensor, Tensor, Tensor]:
         ''' Computes sparse code given data x and dictionary D '''
-        input_drive = self.compute_input_drive(x, self.weights)
+        input_drive = self.compute_input_drive(inputs, self.weights)
         states = torch.zeros_like(input_drive, requires_grad=self.req_grad)
         G = self.compute_lateral_connectivity(self.weights)
         tau = self.tau
@@ -314,7 +315,7 @@ class LCAConv(torch.nn.Module):
                     or self.lca_tol is not None
                     or self._check_lca_write(lca_iter)):
                 recon = self.compute_recon(acts, self.weights)
-                recon_error = x - recon
+                recon_error = inputs - recon
                 if self._check_lca_write(lca_iter):
                     self.write_tensors(
                         [
@@ -344,14 +345,14 @@ class LCAConv(torch.nn.Module):
             tau = self.update_tau(tau) 
 
         if self.track_metrics:
-            self.write_tracks(tracks, lca_iter, x.device.index)
+            self.write_tracks(tracks, lca_iter, inputs.device.index)
         return acts, recon, recon_error
 
-    def forward(self, x: Tensor) -> Union[
+    def forward(self, inputs: Tensor) -> Union[
             Tensor, tuple[Tensor, Tensor, Tensor]]:
         if self.samplewise_standardization:
-            x = self.standardize_inputs(x)
-        acts, recon, recon_error = self.encode(x)
+            inputs = self.standardize_inputs(inputs)
+        acts, recon, recon_error = self.encode(inputs)
         self.forward_pass += 1
         if self.return_recon:
             return acts, recon, recon_error
