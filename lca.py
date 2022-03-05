@@ -445,7 +445,7 @@ class LCAConv(torch.nn.Module):
             if self._check_forward_write():
                 self.write_tensors(['update'], [update])
 
-    def update_tau(self, tau):
+    def update_tau(self, tau: Union[int, float]) -> float:
         ''' Update LCA time constant with given decay factor '''
         return tau - tau * self.tau_decay_factor
 
