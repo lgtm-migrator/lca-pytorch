@@ -88,7 +88,6 @@ class TestMetrics(unittest.TestCase):
         inputs = torch.zeros(3, 10, 100, 100)
         recons = inputs * 1.0
         recons[:, 0, 0, 50] = 10
-        print(compute_l2_error(inputs, recons))
         assert_close(compute_l2_error(inputs, recons),
                      torch.tensor(50.0))
 
