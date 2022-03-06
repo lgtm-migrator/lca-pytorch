@@ -12,6 +12,6 @@ def standardize_inputs(batch: Tensor, eps: float = 1e-6) -> Tensor:
         dims = (-2, -1)
     else:
         raise NotImplementedError
-    batch = batch - batch.mean(dim=dims, keepdim=True)
-    batch = batch / (batch.std(dim=dims, keepdim=True) + eps)
-    return batch
+    mean = batch.mean(dim=dims, keepdim=True)
+    std = batch.std(dim=dims, keepdim=True)
+    return (batch - mean) / (std + eps)
