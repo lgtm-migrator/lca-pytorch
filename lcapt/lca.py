@@ -9,6 +9,8 @@ import pandas as pd
 import torch 
 import torch.nn.functional as F
 
+from activation import hard_threshold, soft_threshold
+
 
 Parameter = torch.nn.parameter.Parameter
 Tensor = torch.Tensor
@@ -354,14 +356,6 @@ class LCAConv(torch.nn.Module):
         else:
             return acts
 
-    def hard_threshold(self, x: Tensor) -> Tensor:
-        ''' Hard threshold transfer function '''
-        if self.nonneg:
-            return F.threshold(x, self.lambda_, 0.0)
-        else:
-            return (F.threshold(x, self.lambda_, 0.0) 
-                    - F.threshold(-x, self.lambda_, 0.0))
-
     def init_weight_tensor(self):
         weights = torch.randn(self.n_neurons, self.in_c, self.kt, self.kh,
                               self.kw, dtype=self.dtype)
@@ -378,13 +372,6 @@ class LCAConv(torch.nn.Module):
             dims = tuple(range(1, len(self.weights.shape)))
             scale = self.weights.norm(p=2, dim=dims, keepdim=True)
             self.weights.copy_(self.weights / (scale + eps))
-
-    def soft_threshold(self, x: Tensor) -> Tensor:
-        ''' Soft threshold transfer function '''
-        if self.nonneg:
-            return F.relu(x - self.lambda_)
-        else:
-            return F.relu(x - self.lambda_) - F.relu(-x - self.lambda_)
 
     def standardize_inputs(self, batch: Tensor, eps: float = 1e-6) -> Tensor:
         ''' Standardize each sample in x '''
@@ -414,9 +401,9 @@ class LCAConv(torch.nn.Module):
     def transfer(self, x: Tensor) -> Tensor:
         if type(self.transfer_func) == str:
             if self.transfer_func == 'soft_threshold':
-                return self.soft_threshold(x)
+                return soft_threshold(x, self.lambda_, self.nonneg)
             elif self.transfer_func == 'hard_threshold':
-                return self.hard_threshold(x)
+                return hard_threshold(x, self.lambda_, self.nonneg)
             else:
                 raise ValueError
         elif callable(self.transfer_func):
