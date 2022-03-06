@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from torch.testing import assert_close
 
-from lcapt.metrics import (
+from lcapt.metric import (
     compute_frac_active,
     compute_l1_sparsity,
     compute_l2_error,
