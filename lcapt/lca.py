@@ -10,6 +10,12 @@ import torch
 import torch.nn.functional as F
 
 from activation import hard_threshold, soft_threshold
+from metric import (
+    compute_frac_active,
+    compute_l1_sparsity,
+    compute_l2_error,
+    compute_times_active_by_feature
+)
 
 
 Parameter = torch.nn.parameter.Parameter
@@ -223,27 +229,12 @@ class LCAConv(torch.nn.Module):
         else:
             self.recon_output_pad = (0, 0, 0)
 
-    def compute_frac_active(self, acts: Tensor) -> float:
-        ''' Computes the number of active neurons relative to the total
-            number of neurons '''
-        return (acts != 0.0).float().mean().item()
-
     def compute_input_drive(self, inputs: Tensor,
                             weights: Union[Tensor, Parameter]) -> Tensor:
         assert inputs.shape[2] == self.kt
         return F.conv3d(inputs, weights,
                         stride=(self.stride_t, self.stride_h, self.stride_w),
                         padding=self.input_pad)
-
-    def compute_l1_sparsity(self, acts: Tensor) -> Tensor:
-        ''' Compute l1 sparsity term of objective function '''
-        dims = tuple(range(1, len(acts.shape)))
-        return self.lambda_ * acts.norm(p=1, dim=dims).mean()
-
-    def compute_l2_error(self, error: Tensor) -> Tensor:
-        ''' Compute l2 recon error term of objective function '''
-        dims = tuple(range(1, len(error.shape)))
-        return 0.5 * (error.norm(p=2, dim=dims) ** 2).mean()
 
     def compute_lateral_connectivity(
             self, weights: Union[Tensor, Parameter]) -> Tensor:
@@ -273,13 +264,6 @@ class LCAConv(torch.nn.Module):
             stride=(self.stride_t, self.stride_h, self.stride_w),
             padding=self.input_pad,
             output_padding=self.recon_output_pad)
-
-    def compute_times_active_by_feature(self, acts: Tensor) -> Tensor:
-        ''' Computes number of active coefficients per feature '''
-        dims = list(range(len(acts.shape)))
-        dims.remove(1)
-        times_active = (acts != 0).float().sum(dim=dims)
-        return times_active.reshape((acts.shape[1],) + (1,) * len(dims))
 
     def compute_update(self, acts: Tensor, error: Tensor) -> Tensor:
         error = F.pad(error, (self.input_pad[2], self.input_pad[2],
@@ -332,8 +316,8 @@ class LCAConv(torch.nn.Module):
                 if self.track_metrics or self.lca_tol is not None:
                     if lca_iter == 1:
                         tracks = self.create_trackers()
-                    tracks = self.update_tracks(tracks, lca_iter, acts,
-                                                recon_error, tau)
+                    tracks = self.update_tracks(tracks, lca_iter, acts, inputs,
+                                                recon, tau)
                     if self.lca_tol is not None:
                         if lca_iter > self.lca_warmup:
                             if self.stop_lca(tracks['TotalEnergy'], lca_iter):
@@ -413,7 +397,7 @@ class LCAConv(torch.nn.Module):
         ''' Updates the dictionary given the computed gradient '''
         with torch.no_grad():
             update = self.compute_update(acts, recon_error)
-            times_active = self.compute_times_active_by_feature(acts) + 1
+            times_active = compute_times_active_by_feature(acts) + 1
             update *= (self.eta / times_active)
             update = torch.clamp(update, min=-self.d_update_clip,
                                  max=self.d_update_clip)
@@ -429,15 +413,15 @@ class LCAConv(torch.nn.Module):
         return tau - tau * self.tau_decay_factor
 
     def update_tracks(self, tracks: dict[str, np.ndarray], lca_iter: int,
-                      acts: Tensor, recon_error: Tensor,
+                      acts: Tensor, inputs: Tensor, recons: Tensor,
                       tau: Union[int, float]) -> dict[str, np.ndarray]:
         ''' Update dictionary that stores the tracked metrics '''
-        l2_rec_err = self.compute_l2_error(recon_error).item()
-        l1_sparsity = self.compute_l1_sparsity(acts).item()
+        l2_rec_err = compute_l2_error(inputs, recons).item()
+        l1_sparsity = compute_l1_sparsity(acts, self.lambda_).item()
         tracks['L2'][lca_iter - 1] = l2_rec_err
         tracks['L1'][lca_iter - 1] = l1_sparsity
         tracks['TotalEnergy'][lca_iter - 1] = l2_rec_err + l1_sparsity
-        tracks['FractionActive'][lca_iter - 1] = self.compute_frac_active(acts)
+        tracks['FractionActive'][lca_iter - 1] = compute_frac_active(acts)
         tracks['Tau'][lca_iter - 1] = tau
         return tracks
 
