@@ -35,6 +35,12 @@ class TestPreprocessing(unittest.TestCase):
             assert_close(outputs[:, chann].std().item(), 1.0, rtol=5e-4,
                          atol=5e-5)
 
+    def test_standardize_inputs_already_standardized(self):
+        inputs_randn = torch.randn(1, 3, 100, 100, 100)
+        inputs_randn = standardize_inputs(inputs_randn)
+        outputs = standardize_inputs(inputs_randn)
+        assert_close(inputs_randn, outputs, rtol=1e-4, atol=1e-5)
+
 
 if __name__ == '__main__':
     unittest.main()
