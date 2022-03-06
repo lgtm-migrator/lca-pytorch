@@ -43,6 +43,16 @@ class TestActivations(unittest.TestCase):
         outputs = hard_threshold(inputs, 0.2)
         assert_close(outputs, torch.zeros(inputs.numel()), rtol=0.0, atol=0.0)
 
+    def test_hard_threshold_shape(self):
+        inputs = torch.randn(1, 10, 100, 100)
+        outputs = hard_threshold(inputs, 0.5, False)
+        self.assertEqual(inputs.shape, outputs.shape)
+
+    def test_nonneg_hard_threshold_shape(self):
+        inputs = torch.randn(1, 10, 100, 100)
+        outputs = hard_threshold(inputs, 0.5)
+        self.assertEqual(inputs.shape, outputs.shape)
+
     def test_soft_threshold_above_threshold(self):
         inputs = create_test_input()
         outputs = soft_threshold(inputs, 0.2, nonneg=False)
@@ -68,6 +78,16 @@ class TestActivations(unittest.TestCase):
         inputs = torch.arange(-10.0, 0.2, 0.01)
         outputs = soft_threshold(inputs, 0.2)
         assert_close(outputs, torch.zeros(inputs.numel()), rtol=0.0, atol=0.0)
+
+    def test_soft_threshold_shape(self):
+        inputs = torch.randn(1, 10, 100, 100)
+        outputs = soft_threshold(inputs, 0.5, False)
+        self.assertEqual(inputs.shape, outputs.shape)
+
+    def test_nonneg_soft_threshold_shape(self):
+        inputs = torch.randn(1, 10, 100, 100)
+        outputs = soft_threshold(inputs, 0.5)
+        self.assertEqual(inputs.shape, outputs.shape)
 
 
 if __name__ == '__main__':
