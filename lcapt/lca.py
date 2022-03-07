@@ -282,7 +282,7 @@ class LCAConv(torch.nn.Module):
         error = error.unfold(-3, self.kw, self.stride_w)
         return torch.tensordot(acts, error, dims=([0, 2, 3, 4], [0, 2, 3, 4]))
 
-    def _create_trackers(self):
+    def _create_trackers(self) -> dict[str, np.ndarray]:
         ''' Create placeholders to store different metrics '''
         float_tracker = np.zeros([self.lca_iters], dtype=np.float32)
         return {
@@ -352,7 +352,7 @@ class LCAConv(torch.nn.Module):
         else:
             return acts
 
-    def _init_weight_tensor(self):
+    def _init_weight_tensor(self) -> None:
         weights = torch.randn(self.n_neurons, self.in_c, self.kt, self.kh,
                               self.kw, dtype=self.dtype)
         weights[:, :, 1:] = 0.0
@@ -362,7 +362,7 @@ class LCAConv(torch.nn.Module):
     def lateral_competition(self, acts: Tensor, conns: Tensor) -> Tensor:
         return F.conv3d(acts, conns, stride=1, padding=self.surround)
 
-    def normalize_weights(self, eps=1e-6):
+    def normalize_weights(self, eps: float = 1e-6) -> None:
         ''' Normalizes features such at each one has unit norm '''
         with torch.no_grad():
             dims = tuple(range(1, len(self.weights.shape)))
