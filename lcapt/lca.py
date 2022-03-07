@@ -358,7 +358,7 @@ class LCAConv(torch.nn.Module):
             scale = self.weights.norm(p=2, dim=dims, keepdim=True)
             self.weights.copy_(self.weights / (scale + eps))
 
-    def stop_lca(self, energy_history, lca_iter):
+    def stop_lca(self, energy_history: np.ndarray, lca_iter: int) -> bool:
         ''' Determines when to stop LCA loop early by comparing the 
             percent change between a running avg of the objective value 
             at time t and that at time t-1 and checking if it is less
