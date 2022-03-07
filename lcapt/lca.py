@@ -9,15 +9,15 @@ import pandas as pd
 import torch 
 import torch.nn.functional as F
 
-from activation import hard_threshold, soft_threshold
-from metric import (
+from .activation import hard_threshold, soft_threshold
+from .metric import (
     compute_frac_active,
     compute_l1_sparsity,
     compute_l2_error,
     compute_times_active_by_feature
 )
-from preproc import standardize_inputs
-from util import (
+from .preproc import standardize_inputs
+from .util import (
     to_3d_from_5d,
     to_4d_from_5d,
     to_5d_from_3d,
