@@ -9,14 +9,20 @@ import pandas as pd
 import torch 
 import torch.nn.functional as F
 
-from activation import hard_threshold, soft_threshold
-from metric import (
+from .activation import hard_threshold, soft_threshold
+from .metric import (
     compute_frac_active,
     compute_l1_sparsity,
     compute_l2_error,
     compute_times_active_by_feature
 )
-from preproc import standardize_inputs
+from .preproc import standardize_inputs
+from .util import (
+    to_3d_from_5d,
+    to_4d_from_5d,
+    to_5d_from_3d,
+    to_5d_from_4d
+)
 
 
 Parameter = torch.nn.parameter.Parameter
@@ -252,7 +258,8 @@ class LCAConv(torch.nn.Module):
         self.surround = tuple(
             [int(np.ceil((dim - 1) / 2)) for dim in conn_shp])
 
-    def compute_perc_change(self, curr, prev):
+    def compute_perc_change(self, curr: Union[int, float],
+                            prev: Union[int, float]) -> float:
         ''' Computes percent change of a value from t-1 to t '''
         return abs((curr - prev) / prev)
 
@@ -275,7 +282,7 @@ class LCAConv(torch.nn.Module):
         error = error.unfold(-3, self.kw, self.stride_w)
         return torch.tensordot(acts, error, dims=([0, 2, 3, 4], [0, 2, 3, 4]))
 
-    def _create_trackers(self):
+    def _create_trackers(self) -> dict[str, np.ndarray]:
         ''' Create placeholders to store different metrics '''
         float_tracker = np.zeros([self.lca_iters], dtype=np.float32)
         return {
@@ -332,16 +339,20 @@ class LCAConv(torch.nn.Module):
 
     def forward(self, inputs: Tensor) -> Union[
             Tensor, tuple[Tensor, Tensor, Tensor]]:
+        inputs, reshape_func = self._to_correct_input_shape(inputs)
         if self.samplewise_standardization:
             inputs = standardize_inputs(inputs)
         acts, recon, recon_error = self.encode(inputs)
+        acts = reshape_func(acts)
+        recon = reshape_func(recon)
+        recon_error = reshape_func(recon_error)
         self.forward_pass += 1
         if self.return_recon:
             return acts, recon, recon_error
         else:
             return acts
 
-    def _init_weight_tensor(self):
+    def _init_weight_tensor(self) -> None:
         weights = torch.randn(self.n_neurons, self.in_c, self.kt, self.kh,
                               self.kw, dtype=self.dtype)
         weights[:, :, 1:] = 0.0
@@ -351,7 +362,7 @@ class LCAConv(torch.nn.Module):
     def lateral_competition(self, acts: Tensor, conns: Tensor) -> Tensor:
         return F.conv3d(acts, conns, stride=1, padding=self.surround)
 
-    def normalize_weights(self, eps=1e-6):
+    def normalize_weights(self, eps: float = 1e-6) -> None:
         ''' Normalizes features such at each one has unit norm '''
         with torch.no_grad():
             dims = tuple(range(1, len(self.weights.shape)))
@@ -371,6 +382,15 @@ class LCAConv(torch.nn.Module):
         else:
             return False
 
+    def _to_correct_input_shape(
+        self, inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
+        if len(inputs.shape) == 3:
+            return to_5d_from_3d(inputs), to_3d_from_5d
+        elif len(inputs.shape) == 4:
+            return to_5d_from_4d(inputs), to_4d_from_5d
+        elif len(inputs.shape) == 5:
+            return inputs, lambda inputs: inputs
+
     def transfer(self, x: Tensor) -> Tensor:
         if type(self.transfer_func) == str:
             if self.transfer_func == 'soft_threshold':
@@ -385,6 +405,8 @@ class LCAConv(torch.nn.Module):
     def update_weights(self, acts: Tensor, recon_error: Tensor) -> None:
         ''' Updates the dictionary given the computed gradient '''
         with torch.no_grad():
+            acts, _ = self._to_correct_input_shape(acts)
+            recon_error, _ = self._to_correct_input_shape(recon_error)
             update = self.compute_weight_update(acts, recon_error)
             times_active = compute_times_active_by_feature(acts) + 1
             update *= (self.eta / times_active)
@@ -420,6 +442,9 @@ class LCAConv(torch.nn.Module):
         del arg_dict['lr_schedule']
         if callable(self.transfer_func):
             arg_dict['transfer_func'] = self.transfer_func.__name__
+        for key, val in arg_dict.items():
+            if type(val) == tuple:
+                arg_dict[key] = list(val)
         with open(os.path.join(self.result_dir, 'params.yaml'), 'w') as yamlf:
             yaml.dump(arg_dict, yamlf, sort_keys=True)
 
