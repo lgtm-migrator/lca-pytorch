@@ -24,6 +24,11 @@ class TestUtil(unittest.TestCase):
         inputs_5d = to_5d_from_3d(inputs_3d)
         assert_close(inputs_3d, inputs_5d.squeeze(), rtol=0.0, atol=0.0)
 
+    def test_to_5d_from_3d_raises_AssertionError(self):
+        inputs_2d = make_tensor((10, 1000), None, torch.float32)
+        with self.assertRaises(AssertionError):
+            to_5d_from_3d(inputs_2d)
+
     def test_to_5d_from_4d_returns_correct_shape(self):
         inputs_4d = make_tensor((10, 3, 100, 100), None, torch.float32)
         inputs_5d = to_5d_from_4d(inputs_4d)
@@ -35,6 +40,11 @@ class TestUtil(unittest.TestCase):
         inputs_5d = to_5d_from_4d(inputs_4d)
         assert_close(inputs_4d, inputs_5d[..., 0, :, :], rtol=0.0, atol=0.0)
 
+    def test_to_5d_from_4d_raises_AssertionError(self):
+        inputs_3d = make_tensor((10, 100, 100), None, torch.float32)
+        with self.assertRaises(AssertionError):
+            to_5d_from_4d(inputs_3d)
+
     def test_to_4d_from_5d_returns_correct_shape(self):
         inputs_5d = make_tensor((10, 3, 1, 100, 100), None, torch.float32)
         inputs_4d = to_4d_from_5d(inputs_5d)
@@ -45,6 +55,14 @@ class TestUtil(unittest.TestCase):
         inputs_4d = to_4d_from_5d(inputs_5d)
         assert_close(inputs_4d, inputs_5d[:, :, 0], rtol=0.0, atol=0.0)
 
+    def test_to_4d_from_5d_raises_AssertionError(self):
+        inputs_4d = make_tensor((10, 3, 100, 100), None, torch.float32)
+        inputs_5d = make_tensor((10, 3, 5, 100, 100), None, torch.float32)
+        with self.assertRaises(AssertionError):
+            to_4d_from_5d(inputs_4d)
+            to_4d_from_5d(inputs_5d)
+        
+
     def test_to_3d_from_5d_returns_correct_shape(self):
         inputs_5d = make_tensor((10, 3, 100, 1, 1), None, torch.float32)
         inputs_3d = to_3d_from_5d(inputs_5d)
@@ -54,6 +72,13 @@ class TestUtil(unittest.TestCase):
         inputs_5d = make_tensor((10, 3, 100, 1, 1), None, torch.float32)
         inputs_3d = to_3d_from_5d(inputs_5d)
         assert_close(inputs_3d, inputs_5d.squeeze(), rtol=0.0, atol=0.0)
+
+    def test_to_3d_from_5d_raises_AssertionError(self):
+        inputs_4d = make_tensor((10, 3, 5, 1), None, torch.float32)
+        inputs_5d = make_tensor((10, 3, 100, 100, 1), None, torch.float32)
+        with self.assertRaises(AssertionError):
+            to_3d_from_5d(inputs_4d)
+            to_3d_from_5d(inputs_5d)
 
 
 if __name__ == '__main__':
