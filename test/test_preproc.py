@@ -42,6 +42,11 @@ class TestPreprocessing(unittest.TestCase):
         outputs = standardize_inputs(inputs)
         assert_close(inputs, outputs)
 
+    def test_standardize_inputs_returns_torch_tensor(self):
+        inputs = torch.rand(1, 3, 4, 100, 100)
+        outputs = standardize_inputs(inputs)
+        self.assertEqual(type(outputs), torch.Tensor)
+
 
 if __name__ == '__main__':
     unittest.main()
