@@ -402,6 +402,8 @@ class LCAConv(torch.nn.Module):
             return to_5d_from_4d(inputs), to_4d_from_5d
         elif len(inputs.shape) == 5:
             return inputs, lambda inputs: inputs
+        else:
+            raise NotImplementedError
 
     def transfer(self, x: Tensor) -> Tensor:
         if type(self.transfer_func) == str:
