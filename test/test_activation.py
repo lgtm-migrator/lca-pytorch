@@ -43,15 +43,20 @@ class TestActivations(unittest.TestCase):
         outputs = hard_threshold(inputs, 0.2)
         assert_close(outputs, torch.zeros(inputs.numel()), rtol=0.0, atol=0.0)
 
-    def test_hard_threshold_shape(self):
+    def test_hard_threshold_returns_correct_shape(self):
         inputs = torch.randn(1, 10, 100, 100)
         outputs = hard_threshold(inputs, 0.5, False)
         self.assertEqual(inputs.shape, outputs.shape)
 
-    def test_nonneg_hard_threshold_shape(self):
+    def test_nonneg_hard_threshold_returns_correct_shape(self):
         inputs = torch.randn(1, 10, 100, 100)
         outputs = hard_threshold(inputs, 0.5)
         self.assertEqual(inputs.shape, outputs.shape)
+
+    def test_hard_threshold_returns_torch_tensor(self):
+        inputs = torch.randn(1, 10, 100, 100)
+        outputs = hard_threshold(inputs, 0.5)
+        self.assertEqual(type(outputs), torch.Tensor)
 
     def test_soft_threshold_above_threshold(self):
         inputs = create_test_input()
@@ -79,15 +84,20 @@ class TestActivations(unittest.TestCase):
         outputs = soft_threshold(inputs, 0.2)
         assert_close(outputs, torch.zeros(inputs.numel()), rtol=0.0, atol=0.0)
 
-    def test_soft_threshold_shape(self):
+    def test_soft_threshold_returns_correct_shape(self):
         inputs = torch.randn(1, 10, 100, 100)
         outputs = soft_threshold(inputs, 0.5, False)
         self.assertEqual(inputs.shape, outputs.shape)
 
-    def test_nonneg_soft_threshold_shape(self):
+    def test_nonneg_soft_threshold_returns_correct_shape(self):
         inputs = torch.randn(1, 10, 100, 100)
         outputs = soft_threshold(inputs, 0.5)
         self.assertEqual(inputs.shape, outputs.shape)
+
+    def test_soft_threshold_returns_torch_tensor(self):
+        inputs = torch.randn(1, 10, 100, 100)
+        outputs = soft_threshold(inputs, 0.5)
+        self.assertEqual(type(outputs), torch.Tensor)
 
 
 if __name__ == '__main__':
