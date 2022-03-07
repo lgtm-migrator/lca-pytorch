@@ -158,7 +158,7 @@ class LCAConv(torch.nn.Module):
         if cudnn_benchmark and torch.backends.cudnn.enabled: 
             torch.backends.cudnn.benchmark = True
 
-    def _check_lca_write(self, lca_iter):
+    def _check_lca_write(self, lca_iter: int) -> bool:
         ''' Checks whether to write LCA tensors at a given LCA iter '''
         write = False
         if self.lca_write_step is not None:
@@ -167,7 +167,7 @@ class LCAConv(torch.nn.Module):
                     write = True
         return write
 
-    def _check_forward_write(self):
+    def _check_forward_write(self) -> bool:
         ''' Checks whether to write non-LCA-loop variables at a given
             forward pass '''
         write = False
@@ -176,7 +176,7 @@ class LCAConv(torch.nn.Module):
                 write = True
         return write
 
-    def _check_conv_params(self):
+    def _check_conv_params(self) -> None:
         assert ((self.kh % 2 != 0 and self.kw % 2 != 0)
                 or (self.kh % 2 == 0 and self.kw % 2 == 0)), (
                 'kh and kw should either both be even or both be odd numbers, '
@@ -184,7 +184,7 @@ class LCAConv(torch.nn.Module):
         assert self.stride_h == 1 or self.stride_h % 2 == 0
         assert self.stride_w == 1 or self.stride_w % 2 == 0
 
-    def _compute_inhib_pad(self):
+    def _compute_inhib_pad(self) -> None:
         ''' Computes padding for compute_lateral_connectivity '''
         self.lat_conn_pad = [0]
 
@@ -204,7 +204,7 @@ class LCAConv(torch.nn.Module):
 
         self.lat_conn_pad = tuple(self.lat_conn_pad)
 
-    def _compute_input_pad(self):
+    def _compute_input_pad(self) -> None:
         ''' Computes padding for forward convolution '''
         if self.pad == 'same':
             if self.kernel_odd:
@@ -218,12 +218,12 @@ class LCAConv(torch.nn.Module):
             raise ValueError("Values for pad can either be 'same' or 'valid', "
                              f"but got {self.pad}.")
 
-    def _compute_padding(self):
+    def _compute_padding(self) -> None:
         self._compute_input_pad()
         self._compute_inhib_pad()
         self._compute_recon_pad()
 
-    def _compute_recon_pad(self):
+    def _compute_recon_pad(self) -> None:
         ''' Computes output padding for recon conv transpose '''
         if self.kernel_odd:
             self.recon_output_pad = (0, self.stride_h - 1, self.stride_w - 1)
