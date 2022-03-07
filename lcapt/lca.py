@@ -150,9 +150,9 @@ class LCAConv(torch.nn.Module):
         self._check_conv_params()
         self._compute_padding()
         os.makedirs(self.result_dir, exist_ok=True)
-        self.write_params(deepcopy(vars(self)))
+        self._write_params(deepcopy(vars(self)))
         super(LCAConv, self).__init__()
-        self.init_weight_tensor()
+        self._init_weight_tensor()
         self.register_buffer('forward_pass', torch.tensor(1))
 
         if cudnn_benchmark and torch.backends.cudnn.enabled: 
@@ -243,10 +243,10 @@ class LCAConv(torch.nn.Module):
                          stride=(self.stride_t, self.stride_h, self.stride_w),
                          padding=self.lat_conn_pad)
         if not hasattr(self, 'surround'):
-            self.compute_n_surround(conns)
+            self._compute_n_surround(conns)
         return conns
 
-    def compute_n_surround(self, conns: Tensor) -> tuple:
+    def _compute_n_surround(self, conns: Tensor) -> tuple:
         ''' Computes the number of surround neurons for each dim '''
         conn_shp = conns.shape[2:]
         self.surround = tuple(
@@ -275,7 +275,7 @@ class LCAConv(torch.nn.Module):
         error = error.unfold(-3, self.kw, self.stride_w)
         return torch.tensordot(acts, error, dims=([0, 2, 3, 4], [0, 2, 3, 4]))
 
-    def create_trackers(self):
+    def _create_trackers(self):
         ''' Create placeholders to store different metrics '''
         float_tracker = np.zeros([self.lca_iters], dtype=np.float32)
         return {
@@ -305,7 +305,7 @@ class LCAConv(torch.nn.Module):
                 recon = self.compute_recon(acts, self.weights)
                 recon_error = inputs - recon
                 if self._check_lca_write(lca_iter):
-                    self.write_tensors({
+                    self._write_tensors({
                         'acts': acts,
                         'input_drive': input_drive,
                         'input': inputs,
@@ -316,18 +316,18 @@ class LCAConv(torch.nn.Module):
                     }, lca_iter)
                 if self.track_metrics or self.lca_tol is not None:
                     if lca_iter == 1:
-                        tracks = self.create_trackers()
-                    tracks = self.update_tracks(tracks, lca_iter, acts, inputs,
+                        tracks = self._create_trackers()
+                    tracks = self._update_tracks(tracks, lca_iter, acts, inputs,
                                                 recon, tau)
                     if self.lca_tol is not None:
                         if lca_iter > self.lca_warmup:
-                            if self.stop_lca(tracks['TotalEnergy'], lca_iter):
+                            if self._stop_lca(tracks['TotalEnergy'], lca_iter):
                                 break
 
-            tau = self.update_tau(tau) 
+            tau = self._update_tau(tau)
 
         if self.track_metrics:
-            self.write_tracks(tracks, lca_iter, inputs.device.index)
+            self._write_tracks(tracks, lca_iter, inputs.device.index)
         return acts, recon, recon_error
 
     def forward(self, inputs: Tensor) -> Union[
@@ -341,7 +341,7 @@ class LCAConv(torch.nn.Module):
         else:
             return acts
 
-    def init_weight_tensor(self):
+    def _init_weight_tensor(self):
         weights = torch.randn(self.n_neurons, self.in_c, self.kt, self.kh,
                               self.kw, dtype=self.dtype)
         weights[:, :, 1:] = 0.0
@@ -358,7 +358,7 @@ class LCAConv(torch.nn.Module):
             scale = self.weights.norm(p=2, dim=dims, keepdim=True)
             self.weights.copy_(self.weights / (scale + eps))
 
-    def stop_lca(self, energy_history: np.ndarray, lca_iter: int) -> bool:
+    def _stop_lca(self, energy_history: np.ndarray, lca_iter: int) -> bool:
         ''' Determines when to stop LCA loop early by comparing the 
             percent change between a running avg of the objective value 
             at time t and that at time t-1 and checking if it is less
@@ -395,13 +395,13 @@ class LCAConv(torch.nn.Module):
             if self.lr_schedule is not None:
                 self.eta = self.lr_schedule(self.forward_pass)
             if self._check_forward_write():
-                self.write_tensors({'weight_update': update})
+                self._write_tensors({'weight_update': update})
 
-    def update_tau(self, tau: Union[int, float]) -> float:
+    def _update_tau(self, tau: Union[int, float]) -> float:
         ''' Update LCA time constant with given decay factor '''
         return tau - tau * self.tau_decay_factor
 
-    def update_tracks(self, tracks: dict[str, np.ndarray], lca_iter: int,
+    def _update_tracks(self, tracks: dict[str, np.ndarray], lca_iter: int,
                       acts: Tensor, inputs: Tensor, recons: Tensor,
                       tau: Union[int, float]) -> dict[str, np.ndarray]:
         ''' Update dictionary that stores the tracked metrics '''
@@ -414,7 +414,7 @@ class LCAConv(torch.nn.Module):
         tracks['Tau'][lca_iter - 1] = tau
         return tracks
 
-    def write_params(self, arg_dict: dict[str, Any]) -> None:
+    def _write_params(self, arg_dict: dict[str, Any]) -> None:
         ''' Writes model params to file '''
         arg_dict['dtype'] = str(arg_dict['dtype'])
         del arg_dict['lr_schedule']
@@ -423,7 +423,7 @@ class LCAConv(torch.nn.Module):
         with open(os.path.join(self.result_dir, 'params.yaml'), 'w') as yamlf:
             yaml.dump(arg_dict, yamlf, sort_keys=True)
 
-    def write_tracks(self, tracker: dict[str, np.ndarray], ts_cutoff: int,
+    def _write_tracks(self, tracker: dict[str, np.ndarray], ts_cutoff: int,
                      dev: Union[int, None]) -> None:
         ''' Write out objective values to file '''
         for k,v in tracker.items():
@@ -439,7 +439,7 @@ class LCAConv(torch.nn.Module):
             index=False,
             mode='a')
 
-    def write_tensors(self, tensor_dict: dict[str, Tensor],
+    def _write_tensors(self, tensor_dict: dict[str, Tensor],
                       lca_iter: int = 0) -> None:
         ''' Writes out tensors to a HDF5 file. '''
         with h5py.File(self.tensor_write_fpath, 'a') as h5file:
