@@ -442,6 +442,9 @@ class LCAConv(torch.nn.Module):
         del arg_dict['lr_schedule']
         if callable(self.transfer_func):
             arg_dict['transfer_func'] = self.transfer_func.__name__
+        for key, val in arg_dict.items():
+            if type(val) == tuple:
+                arg_dict[key] = list(val)
         with open(os.path.join(self.result_dir, 'params.yaml'), 'w') as yamlf:
             yaml.dump(arg_dict, yamlf, sort_keys=True)
 
