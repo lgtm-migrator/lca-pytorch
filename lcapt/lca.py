@@ -397,8 +397,15 @@ class LCAConv(torch.nn.Module):
     def _to_correct_input_shape(
         self, inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
         if len(inputs.shape) == 3:
+            assert self.kh == 1 and self.kw == 1, (
+                f'Expected kh=1 and kw=1 for 3D input, but got kh={self.kh} ',
+                f'and kw={self.kw}.'
+            )
             return to_5d_from_3d(inputs), to_3d_from_5d
         elif len(inputs.shape) == 4:
+            assert self.kt == 1, (
+                f'Expected kt=1 for 4D input, but got kt={self.kt}.'
+            )
             return to_5d_from_4d(inputs), to_4d_from_5d
         elif len(inputs.shape) == 5:
             return inputs, lambda inputs: inputs
