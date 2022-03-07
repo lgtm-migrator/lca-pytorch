@@ -246,10 +246,12 @@ class LCAConv(torch.nn.Module):
 
     def compute_input_drive(self, inputs: Tensor,
                             weights: Union[Tensor, Parameter]) -> Tensor:
+        inputs, reshape_func = self._to_correct_input_shape(inputs)
         assert inputs.shape[2] == self.kt
-        return F.conv3d(inputs, weights,
-                        stride=(self.stride_t, self.stride_h, self.stride_w),
-                        padding=self.input_pad)
+        drive = F.conv3d(inputs, weights,
+                         stride=(self.stride_t, self.stride_h, self.stride_w),
+                         padding=self.input_pad)
+        return reshape_func(drive)
 
     def compute_lateral_connectivity(
             self, weights: Union[Tensor, Parameter]) -> Tensor:
@@ -274,12 +276,14 @@ class LCAConv(torch.nn.Module):
     def compute_recon(self, acts: Tensor,
                       weights: Union[Tensor, Parameter]) -> Tensor:
         ''' Computes reconstruction given code '''
-        return F.conv_transpose3d(
+        acts, reshape_func = self._to_correct_input_shape(acts)
+        recons = F.conv_transpose3d(
             acts,
             weights,
             stride=(self.stride_t, self.stride_h, self.stride_w),
             padding=self.input_pad,
             output_padding=self.recon_output_pad)
+        return reshape_func(recons)
 
     def compute_weight_update(self, acts: Tensor, error: Tensor) -> Tensor:
         error = F.pad(error, (self.input_pad[2], self.input_pad[2],
@@ -393,11 +397,20 @@ class LCAConv(torch.nn.Module):
     def _to_correct_input_shape(
         self, inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
         if len(inputs.shape) == 3:
+            assert self.kh == 1 and self.kw == 1, (
+                f'Expected kh=1 and kw=1 for 3D input, but got kh={self.kh} ',
+                f'and kw={self.kw}.'
+            )
             return to_5d_from_3d(inputs), to_3d_from_5d
         elif len(inputs.shape) == 4:
+            assert self.kt == 1, (
+                f'Expected kt=1 for 4D input, but got kt={self.kt}.'
+            )
             return to_5d_from_4d(inputs), to_4d_from_5d
         elif len(inputs.shape) == 5:
             return inputs, lambda inputs: inputs
+        else:
+            raise NotImplementedError
 
     def transfer(self, x: Tensor) -> Tensor:
         if type(self.transfer_func) == str:
