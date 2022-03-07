@@ -258,7 +258,8 @@ class LCAConv(torch.nn.Module):
         self.surround = tuple(
             [int(np.ceil((dim - 1) / 2)) for dim in conn_shp])
 
-    def compute_perc_change(self, curr, prev):
+    def compute_perc_change(self, curr: Union[int, float],
+                            prev: Union[int, float]) -> float:
         ''' Computes percent change of a value from t-1 to t '''
         return abs((curr - prev) / prev)
 
