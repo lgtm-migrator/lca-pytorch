@@ -66,44 +66,69 @@ class TestMetrics(unittest.TestCase):
             l1_sparsity = compute_l1_sparsity(inputs, lambda_)
             assert_close(l1_sparsity, inputs.norm(1) * lambda_)
 
-    def test_compute_l1_sparsity_correct_return_type(self):
+    def test_compute_l1_sparsity_returns_same_dtype_as_inputs(self):
+        for dtype in [torch.float16, torch.float32, torch.float64]:
+            inputs = torch.randn(10, 100, 8, 8, dtype=dtype)
+            l1_sparsity = compute_l1_sparsity(inputs, 1.0)
+            self.assertEqual(l1_sparsity.dtype, dtype)
+
+    def test_compute_l1_sparsity_returns_torch_tensor(self):
         inputs = torch.randn(10, 100, 8, 8)
         l1_sparsity = compute_l1_sparsity(inputs, 1.0)
         self.assertEqual(type(l1_sparsity), torch.Tensor)
-        self.assertEqual(l1_sparsity.numel(), 1)
-        self.assertEqual(type(l1_sparsity.item()), float)
 
-    def test_compute_l2_error_not_equal(self):
+    def test_compute_l1_sparsity_returns_zero_dim_tensor(self):
+        inputs = torch.randn(10, 100, 8, 8)
+        l1_sparsity = compute_l1_sparsity(inputs, 1.0)
+        self.assertEqual(len(l1_sparsity.shape), 0)
+        self.assertEqual(l1_sparsity.numel(), 1)
+
+    def test_compute_l2_error_inputs_not_equal_to_recons(self):
         inputs = torch.zeros(3, 100, 10, 10)
         recons = torch.ones(3, 100, 10, 10)
         assert_close(compute_l2_error(inputs, recons),
                      0.5 * recons[0].norm(2)**2)
 
-    def test_compute_l2_error_equal(self):
+    def test_compute_l2_error_inputs_equal_recons(self):
         inputs = torch.randn(3, 10, 100, 100)
         recons = inputs * 1.0
         assert_close(compute_l2_error(inputs, recons), torch.tensor(0.0))
 
-    def test_compute_l2_error_one_different_value(self):
+    def test_compute_l2_error_inputs_and_recons_differ_by_one_value(self):
         inputs = torch.zeros(3, 10, 100, 100)
         recons = inputs * 1.0
         recons[:, 0, 0, 50] = 10
         assert_close(compute_l2_error(inputs, recons),
                      torch.tensor(50.0))
 
-    def test_compute_l2_error_correct_return_type(self):
+    def test_compute_l2_error_returns_same_data_type_as_inputs(self):
+        for dtype in [torch.float16, torch.float32, torch.float64]:
+            inputs = torch.randn(10, 100, 8, 8, dtype=dtype)
+            error = compute_l2_error(inputs, inputs * 10)
+            self.assertEqual(error.dtype, dtype)
+
+    def test_compute_l2_error_returns_torch_tensor(self):
         inputs = torch.randn(10, 100, 8, 8)
         error = compute_l2_error(inputs, inputs * 10)
         self.assertEqual(type(error), torch.Tensor)
-        self.assertEqual(error.numel(), 1)
-        self.assertEqual(type(error.item()), float)
 
-    def test_compute_times_active_by_feature_correct_shape(self):
+    def test_compute_l2_error_returns_zero_dim_tensor(self):
+        inputs = torch.randn(10, 100, 8, 8)
+        error = compute_l2_error(inputs, inputs * 10)
+        self.assertEqual(len(error.shape), 0)
+        self.assertEqual(error.numel(), 1)
+
+    def test_compute_times_active_by_feature_returns_correct_shape(self):
         inputs = torch.zeros(1, 100, 8, 8)
         times_active = compute_times_active_by_feature(inputs)
         self.assertEqual(times_active.shape[0], 100)
         self.assertEqual(times_active.numel(), 100)
         self.assertEqual(len(times_active.shape), len(inputs.shape))
+
+    def test_compute_times_active_by_feature_returns_torch_tensor(self):
+        inputs = torch.zeros(1, 100, 8, 8)
+        times_active = compute_times_active_by_feature(inputs)
+        self.assertEqual(type(times_active), torch.Tensor)
 
     def test_compute_times_active_by_feature_none_active(self):
         inputs = torch.zeros(3, 100, 10, 10)
