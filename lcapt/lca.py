@@ -273,8 +273,6 @@ class LCAConv(torch.nn.Module):
             output_padding=self.recon_output_pad)
 
     def compute_weight_update(self, acts: Tensor, error: Tensor) -> Tensor:
-        acts, _ = self._to_correct_input_shape(acts)
-        error, _ = self._to_correct_input_shape(error)
         error = F.pad(error, (self.input_pad[2], self.input_pad[2],
                               self.input_pad[1], self.input_pad[1],
                               self.input_pad[0], self.input_pad[0]))
@@ -406,6 +404,8 @@ class LCAConv(torch.nn.Module):
     def update_weights(self, acts: Tensor, recon_error: Tensor) -> None:
         ''' Updates the dictionary given the computed gradient '''
         with torch.no_grad():
+            acts, _ = self._to_correct_input_shape(acts)
+            recon_error, _ = self._to_correct_input_shape(recon_error)
             update = self.compute_weight_update(acts, recon_error)
             times_active = compute_times_active_by_feature(acts) + 1
             update *= (self.eta / times_active)
