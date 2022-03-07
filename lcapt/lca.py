@@ -17,6 +17,12 @@ from metric import (
     compute_times_active_by_feature
 )
 from preproc import standardize_inputs
+from util import (
+    to_3d_from_5d,
+    to_4d_from_5d,
+    to_5d_from_3d,
+    to_5d_from_4d
+)
 
 
 Parameter = torch.nn.parameter.Parameter
@@ -267,6 +273,8 @@ class LCAConv(torch.nn.Module):
             output_padding=self.recon_output_pad)
 
     def compute_weight_update(self, acts: Tensor, error: Tensor) -> Tensor:
+        acts, _ = self._to_correct_input_shape(acts)
+        error, _ = self._to_correct_input_shape(error)
         error = F.pad(error, (self.input_pad[2], self.input_pad[2],
                               self.input_pad[1], self.input_pad[1],
                               self.input_pad[0], self.input_pad[0]))
@@ -332,9 +340,13 @@ class LCAConv(torch.nn.Module):
 
     def forward(self, inputs: Tensor) -> Union[
             Tensor, tuple[Tensor, Tensor, Tensor]]:
+        inputs, reshape_func = self._to_correct_input_shape(inputs)
         if self.samplewise_standardization:
             inputs = standardize_inputs(inputs)
         acts, recon, recon_error = self.encode(inputs)
+        acts = reshape_func(acts)
+        recon = reshape_func(recon)
+        recon_error = reshape_func(recon_error)
         self.forward_pass += 1
         if self.return_recon:
             return acts, recon, recon_error
@@ -370,6 +382,15 @@ class LCAConv(torch.nn.Module):
             return True 
         else:
             return False
+
+    def _to_correct_input_shape(
+        self, inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
+        if len(inputs.shape) == 3:
+            return to_5d_from_3d(inputs), to_3d_from_5d
+        elif len(inputs.shape) == 4:
+            return to_5d_from_4d(inputs), to_4d_from_5d
+        elif len(inputs.shape) == 5:
+            return inputs, lambda inputs: inputs
 
     def transfer(self, x: Tensor) -> Tensor:
         if type(self.transfer_func) == str:
