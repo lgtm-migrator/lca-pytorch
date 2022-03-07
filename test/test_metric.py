@@ -144,8 +144,8 @@ class TestMetrics(unittest.TestCase):
         inputs = torch.zeros(1, 10, 100)
         for ind in range(10):
             inputs[:, ind, :ind + 1] = torch.randn(1)
-            times_active = compute_times_active_by_feature(inputs)
-            assert_close(times_active[ind, 0, 0], torch.tensor(ind + 1.0))
+        times_active = compute_times_active_by_feature(inputs)
+        assert_close(times_active[:, 0, 0], torch.arange(1., 11.))
 
 
 if __name__ == '__main__':
