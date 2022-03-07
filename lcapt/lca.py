@@ -16,6 +16,7 @@ from metric import (
     compute_l2_error,
     compute_times_active_by_feature
 )
+from preproc import standardize_inputs
 
 
 Parameter = torch.nn.parameter.Parameter
@@ -332,7 +333,7 @@ class LCAConv(torch.nn.Module):
     def forward(self, inputs: Tensor) -> Union[
             Tensor, tuple[Tensor, Tensor, Tensor]]:
         if self.samplewise_standardization:
-            inputs = self.standardize_inputs(inputs)
+            inputs = standardize_inputs(inputs)
         acts, recon, recon_error = self.encode(inputs)
         self.forward_pass += 1
         if self.return_recon:
@@ -356,18 +357,6 @@ class LCAConv(torch.nn.Module):
             dims = tuple(range(1, len(self.weights.shape)))
             scale = self.weights.norm(p=2, dim=dims, keepdim=True)
             self.weights.copy_(self.weights / (scale + eps))
-
-    def standardize_inputs(self, batch: Tensor, eps: float = 1e-6) -> Tensor:
-        ''' Standardize each sample in x '''
-        if len(batch.shape) == 3:
-            dims = -1
-        elif len(batch.shape) in [4, 5]:
-            dims = (-2, -1)
-        else:
-            raise NotImplementedError
-        batch = batch - batch.mean(dim=dims, keepdim=True)
-        batch = batch / (batch.std(dim=dims, keepdim=True) + eps)
-        return batch
 
     def stop_lca(self, energy_history, lca_iter):
         ''' Determines when to stop LCA loop early by comparing the 
