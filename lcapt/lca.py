@@ -274,12 +274,14 @@ class LCAConv(torch.nn.Module):
     def compute_recon(self, acts: Tensor,
                       weights: Union[Tensor, Parameter]) -> Tensor:
         ''' Computes reconstruction given code '''
-        return F.conv_transpose3d(
+        acts, reshape_func = self._to_correct_input_shape(acts)
+        recons = F.conv_transpose3d(
             acts,
             weights,
             stride=(self.stride_t, self.stride_h, self.stride_w),
             padding=self.input_pad,
             output_padding=self.recon_output_pad)
+        return reshape_func(recons)
 
     def compute_weight_update(self, acts: Tensor, error: Tensor) -> Tensor:
         error = F.pad(error, (self.input_pad[2], self.input_pad[2],
