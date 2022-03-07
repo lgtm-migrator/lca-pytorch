@@ -164,6 +164,14 @@ class LCAConv(torch.nn.Module):
         if cudnn_benchmark and torch.backends.cudnn.enabled: 
             torch.backends.cudnn.benchmark = True
 
+    def assign_weight_values(self, tensor: Tensor) -> None:
+        ''' Manually assign weight tensor '''
+        assert 3 <= len(tensor.shape) <= 5
+        assert tensor.dtype == self.weights.dtype
+        tensor, _ = self._to_correct_input_shape(tensor)
+        assert tensor.shape == self.weights.shape
+        self.weights.copy_(tensor)
+
     def _check_lca_write(self, lca_iter: int) -> bool:
         ''' Checks whether to write LCA tensors at a given LCA iter '''
         write = False
