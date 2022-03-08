@@ -29,7 +29,7 @@ Parameter = torch.nn.parameter.Parameter
 Tensor = torch.Tensor
 
 
-class LCAConv(torch.nn.Module):
+class _LCAConvBase(torch.nn.Module):
     '''
     Base class for LCA models.
 
@@ -117,7 +117,7 @@ class LCAConv(torch.nn.Module):
         lr_schedule: Optional[Callable[[int], float]] = None,
         lca_write_step: Optional[int] = None,
         forward_write_step: Optional[int] = None,
-        req_grad: bool = False,
+        req_grad: bool = False
     ) -> None:
 
         self.d_update_clip = d_update_clip
@@ -157,7 +157,7 @@ class LCAConv(torch.nn.Module):
         self._compute_padding()
         os.makedirs(self.result_dir, exist_ok=True)
         self._write_params(deepcopy(vars(self)))
-        super(LCAConv, self).__init__()
+        super(_LCAConvBase, self).__init__()
         self._init_weight_tensor()
         self.register_buffer('forward_pass', torch.tensor(1))
 
@@ -493,3 +493,123 @@ class LCAConv(torch.nn.Module):
                 h5file.create_dataset(
                     f'{name}_{self.forward_pass}_{lca_iter}',
                     data=tensor.detach().cpu().numpy())
+
+
+class LCA1DConv(_LCAConvBase):
+    def __init__(
+        self,
+        n_neurons: int,
+        in_c: int,
+        result_dir: str,
+        kt: int = 1,
+        stride_t: int = 1,
+        lambda_: float = 0.25,
+        tau: Union[float, int] = 1000,
+        eta: float = 0.01,
+        lca_iters: int = 3000,
+        pad: str = 'same',
+        return_recon: bool = False,
+        dtype: torch.dtype = torch.float32,
+        nonneg: bool = True,
+        track_metrics: bool = False,
+        transfer_func: Union[
+            str, Callable[[Tensor], Tensor]] = 'soft_threshold',
+        samplewise_standardization: bool = True,
+        tau_decay_factor: float = 0.0,
+        lca_tol: Optional[float] = None,
+        cudnn_benchmark: bool = True,
+        d_update_clip: float = np.inf,
+        lr_schedule: Optional[Callable[[int], float]] = None,
+        lca_write_step: Optional[int] = None,
+        forward_write_step: Optional[int] = None,
+        req_grad: bool = False
+    ) -> None:
+
+        super(LCA1DConv, self).__init__(
+            n_neurons, in_c, result_dir, 1, 1, kt, 1, 1, stride_t, lambda_,
+            tau, eta, lca_iters, pad, return_recon, dtype, nonneg,
+            track_metrics, transfer_func, samplewise_standardization,
+            tau_decay_factor, lca_tol, cudnn_benchmark, d_update_clip,
+            lr_schedule, lca_write_step, forward_write_step, req_grad)
+
+
+class LCA2DConv(_LCAConvBase):
+    def __init__(
+        self,
+        n_neurons: int,
+        in_c: int,
+        result_dir: str,
+        kh: int = 7,
+        kw: int = 7,
+        stride_h: int = 1,
+        stride_w: int = 1,
+        lambda_: float = 0.25,
+        tau: Union[float, int] = 1000,
+        eta: float = 0.01,
+        lca_iters: int = 3000,
+        pad: str = 'same',
+        return_recon: bool = False,
+        dtype: torch.dtype = torch.float32,
+        nonneg: bool = True,
+        track_metrics: bool = False,
+        transfer_func: Union[
+            str, Callable[[Tensor], Tensor]] = 'soft_threshold',
+        samplewise_standardization: bool = True,
+        tau_decay_factor: float = 0.0,
+        lca_tol: Optional[float] = None,
+        cudnn_benchmark: bool = True,
+        d_update_clip: float = np.inf,
+        lr_schedule: Optional[Callable[[int], float]] = None,
+        lca_write_step: Optional[int] = None,
+        forward_write_step: Optional[int] = None,
+        req_grad: bool = False
+    ) -> None:
+
+        super(LCA2DConv, self).__init__(
+            n_neurons, in_c, result_dir, kh, kw, 1, stride_h, stride_w, 1,
+            lambda_, tau, eta, lca_iters, pad, return_recon, dtype, nonneg,
+            track_metrics, transfer_func, samplewise_standardization,
+            tau_decay_factor, lca_tol, cudnn_benchmark, d_update_clip,
+            lr_schedule, lca_write_step, forward_write_step, req_grad)
+
+
+class LCA3DConv(_LCAConvBase):
+    def __init__(
+        self,
+        n_neurons: int,
+        in_c: int,
+        result_dir: str,
+        kh: int = 7,
+        kw: int = 7,
+        kt: int = 1,
+        stride_h: int = 1,
+        stride_w: int = 1,
+        stride_t: int = 1,
+        lambda_: float = 0.25,
+        tau: Union[float, int] = 1000,
+        eta: float = 0.01,
+        lca_iters: int = 3000,
+        pad: str = 'same',
+        return_recon: bool = False,
+        dtype: torch.dtype = torch.float32,
+        nonneg: bool = True,
+        track_metrics: bool = False,
+        transfer_func: Union[
+            str, Callable[[Tensor], Tensor]] = 'soft_threshold',
+        samplewise_standardization: bool = True,
+        tau_decay_factor: float = 0.0,
+        lca_tol: Optional[float] = None,
+        cudnn_benchmark: bool = True,
+        d_update_clip: float = np.inf,
+        lr_schedule: Optional[Callable[[int], float]] = None,
+        lca_write_step: Optional[int] = None,
+        forward_write_step: Optional[int] = None,
+        req_grad: bool = False
+    ) -> None:
+
+        super(LCA3DConv, self).__init__(
+            n_neurons, in_c, result_dir, kh, kw, kt, stride_h, stride_w,
+            stride_t, lambda_, tau, eta, lca_iters, pad, return_recon, dtype,
+            nonneg, track_metrics, transfer_func, samplewise_standardization,
+            tau_decay_factor, lca_tol, cudnn_benchmark, d_update_clip,
+            lr_schedule, lca_write_step, forward_write_step, req_grad)
