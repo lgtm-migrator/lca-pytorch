@@ -222,15 +222,13 @@ class _LCAConvBase(torch.nn.Module):
         ''' Computes padding for forward convolution '''
         if self.pad == 'same':
             if self.kernel_odd:
-                self.input_pad = (0, (self.kh - 1) // 2, (self.kw - 1) // 2)
+                self.input_pad = (self.kt // 2, self.kh // 2, self.kw // 2)
             else:
-                raise NotImplementedError(
-                    "Even kh and kw implemented only for 'valid' padding.")
+                raise NotImplementedError
         elif self.pad == 'valid':
             self.input_pad = (0, 0, 0)
         else:
-            raise ValueError("Values for pad can either be 'same' or 'valid', "
-                             f"but got {self.pad}.")
+            raise ValueError
 
     def _compute_padding(self) -> None:
         self._compute_input_pad()
