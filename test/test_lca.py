@@ -342,6 +342,22 @@ class TestLCA(unittest.TestCase):
             code, _, _ = lca(inputs)
             self.assertTupleEqual(code.numpy().shape, (1, 10, 1, 1, 1))
 
+    def test_LCAConv3D_code_shape_no_time_pad(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv3D(10, 3, tmp_dir, 7, 7, 5, lca_iters=3,
+                            no_time_pad=True)
+            inputs = torch.randn(1, 3, 5, 20, 20)
+            code = lca(inputs)
+            self.assertTupleEqual(code.numpy().shape, (1, 10, 1, 20, 20))
+
+    def test_LCAConv3D_recon_shape_no_time_pad(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv3D(10, 3, tmp_dir, 7, 7, 5, lca_iters=3,
+                            no_time_pad=True, return_recon=True)
+            inputs = torch.randn(1, 3, 5, 20, 20)
+            _, recon, _ = lca(inputs)
+            self.assertTupleEqual(recon.numpy().shape, inputs.numpy().shape)
+
     def test_LCAConv1D_gradient(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv1D(10, 3, tmp_dir, 5, lca_iters=3, req_grad=True)
@@ -538,6 +554,13 @@ class TestLCA(unittest.TestCase):
                     conns.numpy().shape,
                     (15, 15, ksize3 - 1, ksize - 1, ksize2 - 1)
                 )
+
+    def test_LCAConv3D_no_time_pad(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv3D(10, 3, tmp_dir, 7, 7, 7)
+            self.assertEqual(lca.input_pad[0], 3)
+            lca = LCAConv3D(10, 3, tmp_dir, 7, 7, 7, no_time_pad=True)
+            self.assertEqual(lca.input_pad[0], 0)
 
 
 if __name__ == '__main__':
