@@ -516,7 +516,7 @@ class LCAConv1D(_LCAConvBase):
             track_metrics, transfer_func, samplewise_standardization,
             tau_decay_factor, lca_tol, cudnn_benchmark, d_update_clip,
             lr_schedule, lca_write_step, forward_write_step, req_grad,
-            True)
+            False)
 
     def _to_correct_input_shape(
             self, inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
