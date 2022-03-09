@@ -236,7 +236,8 @@ class _LCAConvBase(torch.nn.Module):
     def _compute_recon_pad(self) -> None:
         ''' Computes output padding for recon conv transpose '''
         if self.kernel_odd:
-            self.recon_output_pad = (0, self.stride_h - 1, self.stride_w - 1)
+            self.recon_output_pad = (
+                self.stride_t - 1, self.stride_h - 1, self.stride_w - 1)
         else:
             self.recon_output_pad = (0, 0, 0)
 
