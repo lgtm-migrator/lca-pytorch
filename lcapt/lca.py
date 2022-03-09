@@ -200,23 +200,16 @@ class _LCAConvBase(torch.nn.Module):
 
     def _compute_inhib_pad(self) -> None:
         ''' Computes padding for compute_lateral_connectivity '''
-        self.lat_conn_pad = [0]
+        pad = []
+        for ksize, stride in zip(
+                [self.kt, self.kh, self.kw],
+                [self.stride_t, self.stride_h, self.stride_w]):
+            if self.kernel_odd or stride == 1 or ksize == 1:
+                pad.append((ksize - 1) // stride * stride)
+            else:
+                pad.append(ksize - stride)
 
-        if self.kernel_odd or self.stride_h == 1:
-            self.lat_conn_pad.append((self.kh - 1)
-                                     // self.stride_h
-                                     * self.stride_h)
-        else:
-            self.lat_conn_pad.append(self.kh - self.stride_h)
-
-        if self.kernel_odd or self.stride_w == 1:
-            self.lat_conn_pad.append((self.kw - 1)
-                                     // self.stride_w
-                                     * self.stride_w)
-        else:
-            self.lat_conn_pad.append(self.kw - self.stride_w)
-
-        self.lat_conn_pad = tuple(self.lat_conn_pad)
+        self.lat_conn_pad = tuple(pad)
 
     def _compute_input_pad(self) -> None:
         ''' Computes padding for forward convolution '''
