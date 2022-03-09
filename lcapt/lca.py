@@ -225,7 +225,9 @@ class _LCAConvBase(torch.nn.Module):
         elif self.pad == 'valid':
             self.input_pad = (0, 0, 0)
         else:
-            raise ValueError
+            raise ValueError(
+                "Acceptable values for pad are 'same' and 'valid', but got ",
+                f"{self.pad}.")
 
     def _compute_padding(self) -> None:
         self._compute_input_pad()
