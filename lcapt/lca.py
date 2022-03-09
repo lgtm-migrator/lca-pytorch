@@ -524,7 +524,8 @@ class LCAConv1D(_LCAConvBase):
         elif len(inputs.shape) == 5:
             return inputs, lambda inputs: inputs
         else:
-            raise ValueError
+            raise ValueError(
+                f'Expected 3D inputs, but got {len(inputs.shape)}D inputs.')
 
 
 class LCAConv2D(_LCAConvBase):
@@ -575,7 +576,8 @@ class LCAConv2D(_LCAConvBase):
         elif len(inputs.shape) == 5:
             return inputs, lambda inputs: inputs
         else:
-            raise ValueError
+            raise ValueError(
+                f'Expected 4D inputs, but got {len(inputs.shape)}D inputs.')
 
 
 class LCAConv3D(_LCAConvBase):
@@ -627,4 +629,5 @@ class LCAConv3D(_LCAConvBase):
         if len(inputs.shape) == 5:
             return inputs, lambda inputs: inputs
         else:
-            raise ValueError
+            raise ValueError(
+                f'Expected 5D inputs, but got {len(inputs.shape)}D inputs.')
