@@ -234,7 +234,7 @@ class _LCAConvBase(torch.nn.Module):
             assert len(self.pad) == 3
             self.input_pad = tuple(self.pad)
         else:
-            TypeError
+            raise TypeError
 
     def _compute_padding(self) -> None:
         self._compute_input_pad()
