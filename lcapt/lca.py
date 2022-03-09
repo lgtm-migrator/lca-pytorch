@@ -117,7 +117,8 @@ class _LCAConvBase(torch.nn.Module):
         lr_schedule: Optional[Callable[[int], float]] = None,
         lca_write_step: Optional[int] = None,
         forward_write_step: Optional[int] = None,
-        req_grad: bool = False
+        req_grad: bool = False,
+        no_time_pad: bool = False
     ) -> None:
 
         self.d_update_clip = d_update_clip
@@ -137,6 +138,7 @@ class _LCAConvBase(torch.nn.Module):
         self.lr_schedule = lr_schedule
         self.metric_fpath = os.path.join(result_dir, 'metrics.xz')
         self.n_neurons = n_neurons 
+        self.no_time_pad = no_time_pad
         self.nonneg = nonneg 
         self.pad = pad
         self.req_grad = req_grad
@@ -213,21 +215,17 @@ class _LCAConvBase(torch.nn.Module):
 
     def _compute_input_pad(self) -> None:
         ''' Computes padding for forward convolution '''
-        if type(self.pad) == str:
-            if self.pad == 'same':
-                assert self.kernel_odd
-                self.input_pad = (self.kt // 2, self.kh // 2, self.kw // 2)
-            elif self.pad == 'valid':
-                self.input_pad = (0, 0, 0)
-            else:
-                raise ValueError
-        elif type(self.pad) == int:
-            self.input_pad = (self.pad, ) * 3
-        elif hasattr(self.pad, '__iter__'):
-            assert len(self.pad) == 3
-            self.input_pad = tuple(self.pad)
+        if self.pad == 'same':
+            assert self.kernel_odd
+            self.input_pad = (
+                0 if self.no_time_pad else self.kt // 2,
+                self.kh // 2,
+                self.kw // 2
+            )
+        elif self.pad == 'valid':
+            self.input_pad = (0, 0, 0)
         else:
-            raise TypeError
+            raise ValueError
 
     def _compute_padding(self) -> None:
         self._compute_input_pad()
@@ -527,7 +525,8 @@ class LCA1DConv(_LCAConvBase):
             tau, eta, lca_iters, pad, return_recon, dtype, nonneg,
             track_metrics, transfer_func, samplewise_standardization,
             tau_decay_factor, lca_tol, cudnn_benchmark, d_update_clip,
-            lr_schedule, lca_write_step, forward_write_step, req_grad)
+            lr_schedule, lca_write_step, forward_write_step, req_grad,
+            True)
 
 
 class LCA2DConv(_LCAConvBase):
@@ -567,7 +566,8 @@ class LCA2DConv(_LCAConvBase):
             lambda_, tau, eta, lca_iters, pad, return_recon, dtype, nonneg,
             track_metrics, transfer_func, samplewise_standardization,
             tau_decay_factor, lca_tol, cudnn_benchmark, d_update_clip,
-            lr_schedule, lca_write_step, forward_write_step, req_grad)
+            lr_schedule, lca_write_step, forward_write_step, req_grad,
+            True)
 
 
 class LCA3DConv(_LCAConvBase):
@@ -601,7 +601,8 @@ class LCA3DConv(_LCAConvBase):
         lr_schedule: Optional[Callable[[int], float]] = None,
         lca_write_step: Optional[int] = None,
         forward_write_step: Optional[int] = None,
-        req_grad: bool = False
+        req_grad: bool = False,
+        no_time_pad: bool = False
     ) -> None:
 
         super(LCA3DConv, self).__init__(
@@ -609,4 +610,5 @@ class LCA3DConv(_LCAConvBase):
             stride_t, lambda_, tau, eta, lca_iters, pad, return_recon, dtype,
             nonneg, track_metrics, transfer_func, samplewise_standardization,
             tau_decay_factor, lca_tol, cudnn_benchmark, d_update_clip,
-            lr_schedule, lca_write_step, forward_write_step, req_grad)
+            lr_schedule, lca_write_step, forward_write_step, req_grad,
+            no_time_pad)
