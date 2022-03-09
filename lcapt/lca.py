@@ -108,7 +108,8 @@ class _LCAConvBase(torch.nn.Module):
         nonneg: bool = True,
         track_metrics: bool = False,
         transfer_func: Union[
-            str, Callable[[Tensor], Tensor]] = 'soft_threshold',
+            Literal['soft_threshold', 'hard_threshold'],
+            Callable[[Tensor], Tensor]] = 'soft_threshold',
         samplewise_standardization: bool = True,
         tau_decay_factor: float = 0.0,
         lca_tol: Optional[float] = None,
@@ -508,7 +509,8 @@ class LCA1DConv(_LCAConvBase):
         nonneg: bool = True,
         track_metrics: bool = False,
         transfer_func: Union[
-            str, Callable[[Tensor], Tensor]] = 'soft_threshold',
+            Literal['soft_threshold', 'hard_threshold'],
+            Callable[[Tensor], Tensor]] = 'soft_threshold',
         samplewise_standardization: bool = True,
         tau_decay_factor: float = 0.0,
         lca_tol: Optional[float] = None,
@@ -549,7 +551,8 @@ class LCA2DConv(_LCAConvBase):
         nonneg: bool = True,
         track_metrics: bool = False,
         transfer_func: Union[
-            str, Callable[[Tensor], Tensor]] = 'soft_threshold',
+            Literal['soft_threshold', 'hard_threshold'],
+            Callable[[Tensor], Tensor]] = 'soft_threshold',
         samplewise_standardization: bool = True,
         tau_decay_factor: float = 0.0,
         lca_tol: Optional[float] = None,
@@ -592,7 +595,8 @@ class LCA3DConv(_LCAConvBase):
         nonneg: bool = True,
         track_metrics: bool = False,
         transfer_func: Union[
-            str, Callable[[Tensor], Tensor]] = 'soft_threshold',
+            Literal['soft_threshold', 'hard_threshold'],
+            Callable[[Tensor], Tensor]] = 'soft_threshold',
         samplewise_standardization: bool = True,
         tau_decay_factor: float = 0.0,
         lca_tol: Optional[float] = None,
