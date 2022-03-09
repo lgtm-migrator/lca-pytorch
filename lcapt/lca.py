@@ -1,6 +1,6 @@
 from copy import deepcopy
 import os
-from typing import Any, Callable, Iterable, Optional, Union
+from typing import Any, Callable, Literal, Optional, Union
 import yaml
 
 import h5py
@@ -102,7 +102,7 @@ class _LCAConvBase(torch.nn.Module):
         tau: Union[float, int] = 1000,
         eta: float = 0.01,
         lca_iters: int = 3000,
-        pad: Union[str, int, Iterable[int]] = 'same',
+        pad: Literal['same', 'valid'] = 'same',
         return_recon: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
@@ -504,7 +504,7 @@ class LCA1DConv(_LCAConvBase):
         tau: Union[float, int] = 1000,
         eta: float = 0.01,
         lca_iters: int = 3000,
-        pad: Union[str, int, Iterable[int]] = 'same',
+        pad: Literal['same', 'valid'] = 'same',
         return_recon: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
@@ -544,7 +544,7 @@ class LCA2DConv(_LCAConvBase):
         tau: Union[float, int] = 1000,
         eta: float = 0.01,
         lca_iters: int = 3000,
-        pad: Union[str, int, Iterable[int]] = 'same',
+        pad: Literal['same', 'valid'] = 'same',
         return_recon: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
@@ -586,7 +586,7 @@ class LCA3DConv(_LCAConvBase):
         tau: Union[float, int] = 1000,
         eta: float = 0.01,
         lca_iters: int = 3000,
-        pad: Union[str, int, Iterable[int]] = 'same',
+        pad: Literal['same', 'valid'] = 'same',
         return_recon: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
