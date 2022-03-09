@@ -348,9 +348,9 @@ class _LCAConvBase(torch.nn.Module):
 
     def forward(self, inputs: Tensor) -> Union[
             Tensor, tuple[Tensor, Tensor, Tensor]]:
-        inputs, reshape_func = self._to_correct_input_shape(inputs)
         if self.samplewise_standardization:
             inputs = standardize_inputs(inputs)
+        inputs, reshape_func = self._to_correct_input_shape(inputs)
         acts, recon, recon_error = self.encode(inputs)
         acts = reshape_func(acts)
         recon = reshape_func(recon)
