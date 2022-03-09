@@ -527,6 +527,9 @@ class LCAConv1D(_LCAConvBase):
             raise ValueError(
                 f'Expected 3D inputs, but got {len(inputs.shape)}D inputs.')
 
+    def get_weights(self) -> None:
+        return to_3d_from_5d(self.weights.detach())
+
 
 class LCAConv2D(_LCAConvBase):
     def __init__(
@@ -578,6 +581,9 @@ class LCAConv2D(_LCAConvBase):
         else:
             raise ValueError(
                 f'Expected 4D inputs, but got {len(inputs.shape)}D inputs.')
+
+    def get_weights(self) -> Tensor:
+        return to_4d_from_5d(self.weights.detach())
 
 
 class LCAConv3D(_LCAConvBase):
@@ -631,3 +637,6 @@ class LCAConv3D(_LCAConvBase):
         else:
             raise ValueError(
                 f'Expected 5D inputs, but got {len(inputs.shape)}D inputs.')
+
+    def get_weights(self) -> Tensor:
+        return self.weights.detach()
