@@ -478,7 +478,7 @@ class _LCAConvBase(torch.nn.Module):
                     data=tensor.detach().cpu().numpy())
 
 
-class LCA1DConv(_LCAConvBase):
+class LCAConv1D(_LCAConvBase):
     def __init__(
         self,
         n_neurons: int,
@@ -509,7 +509,7 @@ class LCA1DConv(_LCAConvBase):
         req_grad: bool = False
     ) -> None:
 
-        super(LCA1DConv, self).__init__(
+        super(LCAConv1D, self).__init__(
             n_neurons, in_c, result_dir, 1, 1, kt, 1, 1, stride_t, lambda_,
             tau, eta, lca_iters, pad, return_recon, dtype, nonneg,
             track_metrics, transfer_func, samplewise_standardization,
@@ -523,7 +523,7 @@ class LCA1DConv(_LCAConvBase):
         return to_5d_from_3d(inputs), to_3d_from_5d
 
 
-class LCA2DConv(_LCAConvBase):
+class LCAConv2D(_LCAConvBase):
     def __init__(
         self,
         n_neurons: int,
@@ -556,7 +556,7 @@ class LCA2DConv(_LCAConvBase):
         req_grad: bool = False
     ) -> None:
 
-        super(LCA2DConv, self).__init__(
+        super(LCAConv2D, self).__init__(
             n_neurons, in_c, result_dir, kh, kw, 1, stride_h, stride_w, 1,
             lambda_, tau, eta, lca_iters, pad, return_recon, dtype, nonneg,
             track_metrics, transfer_func, samplewise_standardization,
@@ -570,7 +570,7 @@ class LCA2DConv(_LCAConvBase):
         return to_5d_from_4d(inputs), to_4d_from_5d
 
 
-class LCA3DConv(_LCAConvBase):
+class LCAConv3D(_LCAConvBase):
     def __init__(
         self,
         n_neurons: int,
@@ -606,7 +606,7 @@ class LCA3DConv(_LCAConvBase):
         no_time_pad: bool = False
     ) -> None:
 
-        super(LCA3DConv, self).__init__(
+        super(LCAConv3D, self).__init__(
             n_neurons, in_c, result_dir, kh, kw, kt, stride_h, stride_w,
             stride_t, lambda_, tau, eta, lca_iters, pad, return_recon, dtype,
             nonneg, track_metrics, transfer_func, samplewise_standardization,
