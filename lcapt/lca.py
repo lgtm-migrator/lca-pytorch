@@ -391,23 +391,9 @@ class _LCAConvBase(torch.nn.Module):
         else:
             return False
 
-    def _to_correct_input_shape(
-        self, inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
-        if len(inputs.shape) == 3:
-            assert self.kh == 1 and self.kw == 1, (
-                f'Expected kh=1 and kw=1 for 3D input, but got kh={self.kh} ',
-                f'and kw={self.kw}.'
-            )
-            return to_5d_from_3d(inputs), to_3d_from_5d
-        elif len(inputs.shape) == 4:
-            assert self.kt == 1, (
-                f'Expected kt=1 for 4D input, but got kt={self.kt}.'
-            )
-            return to_5d_from_4d(inputs), to_4d_from_5d
-        elif len(inputs.shape) == 5:
-            return inputs, lambda inputs: inputs
-        else:
-            raise NotImplementedError
+    def _to_correct_input_shape(self,
+            inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
+        pass
 
     def transfer(self, x: Tensor) -> Tensor:
         if type(self.transfer_func) == str:
@@ -531,6 +517,11 @@ class LCA1DConv(_LCAConvBase):
             lr_schedule, lca_write_step, forward_write_step, req_grad,
             True)
 
+    def _to_correct_input_shape(self,
+            inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
+        assert len(inputs.shape) == 3
+        return to_5d_from_3d(inputs), to_3d_from_5d
+
 
 class LCA2DConv(_LCAConvBase):
     def __init__(
@@ -572,6 +563,11 @@ class LCA2DConv(_LCAConvBase):
             tau_decay_factor, lca_tol, cudnn_benchmark, d_update_clip,
             lr_schedule, lca_write_step, forward_write_step, req_grad,
             True)
+
+    def _to_correct_input_shape(self,
+            inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
+        assert len(inputs.shape) == 4
+        return to_5d_from_4d(inputs), to_4d_from_5d
 
 
 class LCA3DConv(_LCAConvBase):
@@ -617,3 +613,8 @@ class LCA3DConv(_LCAConvBase):
             tau_decay_factor, lca_tol, cudnn_benchmark, d_update_clip,
             lr_schedule, lca_write_step, forward_write_step, req_grad,
             no_time_pad)
+
+    def _to_correct_input_shape(self,
+            inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
+        assert len(inputs.shape) == 5
+        return inputs, lambda inputs: inputs
