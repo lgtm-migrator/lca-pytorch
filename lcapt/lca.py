@@ -391,8 +391,8 @@ class _LCAConvBase(torch.nn.Module):
         else:
             return False
 
-    def _to_correct_input_shape(self,
-            inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
+    def _to_correct_input_shape(
+            self, inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
         pass
 
     def transfer(self, x: Tensor) -> Tensor:
@@ -517,8 +517,8 @@ class LCA1DConv(_LCAConvBase):
             lr_schedule, lca_write_step, forward_write_step, req_grad,
             True)
 
-    def _to_correct_input_shape(self,
-            inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
+    def _to_correct_input_shape(
+            self, inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
         assert len(inputs.shape) == 3
         return to_5d_from_3d(inputs), to_3d_from_5d
 
@@ -564,8 +564,8 @@ class LCA2DConv(_LCAConvBase):
             lr_schedule, lca_write_step, forward_write_step, req_grad,
             True)
 
-    def _to_correct_input_shape(self,
-            inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
+    def _to_correct_input_shape(
+            self, inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
         assert len(inputs.shape) == 4
         return to_5d_from_4d(inputs), to_4d_from_5d
 
@@ -614,7 +614,7 @@ class LCA3DConv(_LCAConvBase):
             lr_schedule, lca_write_step, forward_write_step, req_grad,
             no_time_pad)
 
-    def _to_correct_input_shape(self,
-            inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
+    def _to_correct_input_shape(
+            self, inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
         assert len(inputs.shape) == 5
         return inputs, lambda inputs: inputs
