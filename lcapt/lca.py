@@ -245,7 +245,6 @@ class _LCAConvBase(torch.nn.Module):
     def compute_input_drive(self, inputs: Tensor,
                             weights: Union[Tensor, Parameter]) -> Tensor:
         inputs, reshape_func = self._to_correct_input_shape(inputs)
-        assert inputs.shape[2] == self.kt
         drive = F.conv3d(inputs, weights,
                          stride=(self.stride_t, self.stride_h, self.stride_w),
                          padding=self.input_pad)
