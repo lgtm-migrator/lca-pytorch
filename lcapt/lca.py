@@ -1,6 +1,6 @@
 from copy import deepcopy
 import os
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Literal, Optional, Union
 import yaml
 
 import h5py
@@ -29,7 +29,7 @@ Parameter = torch.nn.parameter.Parameter
 Tensor = torch.Tensor
 
 
-class LCAConv(torch.nn.Module):
+class _LCAConvBase(torch.nn.Module):
     '''
     Base class for LCA models.
 
@@ -102,13 +102,14 @@ class LCAConv(torch.nn.Module):
         tau: Union[float, int] = 1000,
         eta: float = 0.01,
         lca_iters: int = 3000,
-        pad: str = 'same',
+        pad: Literal['same', 'valid'] = 'same',
         return_recon: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
         track_metrics: bool = False,
         transfer_func: Union[
-            str, Callable[[Tensor], Tensor]] = 'soft_threshold',
+            Literal['soft_threshold', 'hard_threshold'],
+            Callable[[Tensor], Tensor]] = 'soft_threshold',
         samplewise_standardization: bool = True,
         tau_decay_factor: float = 0.0,
         lca_tol: Optional[float] = None,
@@ -118,14 +119,14 @@ class LCAConv(torch.nn.Module):
         lca_write_step: Optional[int] = None,
         forward_write_step: Optional[int] = None,
         req_grad: bool = False,
+        no_time_pad: bool = False
     ) -> None:
 
         self.d_update_clip = d_update_clip
         self.dtype = dtype 
         self.eta = eta 
         self.forward_write_step = forward_write_step
-        self.in_c = in_c 
-        self.kernel_odd = True if kh % 2 != 0 else False
+        self.in_c = in_c
         self.kh = kh
         self.kt = kt
         self.kw = kw
@@ -138,6 +139,7 @@ class LCAConv(torch.nn.Module):
         self.lr_schedule = lr_schedule
         self.metric_fpath = os.path.join(result_dir, 'metrics.xz')
         self.n_neurons = n_neurons 
+        self.no_time_pad = no_time_pad
         self.nonneg = nonneg 
         self.pad = pad
         self.req_grad = req_grad
@@ -157,7 +159,7 @@ class LCAConv(torch.nn.Module):
         self._compute_padding()
         os.makedirs(self.result_dir, exist_ok=True)
         self._write_params(deepcopy(vars(self)))
-        super(LCAConv, self).__init__()
+        super(_LCAConvBase, self).__init__()
         self._init_weight_tensor()
         self.register_buffer('forward_pass', torch.tensor(1))
 
@@ -166,7 +168,6 @@ class LCAConv(torch.nn.Module):
 
     def assign_weight_values(self, tensor: Tensor) -> None:
         ''' Manually assign weight tensor '''
-        assert 3 <= len(tensor.shape) <= 5
         assert tensor.dtype == self.weights.dtype
         tensor, _ = self._to_correct_input_shape(tensor)
         assert tensor.shape == self.weights.shape
@@ -191,46 +192,42 @@ class LCAConv(torch.nn.Module):
         return write
 
     def _check_conv_params(self) -> None:
-        assert ((self.kh % 2 != 0 and self.kw % 2 != 0)
-                or (self.kh % 2 == 0 and self.kw % 2 == 0)), (
-                'kh and kw should either both be even or both be odd numbers, '
-                f'but kh={self.kh} and kw={self.kw}.')
-        assert self.stride_h == 1 or self.stride_h % 2 == 0
-        assert self.stride_w == 1 or self.stride_w % 2 == 0
+        even_k = [ksize % 2 == 0
+                  for ksize in [self.kt, self.kh, self.kw] if ksize != 1]
+        assert all(even_k) or not any(even_k)
+        self.kernel_odd = not any(even_k)
+        even_s = [stride == 1 or stride % 2 == 0
+                  for stride in [self.stride_t, self.stride_h, self.stride_w]]
+        assert all(even_s)
 
     def _compute_inhib_pad(self) -> None:
         ''' Computes padding for compute_lateral_connectivity '''
-        self.lat_conn_pad = [0]
+        pad = []
+        for ksize, stride in zip(
+                [self.kt, self.kh, self.kw],
+                [self.stride_t, self.stride_h, self.stride_w]):
+            if self.kernel_odd or stride == 1 or ksize == 1:
+                pad.append((ksize - 1) // stride * stride)
+            else:
+                pad.append(ksize - stride)
 
-        if self.kernel_odd or self.stride_h == 1:
-            self.lat_conn_pad.append((self.kh - 1)
-                                     // self.stride_h
-                                     * self.stride_h)
-        else:
-            self.lat_conn_pad.append(self.kh - self.stride_h)
-
-        if self.kernel_odd or self.stride_w == 1:
-            self.lat_conn_pad.append((self.kw - 1)
-                                     // self.stride_w
-                                     * self.stride_w)
-        else:
-            self.lat_conn_pad.append(self.kw - self.stride_w)
-
-        self.lat_conn_pad = tuple(self.lat_conn_pad)
+        self.lat_conn_pad = tuple(pad)
 
     def _compute_input_pad(self) -> None:
         ''' Computes padding for forward convolution '''
         if self.pad == 'same':
-            if self.kernel_odd:
-                self.input_pad = (0, (self.kh - 1) // 2, (self.kw - 1) // 2)
-            else:
-                raise NotImplementedError(
-                    "Even kh and kw implemented only for 'valid' padding.")
+            assert self.kernel_odd
+            self.input_pad = (
+                0 if self.no_time_pad else self.kt // 2,
+                self.kh // 2,
+                self.kw // 2
+            )
         elif self.pad == 'valid':
             self.input_pad = (0, 0, 0)
         else:
-            raise ValueError("Values for pad can either be 'same' or 'valid', "
-                             f"but got {self.pad}.")
+            raise ValueError(
+                "Acceptable values for pad are 'same' and 'valid', but got ",
+                f"{self.pad}.")
 
     def _compute_padding(self) -> None:
         self._compute_input_pad()
@@ -240,14 +237,14 @@ class LCAConv(torch.nn.Module):
     def _compute_recon_pad(self) -> None:
         ''' Computes output padding for recon conv transpose '''
         if self.kernel_odd:
-            self.recon_output_pad = (0, self.stride_h - 1, self.stride_w - 1)
+            self.recon_output_pad = (
+                self.stride_t - 1, self.stride_h - 1, self.stride_w - 1)
         else:
             self.recon_output_pad = (0, 0, 0)
 
     def compute_input_drive(self, inputs: Tensor,
                             weights: Union[Tensor, Parameter]) -> Tensor:
         inputs, reshape_func = self._to_correct_input_shape(inputs)
-        assert inputs.shape[2] == self.kt
         drive = F.conv3d(inputs, weights,
                          stride=(self.stride_t, self.stride_h, self.stride_w),
                          padding=self.input_pad)
@@ -351,9 +348,9 @@ class LCAConv(torch.nn.Module):
 
     def forward(self, inputs: Tensor) -> Union[
             Tensor, tuple[Tensor, Tensor, Tensor]]:
-        inputs, reshape_func = self._to_correct_input_shape(inputs)
         if self.samplewise_standardization:
             inputs = standardize_inputs(inputs)
+        inputs, reshape_func = self._to_correct_input_shape(inputs)
         acts, recon, recon_error = self.encode(inputs)
         acts = reshape_func(acts)
         recon = reshape_func(recon)
@@ -367,7 +364,7 @@ class LCAConv(torch.nn.Module):
     def _init_weight_tensor(self) -> None:
         weights = torch.randn(self.n_neurons, self.in_c, self.kt, self.kh,
                               self.kw, dtype=self.dtype)
-        weights[:, :, 1:] = 0.0
+        weights[weights.abs() < 1.0] = 0.0
         self.weights = torch.nn.Parameter(weights, requires_grad=self.req_grad)
         self.normalize_weights()
 
@@ -395,22 +392,8 @@ class LCAConv(torch.nn.Module):
             return False
 
     def _to_correct_input_shape(
-        self, inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
-        if len(inputs.shape) == 3:
-            assert self.kh == 1 and self.kw == 1, (
-                f'Expected kh=1 and kw=1 for 3D input, but got kh={self.kh} ',
-                f'and kw={self.kw}.'
-            )
-            return to_5d_from_3d(inputs), to_3d_from_5d
-        elif len(inputs.shape) == 4:
-            assert self.kt == 1, (
-                f'Expected kt=1 for 4D input, but got kt={self.kt}.'
-            )
-            return to_5d_from_4d(inputs), to_4d_from_5d
-        elif len(inputs.shape) == 5:
-            return inputs, lambda inputs: inputs
-        else:
-            raise NotImplementedError
+            self, inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
+        pass
 
     def transfer(self, x: Tensor) -> Tensor:
         if type(self.transfer_func) == str:
@@ -493,3 +476,167 @@ class LCAConv(torch.nn.Module):
                 h5file.create_dataset(
                     f'{name}_{self.forward_pass}_{lca_iter}',
                     data=tensor.detach().cpu().numpy())
+
+
+class LCAConv1D(_LCAConvBase):
+    def __init__(
+        self,
+        n_neurons: int,
+        in_c: int,
+        result_dir: str,
+        kt: int = 1,
+        stride_t: int = 1,
+        lambda_: float = 0.25,
+        tau: Union[float, int] = 1000,
+        eta: float = 0.01,
+        lca_iters: int = 3000,
+        pad: Literal['same', 'valid'] = 'same',
+        return_recon: bool = False,
+        dtype: torch.dtype = torch.float32,
+        nonneg: bool = True,
+        track_metrics: bool = False,
+        transfer_func: Union[
+            Literal['soft_threshold', 'hard_threshold'],
+            Callable[[Tensor], Tensor]] = 'soft_threshold',
+        samplewise_standardization: bool = True,
+        tau_decay_factor: float = 0.0,
+        lca_tol: Optional[float] = None,
+        cudnn_benchmark: bool = True,
+        d_update_clip: float = np.inf,
+        lr_schedule: Optional[Callable[[int], float]] = None,
+        lca_write_step: Optional[int] = None,
+        forward_write_step: Optional[int] = None,
+        req_grad: bool = False
+    ) -> None:
+
+        super(LCAConv1D, self).__init__(
+            n_neurons, in_c, result_dir, 1, 1, kt, 1, 1, stride_t, lambda_,
+            tau, eta, lca_iters, pad, return_recon, dtype, nonneg,
+            track_metrics, transfer_func, samplewise_standardization,
+            tau_decay_factor, lca_tol, cudnn_benchmark, d_update_clip,
+            lr_schedule, lca_write_step, forward_write_step, req_grad,
+            False)
+
+    def _to_correct_input_shape(
+            self, inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
+        if len(inputs.shape) == 3:
+            return to_5d_from_3d(inputs), to_3d_from_5d
+        elif len(inputs.shape) == 5:
+            return inputs, lambda inputs: inputs
+        else:
+            raise ValueError(
+                f'Expected 3D inputs, but got {len(inputs.shape)}D inputs.')
+
+    def get_weights(self) -> None:
+        return to_3d_from_5d(self.weights.detach())
+
+
+class LCAConv2D(_LCAConvBase):
+    def __init__(
+        self,
+        n_neurons: int,
+        in_c: int,
+        result_dir: str,
+        kh: int = 7,
+        kw: int = 7,
+        stride_h: int = 1,
+        stride_w: int = 1,
+        lambda_: float = 0.25,
+        tau: Union[float, int] = 1000,
+        eta: float = 0.01,
+        lca_iters: int = 3000,
+        pad: Literal['same', 'valid'] = 'same',
+        return_recon: bool = False,
+        dtype: torch.dtype = torch.float32,
+        nonneg: bool = True,
+        track_metrics: bool = False,
+        transfer_func: Union[
+            Literal['soft_threshold', 'hard_threshold'],
+            Callable[[Tensor], Tensor]] = 'soft_threshold',
+        samplewise_standardization: bool = True,
+        tau_decay_factor: float = 0.0,
+        lca_tol: Optional[float] = None,
+        cudnn_benchmark: bool = True,
+        d_update_clip: float = np.inf,
+        lr_schedule: Optional[Callable[[int], float]] = None,
+        lca_write_step: Optional[int] = None,
+        forward_write_step: Optional[int] = None,
+        req_grad: bool = False
+    ) -> None:
+
+        super(LCAConv2D, self).__init__(
+            n_neurons, in_c, result_dir, kh, kw, 1, stride_h, stride_w, 1,
+            lambda_, tau, eta, lca_iters, pad, return_recon, dtype, nonneg,
+            track_metrics, transfer_func, samplewise_standardization,
+            tau_decay_factor, lca_tol, cudnn_benchmark, d_update_clip,
+            lr_schedule, lca_write_step, forward_write_step, req_grad,
+            True)
+
+    def _to_correct_input_shape(
+            self, inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
+        if len(inputs.shape) == 4:
+            return to_5d_from_4d(inputs), to_4d_from_5d
+        elif len(inputs.shape) == 5:
+            return inputs, lambda inputs: inputs
+        else:
+            raise ValueError(
+                f'Expected 4D inputs, but got {len(inputs.shape)}D inputs.')
+
+    def get_weights(self) -> Tensor:
+        return to_4d_from_5d(self.weights.detach())
+
+
+class LCAConv3D(_LCAConvBase):
+    def __init__(
+        self,
+        n_neurons: int,
+        in_c: int,
+        result_dir: str,
+        kh: int = 7,
+        kw: int = 7,
+        kt: int = 1,
+        stride_h: int = 1,
+        stride_w: int = 1,
+        stride_t: int = 1,
+        lambda_: float = 0.25,
+        tau: Union[float, int] = 1000,
+        eta: float = 0.01,
+        lca_iters: int = 3000,
+        pad: Literal['same', 'valid'] = 'same',
+        return_recon: bool = False,
+        dtype: torch.dtype = torch.float32,
+        nonneg: bool = True,
+        track_metrics: bool = False,
+        transfer_func: Union[
+            Literal['soft_threshold', 'hard_threshold'],
+            Callable[[Tensor], Tensor]] = 'soft_threshold',
+        samplewise_standardization: bool = True,
+        tau_decay_factor: float = 0.0,
+        lca_tol: Optional[float] = None,
+        cudnn_benchmark: bool = True,
+        d_update_clip: float = np.inf,
+        lr_schedule: Optional[Callable[[int], float]] = None,
+        lca_write_step: Optional[int] = None,
+        forward_write_step: Optional[int] = None,
+        req_grad: bool = False,
+        no_time_pad: bool = False
+    ) -> None:
+
+        super(LCAConv3D, self).__init__(
+            n_neurons, in_c, result_dir, kh, kw, kt, stride_h, stride_w,
+            stride_t, lambda_, tau, eta, lca_iters, pad, return_recon, dtype,
+            nonneg, track_metrics, transfer_func, samplewise_standardization,
+            tau_decay_factor, lca_tol, cudnn_benchmark, d_update_clip,
+            lr_schedule, lca_write_step, forward_write_step, req_grad,
+            no_time_pad)
+
+    def _to_correct_input_shape(
+            self, inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
+        if len(inputs.shape) == 5:
+            return inputs, lambda inputs: inputs
+        else:
+            raise ValueError(
+                f'Expected 5D inputs, but got {len(inputs.shape)}D inputs.')
+
+    def get_weights(self) -> Tensor:
+        return self.weights.detach()
