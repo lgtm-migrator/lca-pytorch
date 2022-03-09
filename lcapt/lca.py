@@ -519,8 +519,12 @@ class LCAConv1D(_LCAConvBase):
 
     def _to_correct_input_shape(
             self, inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
-        assert len(inputs.shape) == 3
-        return to_5d_from_3d(inputs), to_3d_from_5d
+        if len(inputs.shape) == 3:
+            return to_5d_from_3d(inputs), to_3d_from_5d
+        elif len(inputs.shape) == 5:
+            return inputs, lambda inputs: inputs
+        else:
+            raise ValueError
 
 
 class LCAConv2D(_LCAConvBase):
@@ -566,8 +570,12 @@ class LCAConv2D(_LCAConvBase):
 
     def _to_correct_input_shape(
             self, inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
-        assert len(inputs.shape) == 4
-        return to_5d_from_4d(inputs), to_4d_from_5d
+        if len(inputs.shape) == 4:
+            return to_5d_from_4d(inputs), to_4d_from_5d
+        elif len(inputs.shape) == 5:
+            return inputs, lambda inputs: inputs
+        else:
+            raise ValueError
 
 
 class LCAConv3D(_LCAConvBase):
@@ -616,5 +624,7 @@ class LCAConv3D(_LCAConvBase):
 
     def _to_correct_input_shape(
             self, inputs: Tensor) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
-        assert len(inputs.shape) == 5
-        return inputs, lambda inputs: inputs
+        if len(inputs.shape) == 5:
+            return inputs, lambda inputs: inputs
+        else:
+            raise ValueError
