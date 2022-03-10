@@ -407,7 +407,7 @@ class TestLCA(unittest.TestCase):
     def test_LCAConv1D_feature_as_input(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv1D(10, 3, tmp_dir, 100, pad='valid',
-                            samplewise_standardization=False)
+                            input_norm=False)
             inputs = lca.get_weights()[0].unsqueeze(0)
             code = lca(inputs)
             code = code.squeeze()
@@ -418,7 +418,7 @@ class TestLCA(unittest.TestCase):
     def test_LCAConv2D_feature_as_input(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv2D(10, 3, tmp_dir, 10, 10, pad='valid',
-                            samplewise_standardization=False)
+                            input_norm=False)
             inputs = lca.get_weights()[0].unsqueeze(0)
             code = lca(inputs)
             code = code.squeeze()
@@ -429,7 +429,7 @@ class TestLCA(unittest.TestCase):
     def test_LCAConv3D_feature_as_input(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv3D(10, 3, tmp_dir, 10, 10, 10, pad='valid',
-                            samplewise_standardization=False)
+                            input_norm=False)
             inputs = lca.get_weights()[0].unsqueeze(0)
             code = lca(inputs)
             code = code.squeeze()
