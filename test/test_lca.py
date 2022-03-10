@@ -406,36 +406,36 @@ class TestLCA(unittest.TestCase):
 
     def test_LCAConv1D_feature_as_input(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv1D(10, 3, tmp_dir, 100, pad='valid')
+            lca = LCAConv1D(10, 3, tmp_dir, 100, pad='valid',
+                            samplewise_standardization=False)
             inputs = lca.get_weights()[0].unsqueeze(0)
             code = lca(inputs)
             code = code.squeeze()
-            self.assertEqual(code[0], code.max())
-            code = torch.sort(code, descending=True, stable=True)[0].numpy()
-            if code[1] > 0.0:
-                self.assertTrue(code[0] / code[1] > 10.0)
+            code = torch.sort(code, descending=True, stable=True)[0]
+            self.assertEqual(torch.count_nonzero(code), 1)
+            assert_close(code[0], code.max(), rtol=0.0, atol=0.0)
 
     def test_LCAConv2D_feature_as_input(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv2D(10, 3, tmp_dir, 10, 10, pad='valid')
+            lca = LCAConv2D(10, 3, tmp_dir, 10, 10, pad='valid',
+                            samplewise_standardization=False)
             inputs = lca.get_weights()[0].unsqueeze(0)
             code = lca(inputs)
             code = code.squeeze()
-            self.assertEqual(code[0], code.max())
-            code = torch.sort(code, descending=True, stable=True)[0].numpy()
-            if code[1] > 0.0:
-                self.assertTrue(code[0] / code[1] > 10.0)
+            code = torch.sort(code, descending=True, stable=True)[0]
+            self.assertEqual(torch.count_nonzero(code), 1)
+            assert_close(code[0], code.max(), rtol=0.0, atol=0.0)
 
     def test_LCAConv3D_feature_as_input(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv3D(10, 3, tmp_dir, 10, 10, 10, pad='valid')
+            lca = LCAConv3D(10, 3, tmp_dir, 10, 10, 10, pad='valid',
+                            samplewise_standardization=False)
             inputs = lca.get_weights()[0].unsqueeze(0)
             code = lca(inputs)
             code = code.squeeze()
-            self.assertEqual(code[0], code.max())
-            code = torch.sort(code, descending=True, stable=True)[0].numpy()
-            if code[1] > 0.0:
-                self.assertTrue(code[0] / code[1] > 10.0)
+            code = torch.sort(code, descending=True, stable=True)[0]
+            self.assertTrue(torch.count_nonzero(code), 1)
+            assert_close(code[0], code.max(), rtol=0.0, atol=0.0)
 
     def test_LCAConv1D_compute_lateral_connectivity_stride_1_odd_ksize(self):
         with TemporaryDirectory() as tmp_dir:
