@@ -589,6 +589,29 @@ class TestLCA(unittest.TestCase):
             lca = LCAConv3D(10, 3, tmp_dir, 7, 7, 7, no_time_pad=True)
             self.assertEqual(lca.input_pad[0], 0)
 
+    def test_l1_norm_of_code_decreases_with_increasing_lambda(self):
+        with TemporaryDirectory() as tmp_dir:
+            l1_norms = []
+            for lambda_ in torch.arange(0.1, 1.0, 0.1):
+                lca = LCAConv2D(10, 3, tmp_dir, 10, 10, lambda_=lambda_,
+                                pad='valid', input_norm=False)
+                inputs = lca.get_weights()[0].unsqueeze(0)
+                code = lca(inputs)
+                l1_norms.append(code.norm(1).item())
+            self.assertEqual(l1_norms, sorted(l1_norms, reverse=True))
+
+    def test_recon_error_increases_with_increasing_lambda(self):
+        with TemporaryDirectory() as tmp_dir:
+            errors = []
+            for lambda_ in torch.arange(0.1, 1.1, 0.1):
+                lca = LCAConv2D(10, 3, tmp_dir, 10, 10, lambda_=lambda_,
+                                pad='valid', input_norm=False,
+                                return_recon=True)
+                inputs = lca.get_weights()[0].unsqueeze(0)
+                _, _, recon_error = lca(inputs)
+                errors.append(0.5 * recon_error.norm(2) ** 2)
+            self.assertEqual(errors, sorted(errors))
+
 
 if __name__ == '__main__':
     unittest.main()
