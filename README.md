@@ -5,7 +5,7 @@ LCA-PyTorch (lcapt) provides the ability to flexibly build single- or multi-laye
 This package implements the [Locally Competitive Algorithm (LCA)](https://www.ece.rice.edu/~eld1/papers/Rozell08.pdf), which performs sparse coding by modeling the feature specific lateral competition observed throughout many
 different sensory areas in the brain, including the [visual cortex](https://www.nature.com/articles/s41586-019-0997-6).
 Feature specific lateral competition is where neurons compete with their neighbors to represent a shared input based on their receptive field similarity.
-LCA can been implemented in [analog circuits](https://patentimages.storage.googleapis.com/30/8f/6e/5d9da903f0d635/US7783459.pdf) and
+This is a discrete implementation, but LCA can be implemented in [analog circuits](https://patentimages.storage.googleapis.com/30/8f/6e/5d9da903f0d635/US7783459.pdf) and
 multiple neuromorphic chips such as [IBM's TrueNorth](https://www.frontiersin.org/articles/10.3389/fnins.2019.00754/full) and 
 [Intel's Loihi](https://ieeexplore.ieee.org/abstract/document/9325356?casa_token=0kxjP50T3IIAAAAA:EOCnIf4-fMYowF7HgTLo0UQyKLWbrWW7VnOT1TZ2DI0U_cUCBYBQv1GN8r49LtISezWQ--A). This package allows for the creation of convolutional LCA layers which
 maintain all of the functionality present in typical PyTorch layers.
