@@ -2,10 +2,8 @@
 # PyTorch Implementation of the LCA Sparse Coding Algorithm
 
 LCA-PyTorch (lcapt) provides the ability to flexibly build single- or multi-layer sparse coding networks in PyTorch. 
-Sparse coding, which was inspired by the sparse activity of neurons in the visual cortex, is a method
-which aims to represent a given input with only a few features. This package implements sparse coding
-via the [Locally Competitive Algorithm (LCA)](https://www.ece.rice.edu/~eld1/papers/Rozell08.pdf),
-which solves the sparse coding objective by modeling the feature specific lateral competition observed throughout many
+This package implements the [Locally Competitive Algorithm (LCA)](https://www.ece.rice.edu/~eld1/papers/Rozell08.pdf), which
+which performs sparse coding by modeling the feature specific lateral competition observed throughout many
 different sensory areas in the brain, including the [visual cortex](https://www.nature.com/articles/s41586-019-0997-6).
 Feature specific lateral competition is where neurons compete with their neighbors to represent a shared input based on their receptive field similarity.
 LCA has been implemented in [analog circuits](https://patentimages.storage.googleapis.com/30/8f/6e/5d9da903f0d635/US7783459.pdf) and
@@ -14,7 +12,7 @@ multiple neuromorphic chips such as [IBM's TrueNorth](https://www.frontiersin.or
 It was originally formulated as a vectorized implementation where the input is a single input patch, and as a result, many implementations
 of LCA are designed for this scenario (i.e. they are non-convolutional). This package allows for the creation of convolutional LCA layers which
 maintain all of the functionality present in typical PyTorch layers.
-  
+
 ## Installation  
 
 To install lcapt via pip, run the following command:
@@ -33,8 +31,14 @@ pip install .
 
 ## LCA Parameters
 
-| **PyTorch Variable Name** | **Rozell Variable Symbol** |
-| --- | --- |
-| input_drive | *b(t)* |
-| states | *u(t)* |
-| acts | *a(t)* |
+Below is a mapping between the variable names used in this implementation and the symbols used in [Rozell et al.'s](https://www.ece.rice.edu/~eld1/papers/Rozell08.pdf) formulation of LCA.
+
+| **PyTorch Variable Name** | **Rozell Symbol** | **Description** |
+| --- | --- | --- |
+| input_drive | *b(t)* | Drive from the inputs/stimulus |
+| states | *u(t)* | Internal state/membrane potential |
+| acts | *a(t)* | Code/Representation or External Communication |
+| <img src="https://latex.codecogs.com/svg.image?\large&space;\bg{black}\lambda" title="https://latex.codecogs.com/svg.image?\large \bg{white}\lambda" /> | <img src="https://latex.codecogs.com/svg.image?\large&space;\bg{white}\lambda" title="https://latex.codecogs.com/svg.image?\large \bg{white}\lambda" /> | Transfer function threshold value |
+| weights | <img src="https://latex.codecogs.com/svg.image?\large&space;\bg{black}\Phi" title="https://latex.codecogs.com/svg.image?\large \bg{black}\Phi" /> | Dictionary/Features |
+| inputs | *s(t)* | Input data |
+| recons | <img src="https://latex.codecogs.com/svg.image?\hat{s}(t)" title="https://latex.codecogs.com/svg.image?\hat{s}(t)" /> | Reconstruction of the input *s(t)* |
