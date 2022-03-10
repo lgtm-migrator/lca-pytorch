@@ -36,8 +36,5 @@ pip install .
 | **PyTorch Variable Name** | **Rozell Variable Symbol** |
 | --- | --- |
 | input_drive | *b(t)* |
-| --- | --- |
 | states | *u(t)* |
-| --- | --- |
 | acts | *a(t)* |
-| --- | --- |
