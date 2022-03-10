@@ -12,7 +12,7 @@ maintain all of the functionality present in typical PyTorch layers.
 
 ## Installation  
 
-To install lcapt via pip, run the following command:
+To install LCA-Pytorch via pip, run the following command:
 
 ```
 pip install git+https://github.com/MichaelTeti/lca-pytorch.git
