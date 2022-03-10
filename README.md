@@ -42,3 +42,8 @@ Below is a mapping between the variable names used in this implementation and th
 | weights | <img src="https://latex.codecogs.com/svg.image?\large&space;\bg{black}\Phi" title="https://latex.codecogs.com/svg.image?\large \bg{black}\Phi" /> | Dictionary/Features |
 | inputs | *s(t)* | Input data |
 | recons | <img src="https://latex.codecogs.com/svg.image?\hat{s}(t)" title="https://latex.codecogs.com/svg.image?\hat{s}(t)" /> | Reconstruction of the input *s(t)* |
+
+## Examples
+
+Dictionary Learning
+  * [Dictionary Learning on Cifar-10 Images](https://github.com/MichaelTeti/lca-pytorch/blob/main/examples/builtin_dictionary_learning_cifar.ipynb)
