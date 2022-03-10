@@ -110,7 +110,7 @@ class _LCAConvBase(torch.nn.Module):
         transfer_func: Union[
             Literal['soft_threshold', 'hard_threshold'],
             Callable[[Tensor], Tensor]] = 'soft_threshold',
-        samplewise_standardization: bool = True,
+        input_norm: bool = True,
         tau_decay_factor: float = 0.0,
         lca_tol: Optional[float] = None,
         cudnn_benchmark: bool = True,
@@ -127,6 +127,7 @@ class _LCAConvBase(torch.nn.Module):
         self.eta = eta 
         self.forward_write_step = forward_write_step
         self.in_c = in_c
+        self.input_norm = input_norm
         self.kh = kh
         self.kt = kt
         self.kw = kw
@@ -145,7 +146,6 @@ class _LCAConvBase(torch.nn.Module):
         self.req_grad = req_grad
         self.result_dir = result_dir 
         self.return_recon = return_recon
-        self.samplewise_standardization = samplewise_standardization
         self.stride_h = stride_h
         self.stride_t = stride_t
         self.stride_w = stride_w
@@ -348,7 +348,7 @@ class _LCAConvBase(torch.nn.Module):
 
     def forward(self, inputs: Tensor) -> Union[
             Tensor, tuple[Tensor, Tensor, Tensor]]:
-        if self.samplewise_standardization:
+        if self.input_norm:
             inputs = standardize_inputs(inputs)
         inputs, reshape_func = self._to_correct_input_shape(inputs)
         acts, recon, recon_error = self.encode(inputs)
@@ -498,7 +498,7 @@ class LCAConv1D(_LCAConvBase):
         transfer_func: Union[
             Literal['soft_threshold', 'hard_threshold'],
             Callable[[Tensor], Tensor]] = 'soft_threshold',
-        samplewise_standardization: bool = True,
+        input_norm: bool = True,
         tau_decay_factor: float = 0.0,
         lca_tol: Optional[float] = None,
         cudnn_benchmark: bool = True,
@@ -512,7 +512,7 @@ class LCAConv1D(_LCAConvBase):
         super(LCAConv1D, self).__init__(
             n_neurons, in_c, result_dir, 1, 1, kt, 1, 1, stride_t, lambda_,
             tau, eta, lca_iters, pad, return_recon, dtype, nonneg,
-            track_metrics, transfer_func, samplewise_standardization,
+            track_metrics, transfer_func, input_norm,
             tau_decay_factor, lca_tol, cudnn_benchmark, d_update_clip,
             lr_schedule, lca_write_step, forward_write_step, req_grad,
             False)
@@ -553,7 +553,7 @@ class LCAConv2D(_LCAConvBase):
         transfer_func: Union[
             Literal['soft_threshold', 'hard_threshold'],
             Callable[[Tensor], Tensor]] = 'soft_threshold',
-        samplewise_standardization: bool = True,
+        input_norm: bool = True,
         tau_decay_factor: float = 0.0,
         lca_tol: Optional[float] = None,
         cudnn_benchmark: bool = True,
@@ -567,7 +567,7 @@ class LCAConv2D(_LCAConvBase):
         super(LCAConv2D, self).__init__(
             n_neurons, in_c, result_dir, kh, kw, 1, stride_h, stride_w, 1,
             lambda_, tau, eta, lca_iters, pad, return_recon, dtype, nonneg,
-            track_metrics, transfer_func, samplewise_standardization,
+            track_metrics, transfer_func, input_norm,
             tau_decay_factor, lca_tol, cudnn_benchmark, d_update_clip,
             lr_schedule, lca_write_step, forward_write_step, req_grad,
             True)
@@ -610,7 +610,7 @@ class LCAConv3D(_LCAConvBase):
         transfer_func: Union[
             Literal['soft_threshold', 'hard_threshold'],
             Callable[[Tensor], Tensor]] = 'soft_threshold',
-        samplewise_standardization: bool = True,
+        input_norm: bool = True,
         tau_decay_factor: float = 0.0,
         lca_tol: Optional[float] = None,
         cudnn_benchmark: bool = True,
@@ -625,7 +625,7 @@ class LCAConv3D(_LCAConvBase):
         super(LCAConv3D, self).__init__(
             n_neurons, in_c, result_dir, kh, kw, kt, stride_h, stride_w,
             stride_t, lambda_, tau, eta, lca_iters, pad, return_recon, dtype,
-            nonneg, track_metrics, transfer_func, samplewise_standardization,
+            nonneg, track_metrics, transfer_func, input_norm,
             tau_decay_factor, lca_tol, cudnn_benchmark, d_update_clip,
             lr_schedule, lca_write_step, forward_write_step, req_grad,
             no_time_pad)
