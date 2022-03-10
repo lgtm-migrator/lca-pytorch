@@ -404,38 +404,68 @@ class TestLCA(unittest.TestCase):
             loss = code.sum()
             loss.backward()
 
-    def test_LCAConv1D_feature_as_input(self):
+    def test_LCAConv1D_code_feature_as_input(self):
+        with TemporaryDirectory() as tmp_dir:
+            for lambda_ in torch.arange(0.1, 1.0, 0.1):
+                lca = LCAConv1D(10, 3, tmp_dir, 100, pad='valid',
+                                input_norm=False, lambda_=lambda_)
+                inputs = lca.get_weights()[0].unsqueeze(0)
+                code = lca(inputs)
+                code = code.squeeze()
+                code = torch.sort(code, descending=True, stable=True)[0]
+                self.assertEqual(torch.count_nonzero(code), 1)
+                assert_close(code[0], code.max())
+
+    def test_LCAConv1D_recon_close_to_input_feature_as_input(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv1D(10, 3, tmp_dir, 100, pad='valid',
-                            input_norm=False)
+                            input_norm=False, lambda_=0.1, return_recon=True)
             inputs = lca.get_weights()[0].unsqueeze(0)
-            code = lca(inputs)
-            code = code.squeeze()
-            code = torch.sort(code, descending=True, stable=True)[0]
-            self.assertEqual(torch.count_nonzero(code), 1)
-            assert_close(code[0], code.max(), rtol=0.0, atol=0.0)
+            _, recon, _ = lca(inputs)
+            mae = (inputs - recon).abs().mean().item()
+            self.assertLess(mae, 5e-3)
 
-    def test_LCAConv2D_feature_as_input(self):
+    def test_LCAConv2D_code_feature_as_input(self):
+        with TemporaryDirectory() as tmp_dir:
+            for lambda_ in torch.arange(0.1, 1.0, 0.1):
+                lca = LCAConv2D(10, 3, tmp_dir, 10, 10, pad='valid',
+                                input_norm=False, lambda_=lambda_)
+                inputs = lca.get_weights()[0].unsqueeze(0)
+                code = lca(inputs)
+                code = code.squeeze()
+                code = torch.sort(code, descending=True, stable=True)[0]
+                self.assertEqual(torch.count_nonzero(code), 1)
+                assert_close(code[0], code.max())
+
+    def test_LCAConv2D_recon_close_to_input_feature_as_input(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv2D(10, 3, tmp_dir, 10, 10, pad='valid',
-                            input_norm=False)
+                            input_norm=False, lambda_=0.1, return_recon=True)
             inputs = lca.get_weights()[0].unsqueeze(0)
-            code = lca(inputs)
-            code = code.squeeze()
-            code = torch.sort(code, descending=True, stable=True)[0]
-            self.assertEqual(torch.count_nonzero(code), 1)
-            assert_close(code[0], code.max(), rtol=0.0, atol=0.0)
+            _, recon, _ = lca(inputs)
+            mae = (inputs - recon).abs().mean().item()
+            self.assertLess(mae, 5e-3)
 
-    def test_LCAConv3D_feature_as_input(self):
+    def test_LCAConv3D_code_feature_as_input(self):
+        with TemporaryDirectory() as tmp_dir:
+            for lambda_ in torch.arange(0.1, 1.0, 0.1):
+                lca = LCAConv3D(10, 3, tmp_dir, 10, 10, 10, pad='valid',
+                                input_norm=False, lambda_=lambda_)
+                inputs = lca.get_weights()[0].unsqueeze(0)
+                code = lca(inputs)
+                code = code.squeeze()
+                code = torch.sort(code, descending=True, stable=True)[0]
+                self.assertTrue(torch.count_nonzero(code), 1)
+                assert_close(code[0], code.max())
+
+    def test_LCAConv3D_recon_close_to_input_feature_as_input(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv3D(10, 3, tmp_dir, 10, 10, 10, pad='valid',
-                            input_norm=False)
+                            input_norm=False, lambda_=0.1, return_recon=True)
             inputs = lca.get_weights()[0].unsqueeze(0)
-            code = lca(inputs)
-            code = code.squeeze()
-            code = torch.sort(code, descending=True, stable=True)[0]
-            self.assertTrue(torch.count_nonzero(code), 1)
-            assert_close(code[0], code.max(), rtol=0.0, atol=0.0)
+            _, recon, _ = lca(inputs)
+            mae = (inputs - recon).abs().mean().item()
+            self.assertLess(mae, 5e-3)
 
     def test_LCAConv1D_compute_lateral_connectivity_stride_1_odd_ksize(self):
         with TemporaryDirectory() as tmp_dir:
@@ -561,6 +591,29 @@ class TestLCA(unittest.TestCase):
             self.assertEqual(lca.input_pad[0], 3)
             lca = LCAConv3D(10, 3, tmp_dir, 7, 7, 7, no_time_pad=True)
             self.assertEqual(lca.input_pad[0], 0)
+
+    def test_l1_norm_of_code_decreases_with_increasing_lambda(self):
+        with TemporaryDirectory() as tmp_dir:
+            l1_norms = []
+            for lambda_ in torch.arange(0.1, 1.0, 0.1):
+                lca = LCAConv2D(10, 3, tmp_dir, 10, 10, lambda_=lambda_,
+                                pad='valid', input_norm=False)
+                inputs = lca.get_weights()[0].unsqueeze(0)
+                code = lca(inputs)
+                l1_norms.append(code.norm(1).item())
+            self.assertEqual(l1_norms, sorted(l1_norms, reverse=True))
+
+    def test_recon_error_increases_with_increasing_lambda(self):
+        with TemporaryDirectory() as tmp_dir:
+            errors = []
+            for lambda_ in torch.arange(0.1, 1.1, 0.1):
+                lca = LCAConv2D(10, 3, tmp_dir, 10, 10, lambda_=lambda_,
+                                pad='valid', input_norm=False,
+                                return_recon=True)
+                inputs = lca.get_weights()[0].unsqueeze(0)
+                _, _, recon_error = lca(inputs)
+                errors.append(0.5 * recon_error.norm(2) ** 2)
+            self.assertEqual(errors, sorted(errors))
 
 
 if __name__ == '__main__':
