@@ -30,7 +30,7 @@ pip install .
 
 Below is a mapping between the variable names used in this implementation and the symbols used in [Rozell et al.'s](https://www.ece.rice.edu/~eld1/papers/Rozell08.pdf) formulation of LCA.
 
-| **LCA-PyTorch Variable Name** | **Rozell Symbol** | **Description** |
+| **LCA-PyTorch Variable** | **Rozell Variable** | **Description** |
 | --- | --- | --- |
 | input_drive | *b(t)* | Drive from the inputs/stimulus |
 | states | *u(t)* | Internal state/membrane potential |
