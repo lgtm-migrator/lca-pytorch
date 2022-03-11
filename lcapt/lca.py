@@ -103,7 +103,7 @@ class _LCAConvBase(torch.nn.Module):
         eta: float = 0.01,
         lca_iters: int = 3000,
         pad: Literal['same', 'valid'] = 'same',
-        return_recon: bool = False,
+        return_all: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
         track_metrics: bool = False,
@@ -145,7 +145,7 @@ class _LCAConvBase(torch.nn.Module):
         self.pad = pad
         self.req_grad = req_grad
         self.result_dir = result_dir 
-        self.return_recon = return_recon
+        self.return_all = return_all
         self.stride_h = stride_h
         self.stride_t = stride_t
         self.stride_w = stride_w
@@ -344,20 +344,20 @@ class _LCAConvBase(torch.nn.Module):
 
         if self.track_metrics:
             self._write_tracks(tracks, lca_iter, inputs.device.index)
-        return acts, recon, recon_error
+        return acts, recon, recon_error, input_drive, states
 
     def forward(self, inputs: Tensor) -> Union[
             Tensor, tuple[Tensor, Tensor, Tensor]]:
         if self.input_norm:
             inputs = standardize_inputs(inputs)
         inputs, reshape_func = self._to_correct_input_shape(inputs)
-        acts, recon, recon_error = self.encode(inputs)
+        acts, recon, recon_error, input_drive, states = self.encode(inputs)
         acts = reshape_func(acts)
         recon = reshape_func(recon)
         recon_error = reshape_func(recon_error)
         self.forward_pass += 1
-        if self.return_recon:
-            return acts, recon, recon_error
+        if self.return_all:
+            return acts, recon, recon_error, input_drive, states
         else:
             return acts
 
@@ -491,7 +491,7 @@ class LCAConv1D(_LCAConvBase):
         eta: float = 0.01,
         lca_iters: int = 3000,
         pad: Literal['same', 'valid'] = 'same',
-        return_recon: bool = False,
+        return_all: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
         track_metrics: bool = False,
@@ -511,7 +511,7 @@ class LCAConv1D(_LCAConvBase):
 
         super(LCAConv1D, self).__init__(
             n_neurons, in_c, result_dir, 1, 1, kt, 1, 1, stride_t, lambda_,
-            tau, eta, lca_iters, pad, return_recon, dtype, nonneg,
+            tau, eta, lca_iters, pad, return_all, dtype, nonneg,
             track_metrics, transfer_func, input_norm,
             tau_decay_factor, lca_tol, cudnn_benchmark, d_update_clip,
             lr_schedule, lca_write_step, forward_write_step, req_grad,
@@ -546,7 +546,7 @@ class LCAConv2D(_LCAConvBase):
         eta: float = 0.01,
         lca_iters: int = 3000,
         pad: Literal['same', 'valid'] = 'same',
-        return_recon: bool = False,
+        return_all: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
         track_metrics: bool = False,
@@ -566,7 +566,7 @@ class LCAConv2D(_LCAConvBase):
 
         super(LCAConv2D, self).__init__(
             n_neurons, in_c, result_dir, kh, kw, 1, stride_h, stride_w, 1,
-            lambda_, tau, eta, lca_iters, pad, return_recon, dtype, nonneg,
+            lambda_, tau, eta, lca_iters, pad, return_all, dtype, nonneg,
             track_metrics, transfer_func, input_norm,
             tau_decay_factor, lca_tol, cudnn_benchmark, d_update_clip,
             lr_schedule, lca_write_step, forward_write_step, req_grad,
@@ -603,7 +603,7 @@ class LCAConv3D(_LCAConvBase):
         eta: float = 0.01,
         lca_iters: int = 3000,
         pad: Literal['same', 'valid'] = 'same',
-        return_recon: bool = False,
+        return_all: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
         track_metrics: bool = False,
@@ -624,7 +624,7 @@ class LCAConv3D(_LCAConvBase):
 
         super(LCAConv3D, self).__init__(
             n_neurons, in_c, result_dir, kh, kw, kt, stride_h, stride_w,
-            stride_t, lambda_, tau, eta, lca_iters, pad, return_recon, dtype,
+            stride_t, lambda_, tau, eta, lca_iters, pad, return_all, dtype,
             nonneg, track_metrics, transfer_func, input_norm,
             tau_decay_factor, lca_tol, cudnn_benchmark, d_update_clip,
             lr_schedule, lca_write_step, forward_write_step, req_grad,
