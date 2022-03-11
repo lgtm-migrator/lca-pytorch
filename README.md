@@ -1,6 +1,8 @@
 
 # PyTorch Implementation of the LCA Sparse Coding Algorithm
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 LCA-PyTorch (lcapt) provides the ability to flexibly build single- or multi-layer sparse coding networks in PyTorch. 
 This package implements the [Locally Competitive Algorithm (LCA)](https://www.ece.rice.edu/~eld1/papers/Rozell08.pdf), which performs sparse coding by modeling the feature specific lateral competition observed throughout many
 different sensory areas in the brain, including the [visual cortex](https://www.nature.com/articles/s41586-019-0997-6).
