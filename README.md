@@ -3,14 +3,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-LCA-PyTorch (lcapt) provides the ability to flexibly build single- or multi-layer sparse coding networks in PyTorch. 
-This package implements the [Locally Competitive Algorithm (LCA)](https://www.ece.rice.edu/~eld1/papers/Rozell08.pdf), which performs sparse coding by modeling the feature specific lateral competition observed throughout many
-different sensory areas in the brain, including the [visual cortex](https://www.nature.com/articles/s41586-019-0997-6).
-Feature specific lateral competition is where neurons compete with their neighbors to represent a shared input based on their receptive field similarity.
-This is a discrete implementation, but LCA can be implemented in [analog circuits](https://patentimages.storage.googleapis.com/30/8f/6e/5d9da903f0d635/US7783459.pdf) and
-multiple neuromorphic chips such as [IBM's TrueNorth](https://www.frontiersin.org/articles/10.3389/fnins.2019.00754/full) and 
-[Intel's Loihi](https://ieeexplore.ieee.org/abstract/document/9325356?casa_token=0kxjP50T3IIAAAAA:EOCnIf4-fMYowF7HgTLo0UQyKLWbrWW7VnOT1TZ2DI0U_cUCBYBQv1GN8r49LtISezWQ--A). This package allows for the creation of convolutional LCA layers which
-maintain all of the functionality present in typical PyTorch layers.
+LCA-PyTorch (lcapt) provides the ability to flexibly build single- or multi-layer convolutional sparse coding networks in PyTorch with the [Locally Competitive Algorithm (LCA)](https://www.ece.rice.edu/~eld1/papers/Rozell08.pdf). LCA-Pytorch currently supports 1D, 2D, and 3D convolutional LCA layers, which maintain all the functionality and behavior of PyTorch convolutional layers. We currently do not support Linear (a.k.a. fully-connected) layers, but it is possible to implement the equivalent of a Linear layer with convolutional operations.  
+
+LCA performs sparse coding by modeling the feature specific lateral competition observed throughout many different sensory areas in the brain, including the [visual cortex](https://www.nature.com/articles/s41586-019-0997-6). Under lateral competition, neurons with overlapping receptive fields compete to represent a shared portion of the input. This is a discrete implementation, but LCA can also be implemented in [analog circuits](https://patentimages.storage.googleapis.com/30/8f/6e/5d9da903f0d635/US7783459.pdf) and neuromorphic chips, such as [IBM's TrueNorth](https://www.frontiersin.org/articles/10.3389/fnins.2019.00754/full) and [Intel's Loihi](https://ieeexplore.ieee.org/abstract/document/9325356?casa_token=0kxjP50T3IIAAAAA:EOCnIf4-fMYowF7HgTLo0UQyKLWbrWW7VnOT1TZ2DI0U_cUCBYBQv1GN8r49LtISezWQ--A).
 
 ## Installation  
 
