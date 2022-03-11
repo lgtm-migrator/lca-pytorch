@@ -12,13 +12,13 @@ maintain all of the functionality present in typical PyTorch layers.
 
 ## Installation  
 
-To install LCA-Pytorch via pip, run the following command:
+### Pip Installation
 
 ```
 pip install git+https://github.com/MichaelTeti/lca-pytorch.git
 ```
 
-Alternatively, clone the repository and install the package manually:
+### Manual Installation
 
 ```
 git clone git@github.com:MichaelTeti/lca-pytorch.git
