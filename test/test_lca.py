@@ -59,7 +59,7 @@ class TestLCA(unittest.TestCase):
             lca = LCAConv1D(10, 3, tmp_dir, kt=5)
             new_weights = torch.randn(10, 3, 5)
             lca.assign_weight_values(new_weights)
-            assert_close(new_weights, lca.get_weights(), atol=0)
+            assert_close(new_weights, lca.get_weights(), rtol=0, atol=0)
 
     def test_LCAConv2D_assign_weight_values(self):
         with TemporaryDirectory() as tmp_dir:
