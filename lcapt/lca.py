@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from copy import deepcopy
 import os
 from typing import Any, Callable, Literal, Optional, Union
