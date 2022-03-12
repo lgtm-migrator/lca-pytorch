@@ -371,7 +371,7 @@ class _LCAConvBase(torch.nn.Module):
     def lateral_competition(self, acts: Tensor, conns: Tensor) -> Tensor:
         return F.conv3d(acts, conns, stride=1, padding=self.surround)
 
-    def normalize_weights(self, eps: float = 1e-6) -> None:
+    def normalize_weights(self, eps: float = 1e-8) -> None:
         ''' Normalizes features such at each one has unit norm '''
         with torch.no_grad():
             dims = tuple(range(1, len(self.weights.shape)))
