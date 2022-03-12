@@ -17,6 +17,7 @@ setup(
         'pyyaml>=6.0',
         'seaborn>=0.11.2',
         'torch>=1.10.1',
-        'torchvision>=0.11.2'
+        'torchvision>=0.11.2',
+        'wheel>=0.37.0'
     ]
 )
