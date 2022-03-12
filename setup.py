@@ -9,6 +9,7 @@ setup(
     author_email='mteti@lanl.gov',
     packages=['lcapt'],
     install_requires=[
+        'black>=22.1.0',
         'h5py>=3.6.0',
         'matplotlib>=3.5.0',
         'numpy>=1.21.2',
