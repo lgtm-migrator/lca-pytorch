@@ -17,7 +17,7 @@ class TestPreprocessing(unittest.TestCase):
         outputs = standardize_inputs(inputs)
         self.assertEqual(outputs.shape, inputs.shape)
         for chann in range(3):
-            assert_close(outputs[:, chann].mean().item(), 0.0)
+            self.assertLess(outputs[:, chann].mean().abs().item(), 5e-7)
             assert_close(outputs[:, chann].std().item(), 1.0)
 
     def test_standardize_inputs_4D_tensor(self):
@@ -25,7 +25,7 @@ class TestPreprocessing(unittest.TestCase):
         outputs = standardize_inputs(inputs)
         self.assertEqual(outputs.shape, inputs.shape)
         for chann in range(3):
-            assert_close(outputs[:, chann].mean().item(), 0.0)
+            self.assertLess(outputs[:, chann].mean().abs().item(), 5e-7)
             assert_close(outputs[:, chann].std().item(), 1.0)
 
     def test_standardize_inputs_5D_tensor(self):
@@ -34,7 +34,7 @@ class TestPreprocessing(unittest.TestCase):
         self.assertEqual(outputs.shape, inputs.shape)
         for chann in range(3):
             for depth in range(4):
-                assert_close(outputs[:, chann, depth].mean().item(), 0.0)
+                self.assertLess(outputs[:, chann, depth].mean().abs().item(), 5e-7)
                 assert_close(outputs[:, chann, depth].std().item(), 1.0)
 
     def test_standardize_inputs_already_standardized(self):
