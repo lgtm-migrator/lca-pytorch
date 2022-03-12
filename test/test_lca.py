@@ -614,6 +614,30 @@ class TestLCA(unittest.TestCase):
                 errors.append(0.5 * recon_error.norm(2) ** 2)
             self.assertEqual(errors, sorted(errors))
 
+    def test_inputs_equal_recon_error_plus_recon_LCAConv1D(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv1D(10, 5, tmp_dir, 5, lca_iters=3, input_norm=False,
+                            return_all=True)
+            inputs = torch.randn(3, 5, 100)
+            _, recon, recon_error, _, _ = lca(inputs)
+            assert_close(inputs, recon_error + recon)
+
+    def test_inputs_equal_recon_error_plus_recon_LCAConv2D(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv2D(10, 5, tmp_dir, 5, 5, lca_iters=3,
+                            input_norm=False, return_all=True)
+            inputs = torch.randn(3, 5, 100, 100)
+            _, recon, recon_error, _, _ = lca(inputs)
+            assert_close(inputs, recon_error + recon)
+
+    def test_inputs_equal_recon_error_plus_recon_LCAConv3D(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv3D(10, 5, tmp_dir, 5, 5, 3, 2, 2, 1, lca_iters=3,
+                            input_norm=False, return_all=True)
+            inputs = torch.randn(3, 5, 10, 100, 100)
+            _, recon, recon_error, _, _ = lca(inputs)
+            assert_close(inputs, recon_error + recon)
+
 
 if __name__ == '__main__':
     unittest.main()
