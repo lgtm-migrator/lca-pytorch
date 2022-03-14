@@ -35,15 +35,17 @@ def _make_feature_grid_2D(weights: Tensor, scale_each: bool = False) -> Tensor:
 
 def _make_feature_grid_3D(weights: Tensor, scale_each: bool = False) -> Tensor:
     assert len(weights.shape) == 5
+    if weights.shape[2] == 1:
+        return _make_feature_grid_2D(weights[:, :, 0], scale_each)
     nrow = int(sqrt(weights.shape[0]))
     T = weights.shape[2]
-    feat_grids = [
-        make_grid(
+    grids = []
+    for t in range(T):
+        grid = make_grid(
             weights[:, :, t], nrow, normalize=True, scale_each=scale_each, pad_value=0.5
         )
-        for t in range(T)
-    ]
-    return torch.stack(feat_grids).permute(0, 2, 3, 1)
+        grids.append(grid)
+    return torch.stack(grids).permute(0, 2, 3, 1)
 
 
 def make_feature_grid(weights: Tensor, scale_each: bool = False) -> Tensor:
