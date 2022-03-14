@@ -8,12 +8,11 @@ from lcapt.lca import LCAConv1D, LCAConv2D, LCAConv3D
 
 
 class TestLCA(unittest.TestCase):
-
     def test_LCAConv1D_to_correct_input_shape_raises_ValueError(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv1D(10, 3, tmp_dir)
             inputs_4d = torch.zeros(1, 3, 10, 10)
-            
+
             with self.assertRaises(ValueError):
                 lca._to_correct_input_shape(inputs_4d)
 
@@ -21,7 +20,7 @@ class TestLCA(unittest.TestCase):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv2D(10, 3, tmp_dir)
             inputs_3d = torch.zeros(1, 3, 10)
-            
+
             with self.assertRaises(ValueError):
                 lca._to_correct_input_shape(inputs_3d)
 
@@ -29,7 +28,7 @@ class TestLCA(unittest.TestCase):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv3D(10, 3, tmp_dir)
             inputs_4d = torch.zeros(1, 3, 10, 10)
-            
+
             with self.assertRaises(ValueError):
                 lca._to_correct_input_shape(inputs_4d)
 
@@ -123,7 +122,7 @@ class TestLCA(unittest.TestCase):
     def test_compute_input_pad_raises_ValueError(self):
         with TemporaryDirectory() as tmp_dir:
             with self.assertRaises(ValueError):
-                lca = LCAConv2D(10, 3, tmp_dir, 5, 7, pad='weird_padding')
+                lca = LCAConv2D(10, 3, tmp_dir, 5, 7, pad="weird_padding")
 
     def test_LCAConv1D_input_padding_shape_same_padding(self):
         with TemporaryDirectory() as tmp_dir:
@@ -142,17 +141,17 @@ class TestLCA(unittest.TestCase):
 
     def test_LCAConv1D_input_padding_shape_valid_padding(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv1D(10, 3, tmp_dir, kt=5, pad='valid')
+            lca = LCAConv1D(10, 3, tmp_dir, kt=5, pad="valid")
             self.assertTupleEqual(lca.input_pad, (0, 0, 0))
 
     def test_LCAConv2D_input_padding_shape_valid_padding(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv2D(10, 3, tmp_dir, 5, 7, pad='valid')
+            lca = LCAConv2D(10, 3, tmp_dir, 5, 7, pad="valid")
             self.assertTupleEqual(lca.input_pad, (0, 0, 0))
 
     def test_LCAConv3D_input_padding_shape_valid_padding(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv3D(10, 3, tmp_dir, 5, 7, 9, pad='valid')
+            lca = LCAConv3D(10, 3, tmp_dir, 5, 7, 9, pad="valid")
             self.assertTupleEqual(lca.input_pad, (0, 0, 0))
 
     def test_LCAConv1D_code_shape_stride_1_pad_same(self):
@@ -185,16 +184,16 @@ class TestLCA(unittest.TestCase):
 
     def test_LCAConv2D_code_shape_stride_2_pad_same(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv2D(10, 3, tmp_dir, 5, 7, lca_iters=3, stride_h=2,
-                            stride_w=2)
+            lca = LCAConv2D(10, 3, tmp_dir, 5, 7, lca_iters=3, stride_h=2, stride_w=2)
             inputs = torch.randn(1, 3, 100, 100)
             code = lca(inputs)
             self.assertTupleEqual(code.numpy().shape, (1, 10, 50, 50))
 
     def test_LCAConv3D_code_shape_stride_2_pad_same(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv3D(10, 3, tmp_dir, 5, 7, 9, lca_iters=3, stride_h=2,
-                            stride_w=2, stride_t=2)
+            lca = LCAConv3D(
+                10, 3, tmp_dir, 5, 7, 9, lca_iters=3, stride_h=2, stride_w=2, stride_t=2
+            )
             inputs = torch.randn(1, 3, 8, 100, 100)
             code = lca(inputs)
             self.assertTupleEqual(code.numpy().shape, (1, 10, 4, 50, 50))
@@ -208,151 +207,147 @@ class TestLCA(unittest.TestCase):
 
     def test_LCAConv2D_code_shape_stride_4_pad_same(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv2D(10, 3, tmp_dir, 5, 7, lca_iters=3, stride_h=4,
-                            stride_w=4)
+            lca = LCAConv2D(10, 3, tmp_dir, 5, 7, lca_iters=3, stride_h=4, stride_w=4)
             inputs = torch.randn(1, 3, 100, 100)
             code = lca(inputs)
             self.assertTupleEqual(code.numpy().shape, (1, 10, 25, 25))
 
     def test_LCAConv3D_code_shape_stride_4_pad_same(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv3D(10, 3, tmp_dir, 5, 7, 9, lca_iters=3, stride_h=4,
-                            stride_w=4, stride_t=4)
+            lca = LCAConv3D(
+                10, 3, tmp_dir, 5, 7, 9, lca_iters=3, stride_h=4, stride_w=4, stride_t=4
+            )
             inputs = torch.randn(1, 3, 8, 100, 100)
             code = lca(inputs)
             self.assertTupleEqual(code.numpy().shape, (1, 10, 2, 25, 25))
 
     def test_LCAConv1D_recon_shape_stride_1_pad_same(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv1D(10, 3, tmp_dir, kt=5, lca_iters=3,
-                            return_all=True)
+            lca = LCAConv1D(10, 3, tmp_dir, kt=5, lca_iters=3, return_all=True)
             inputs = torch.randn(1, 3, 100)
             _, recon, _, _, _ = lca(inputs)
             assert_close(recon.shape, inputs.shape, rtol=0, atol=0)
 
     def test_LCAConv2D_recon_shape_stride_1_pad_same(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv2D(10, 3, tmp_dir, 5, 7, lca_iters=3,
-                            return_all=True)
+            lca = LCAConv2D(10, 3, tmp_dir, 5, 7, lca_iters=3, return_all=True)
             inputs = torch.randn(1, 3, 100, 100)
             _, recon, _, _, _ = lca(inputs)
             assert_close(inputs.shape, recon.shape, rtol=0, atol=0)
 
     def test_LCAConv3D_recon_shape_stride_1_pad_same(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv3D(10, 3, tmp_dir, 5, 7, 9, lca_iters=3,
-                            return_all=True)
+            lca = LCAConv3D(10, 3, tmp_dir, 5, 7, 9, lca_iters=3, return_all=True)
             inputs = torch.randn(1, 3, 8, 100, 100)
             _, recon, _, _, _ = lca(inputs)
             assert_close(inputs.shape, recon.shape, rtol=0, atol=0)
 
     def test_LCAConv1D_recon_shape_stride_2_pad_same(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv1D(10, 3, tmp_dir, 5, 2, lca_iters=3,
-                            return_all=True)
+            lca = LCAConv1D(10, 3, tmp_dir, 5, 2, lca_iters=3, return_all=True)
             inputs = torch.randn(1, 3, 100)
             _, recon, _, _, _ = lca(inputs)
             assert_close(recon.shape, inputs.shape, rtol=0, atol=0)
 
     def test_LCAConv2D_recon_shape_stride_2_pad_same(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv2D(10, 3, tmp_dir, 5, 7, 2, 2, lca_iters=3,
-                            return_all=True)
+            lca = LCAConv2D(10, 3, tmp_dir, 5, 7, 2, 2, lca_iters=3, return_all=True)
             inputs = torch.randn(1, 3, 100, 100)
             _, recon, _, _, _ = lca(inputs)
             assert_close(inputs.shape, recon.shape, rtol=0, atol=0)
 
     def test_LCAConv3D_recon_shape_stride_2_pad_same(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv3D(10, 3, tmp_dir, 5, 7, 9, 2, 2, 2, lca_iters=3,
-                            return_all=True)
+            lca = LCAConv3D(
+                10, 3, tmp_dir, 5, 7, 9, 2, 2, 2, lca_iters=3, return_all=True
+            )
             inputs = torch.randn(1, 3, 8, 100, 100)
             _, recon, _, _, _ = lca(inputs)
             assert_close(inputs.shape, recon.shape, rtol=0, atol=0)
 
     def test_LCAConv1D_recon_shape_stride_4_pad_same(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv1D(10, 3, tmp_dir, 5, 4, lca_iters=3,
-                            return_all=True)
+            lca = LCAConv1D(10, 3, tmp_dir, 5, 4, lca_iters=3, return_all=True)
             inputs = torch.randn(1, 3, 100)
             _, recon, _, _, _ = lca(inputs)
             assert_close(recon.shape, inputs.shape, rtol=0, atol=0)
 
     def test_LCAConv2D_recon_shape_stride_4_pad_same(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv2D(10, 3, tmp_dir, 5, 7, 4, 4, lca_iters=3,
-                            return_all=True)
+            lca = LCAConv2D(10, 3, tmp_dir, 5, 7, 4, 4, lca_iters=3, return_all=True)
             inputs = torch.randn(1, 3, 100, 100)
             _, recon, _, _, _ = lca(inputs)
             assert_close(inputs.shape, recon.shape, rtol=0, atol=0)
 
     def test_LCAConv3D_recon_shape_stride_4_pad_same(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv3D(10, 3, tmp_dir, 5, 7, 9, 4, 4, 4, lca_iters=3,
-                            return_all=True)
+            lca = LCAConv3D(
+                10, 3, tmp_dir, 5, 7, 9, 4, 4, 4, lca_iters=3, return_all=True
+            )
             inputs = torch.randn(1, 3, 8, 100, 100)
             _, recon, _, _, _ = lca(inputs)
             assert_close(inputs.shape, recon.shape, rtol=0, atol=0)
 
     def test_LCAConv1D_recon_shape_stride_1_pad_valid(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv1D(10, 3, tmp_dir, 100, pad='valid', lca_iters=3,
-                            return_all=True)
+            lca = LCAConv1D(
+                10, 3, tmp_dir, 100, pad="valid", lca_iters=3, return_all=True
+            )
             inputs = torch.randn(1, 3, 100)
             _, recon, _, _, _ = lca(inputs)
             self.assertTupleEqual(recon.numpy().shape, (1, 3, 100))
 
     def test_LCAConv2D_recon_shape_stride_1_pad_valid(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv2D(10, 3, tmp_dir, 100, 100, lca_iters=3,
-                            return_all=True, pad='valid')
+            lca = LCAConv2D(
+                10, 3, tmp_dir, 100, 100, lca_iters=3, return_all=True, pad="valid"
+            )
             inputs = torch.randn(1, 3, 100, 100)
             _, recon, _, _, _ = lca(inputs)
             self.assertTupleEqual(recon.numpy().shape, (1, 3, 100, 100))
 
     def test_LCAConv3D_recon_shape_stride_1_pad_valid(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv3D(10, 3, tmp_dir, 20, 20, 4, pad='valid',
-                            lca_iters=3, return_all=True)
+            lca = LCAConv3D(
+                10, 3, tmp_dir, 20, 20, 4, pad="valid", lca_iters=3, return_all=True
+            )
             inputs = torch.randn(1, 3, 4, 20, 20)
             _, recon, _, _, _ = lca(inputs)
             self.assertTupleEqual(recon.numpy().shape, (1, 3, 4, 20, 20))
 
     def test_LCAConv1D_code_shape_stride_1_pad_valid(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv1D(10, 3, tmp_dir, 100, pad='valid', lca_iters=3)
+            lca = LCAConv1D(10, 3, tmp_dir, 100, pad="valid", lca_iters=3)
             inputs = torch.randn(1, 3, 100)
             code = lca(inputs)
             self.assertTupleEqual(code.numpy().shape, (1, 10, 1))
 
     def test_LCAConv2D_code_shape_stride_1_pad_valid(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv2D(10, 3, tmp_dir, 100, 100, lca_iters=3,
-                            pad='valid')
+            lca = LCAConv2D(10, 3, tmp_dir, 100, 100, lca_iters=3, pad="valid")
             inputs = torch.randn(1, 3, 100, 100)
             code = lca(inputs)
             self.assertTupleEqual(code.numpy().shape, (1, 10, 1, 1))
 
     def test_LCAConv3D_code_shape_stride_1_pad_valid(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv3D(10, 3, tmp_dir, 20, 20, 4, pad='valid',
-                            lca_iters=3)
+            lca = LCAConv3D(10, 3, tmp_dir, 20, 20, 4, pad="valid", lca_iters=3)
             inputs = torch.randn(1, 3, 4, 20, 20)
             code = lca(inputs)
             self.assertTupleEqual(code.numpy().shape, (1, 10, 1, 1, 1))
 
     def test_LCAConv3D_code_shape_no_time_pad(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv3D(10, 3, tmp_dir, 7, 7, 5, lca_iters=3,
-                            no_time_pad=True)
+            lca = LCAConv3D(10, 3, tmp_dir, 7, 7, 5, lca_iters=3, no_time_pad=True)
             inputs = torch.randn(1, 3, 5, 20, 20)
             code = lca(inputs)
             self.assertTupleEqual(code.numpy().shape, (1, 10, 1, 20, 20))
 
     def test_LCAConv3D_recon_shape_no_time_pad(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv3D(10, 3, tmp_dir, 7, 7, 5, lca_iters=3,
-                            no_time_pad=True, return_all=True)
+            lca = LCAConv3D(
+                10, 3, tmp_dir, 7, 7, 5, lca_iters=3, no_time_pad=True, return_all=True
+            )
             inputs = torch.randn(1, 3, 5, 20, 20)
             _, recon, _, _, _ = lca(inputs)
             self.assertTupleEqual(recon.numpy().shape, inputs.numpy().shape)
@@ -371,7 +366,6 @@ class TestLCA(unittest.TestCase):
             code = lca(inputs)
             loss = code.sum()
             loss.backward()
-            
 
     def test_LCAConv2D_gradient(self):
         with TemporaryDirectory() as tmp_dir:
@@ -406,8 +400,9 @@ class TestLCA(unittest.TestCase):
     def test_LCAConv1D_code_feature_as_input(self):
         with TemporaryDirectory() as tmp_dir:
             for lambda_ in torch.arange(0.1, 1.0, 0.1):
-                lca = LCAConv1D(10, 3, tmp_dir, 100, pad='valid',
-                                input_norm=False, lambda_=lambda_)
+                lca = LCAConv1D(
+                    10, 3, tmp_dir, 100, pad="valid", input_norm=False, lambda_=lambda_
+                )
                 inputs = lca.get_weights()[0].unsqueeze(0)
                 code = lca(inputs)
                 code = code.squeeze()
@@ -417,8 +412,16 @@ class TestLCA(unittest.TestCase):
 
     def test_LCAConv1D_recon_close_to_input_feature_as_input(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv1D(10, 3, tmp_dir, 100, pad='valid',
-                            input_norm=False, lambda_=0.1, return_all=True)
+            lca = LCAConv1D(
+                10,
+                3,
+                tmp_dir,
+                100,
+                pad="valid",
+                input_norm=False,
+                lambda_=0.1,
+                return_all=True,
+            )
             inputs = lca.get_weights()[0].unsqueeze(0)
             _, recon, _, _, _ = lca(inputs)
             mae = (inputs - recon).abs().mean().item()
@@ -427,8 +430,16 @@ class TestLCA(unittest.TestCase):
     def test_LCAConv2D_code_feature_as_input(self):
         with TemporaryDirectory() as tmp_dir:
             for lambda_ in torch.arange(0.1, 1.0, 0.1):
-                lca = LCAConv2D(10, 3, tmp_dir, 10, 10, pad='valid',
-                                input_norm=False, lambda_=lambda_)
+                lca = LCAConv2D(
+                    10,
+                    3,
+                    tmp_dir,
+                    10,
+                    10,
+                    pad="valid",
+                    input_norm=False,
+                    lambda_=lambda_,
+                )
                 inputs = lca.get_weights()[0].unsqueeze(0)
                 code = lca(inputs)
                 code = code.squeeze()
@@ -438,8 +449,17 @@ class TestLCA(unittest.TestCase):
 
     def test_LCAConv2D_recon_close_to_input_feature_as_input(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv2D(10, 3, tmp_dir, 10, 10, pad='valid',
-                            input_norm=False, lambda_=0.1, return_all=True)
+            lca = LCAConv2D(
+                10,
+                3,
+                tmp_dir,
+                10,
+                10,
+                pad="valid",
+                input_norm=False,
+                lambda_=0.1,
+                return_all=True,
+            )
             inputs = lca.get_weights()[0].unsqueeze(0)
             _, recon, _, _, _ = lca(inputs)
             mae = (inputs - recon).abs().mean().item()
@@ -448,8 +468,17 @@ class TestLCA(unittest.TestCase):
     def test_LCAConv3D_code_feature_as_input(self):
         with TemporaryDirectory() as tmp_dir:
             for lambda_ in torch.arange(0.1, 1.0, 0.1):
-                lca = LCAConv3D(10, 3, tmp_dir, 10, 10, 10, pad='valid',
-                                input_norm=False, lambda_=lambda_)
+                lca = LCAConv3D(
+                    10,
+                    3,
+                    tmp_dir,
+                    10,
+                    10,
+                    10,
+                    pad="valid",
+                    input_norm=False,
+                    lambda_=lambda_,
+                )
                 inputs = lca.get_weights()[0].unsqueeze(0)
                 code = lca(inputs)
                 code = code.squeeze()
@@ -459,8 +488,18 @@ class TestLCA(unittest.TestCase):
 
     def test_LCAConv3D_recon_close_to_input_feature_as_input(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv3D(10, 3, tmp_dir, 10, 10, 10, pad='valid',
-                            input_norm=False, lambda_=0.1, return_all=True)
+            lca = LCAConv3D(
+                10,
+                3,
+                tmp_dir,
+                10,
+                10,
+                10,
+                pad="valid",
+                input_norm=False,
+                lambda_=0.1,
+                return_all=True,
+            )
             inputs = lca.get_weights()[0].unsqueeze(0)
             _, recon, _, _, _ = lca(inputs)
             mae = (inputs - recon).abs().mean().item()
@@ -471,32 +510,32 @@ class TestLCA(unittest.TestCase):
             for ksize in range(1, 50, 2):
                 lca = LCAConv1D(15, 3, tmp_dir, ksize)
                 conns = lca.compute_lateral_connectivity(lca.weights.detach())
-                self.assertEqual(conns[..., 0, 0].numpy().shape,
-                                 (15, 15, ksize * 2 - 1))
+                self.assertEqual(
+                    conns[..., 0, 0].numpy().shape, (15, 15, ksize * 2 - 1)
+                )
 
     def test_LCAConv1D_compute_lateral_connectivity_stride_1_even_ksize(self):
         with TemporaryDirectory() as tmp_dir:
             for ksize in range(2, 52, 2):
-                lca = LCAConv1D(15, 3, tmp_dir, ksize, pad='valid')
+                lca = LCAConv1D(15, 3, tmp_dir, ksize, pad="valid")
                 conns = lca.compute_lateral_connectivity(lca.weights.detach())
-                self.assertEqual(conns[..., 0, 0].numpy().shape, 
-                                 (15, 15, ksize * 2 - 1))
+                self.assertEqual(
+                    conns[..., 0, 0].numpy().shape, (15, 15, ksize * 2 - 1)
+                )
 
     def test_LCAConv1D_compute_lateral_connectivity_stride_2_odd_ksize(self):
         with TemporaryDirectory() as tmp_dir:
             for ksize in range(1, 50, 2):
                 lca = LCAConv1D(15, 3, tmp_dir, ksize, 2)
                 conns = lca.compute_lateral_connectivity(lca.weights.detach())
-                self.assertEqual(conns[..., 0, 0].numpy().shape, 
-                                 (15, 15, ksize))
+                self.assertEqual(conns[..., 0, 0].numpy().shape, (15, 15, ksize))
 
     def test_LCAConv1D_compute_lateral_connectivity_stride_2_even_ksize(self):
         with TemporaryDirectory() as tmp_dir:
             for ksize in range(2, 52, 2):
-                lca = LCAConv1D(15, 3, tmp_dir, ksize, 2, pad='valid')
+                lca = LCAConv1D(15, 3, tmp_dir, ksize, 2, pad="valid")
                 conns = lca.compute_lateral_connectivity(lca.weights.detach())
-                self.assertEqual(conns[..., 0, 0].numpy().shape,
-                                 (15, 15, ksize - 1))
+                self.assertEqual(conns[..., 0, 0].numpy().shape, (15, 15, ksize - 1))
 
     def test_LCAConv2D_compute_lateral_connectivity_stride_1_odd_ksize(self):
         with TemporaryDirectory() as tmp_dir:
@@ -504,17 +543,21 @@ class TestLCA(unittest.TestCase):
                 ksize2 = ksize + 2
                 lca = LCAConv2D(15, 3, tmp_dir, ksize, ksize2)
                 conns = lca.compute_lateral_connectivity(lca.weights.detach())
-                self.assertEqual(conns[..., 0, :, :].numpy().shape,
-                                 (15, 15, ksize * 2 - 1, ksize2 * 2 - 1))
+                self.assertEqual(
+                    conns[..., 0, :, :].numpy().shape,
+                    (15, 15, ksize * 2 - 1, ksize2 * 2 - 1),
+                )
 
     def test_LCAConv2D_compute_lateral_connectivity_stride_1_even_ksize(self):
         with TemporaryDirectory() as tmp_dir:
             for ksize in range(2, 52, 2):
                 ksize2 = ksize + 2
-                lca = LCAConv2D(15, 3, tmp_dir, ksize, ksize2, pad='valid')
+                lca = LCAConv2D(15, 3, tmp_dir, ksize, ksize2, pad="valid")
                 conns = lca.compute_lateral_connectivity(lca.weights.detach())
-                self.assertEqual(conns[..., 0, :, :].numpy().shape, 
-                                 (15, 15, ksize * 2 - 1, ksize2 * 2 - 1))
+                self.assertEqual(
+                    conns[..., 0, :, :].numpy().shape,
+                    (15, 15, ksize * 2 - 1, ksize2 * 2 - 1),
+                )
 
     def test_LCAConv2D_compute_lateral_connectivity_stride_2_odd_ksize(self):
         with TemporaryDirectory() as tmp_dir:
@@ -522,18 +565,19 @@ class TestLCA(unittest.TestCase):
                 ksize2 = ksize + 2
                 lca = LCAConv2D(15, 3, tmp_dir, ksize, ksize2, 2, 2)
                 conns = lca.compute_lateral_connectivity(lca.weights.detach())
-                self.assertEqual(conns[..., 0, :, :].numpy().shape, 
-                                 (15, 15, ksize, ksize2))
+                self.assertEqual(
+                    conns[..., 0, :, :].numpy().shape, (15, 15, ksize, ksize2)
+                )
 
     def test_LCAConv2D_compute_lateral_connectivity_stride_2_even_ksize(self):
         with TemporaryDirectory() as tmp_dir:
             for ksize in range(2, 52, 2):
                 ksize2 = ksize + 2
-                lca = LCAConv2D(15, 3, tmp_dir, ksize, ksize2, 2, 2, 
-                                pad='valid')
+                lca = LCAConv2D(15, 3, tmp_dir, ksize, ksize2, 2, 2, pad="valid")
                 conns = lca.compute_lateral_connectivity(lca.weights.detach())
-                self.assertEqual(conns[..., 0, :, :].numpy().shape,
-                                 (15, 15, ksize - 1, ksize2 - 1))
+                self.assertEqual(
+                    conns[..., 0, :, :].numpy().shape, (15, 15, ksize - 1, ksize2 - 1)
+                )
 
     def test_LCAConv3D_compute_lateral_connectivity_stride_1_odd_ksize(self):
         with TemporaryDirectory() as tmp_dir:
@@ -544,7 +588,7 @@ class TestLCA(unittest.TestCase):
                 conns = lca.compute_lateral_connectivity(lca.weights.detach())
                 self.assertEqual(
                     conns.numpy().shape,
-                    (15, 15, ksize3 * 2 - 1, ksize * 2 - 1, ksize2 * 2 - 1)
+                    (15, 15, ksize3 * 2 - 1, ksize * 2 - 1, ksize2 * 2 - 1),
                 )
 
     def test_LCAConv3D_compute_lateral_connectivity_stride_1_even_ksize(self):
@@ -552,11 +596,11 @@ class TestLCA(unittest.TestCase):
             for ksize in range(2, 12, 2):
                 ksize2 = ksize + 2
                 ksize3 = ksize + 4
-                lca = LCAConv3D(15, 3, tmp_dir, ksize, ksize2, ksize3, pad='valid')
+                lca = LCAConv3D(15, 3, tmp_dir, ksize, ksize2, ksize3, pad="valid")
                 conns = lca.compute_lateral_connectivity(lca.weights.detach())
                 self.assertEqual(
-                    conns.numpy().shape, 
-                    (15, 15, ksize3 * 2 - 1, ksize * 2 - 1, ksize2 * 2 - 1)
+                    conns.numpy().shape,
+                    (15, 15, ksize3 * 2 - 1, ksize * 2 - 1, ksize2 * 2 - 1),
                 )
 
     def test_LCAConv3D_compute_lateral_connectivity_stride_2_odd_ksize(self):
@@ -566,22 +610,19 @@ class TestLCA(unittest.TestCase):
                 ksize3 = ksize + 4
                 lca = LCAConv3D(15, 3, tmp_dir, ksize, ksize2, ksize3, 2, 2, 2)
                 conns = lca.compute_lateral_connectivity(lca.weights.detach())
-                self.assertEqual(
-                    conns.numpy().shape, 
-                    (15, 15, ksize3, ksize, ksize2)
-                )
+                self.assertEqual(conns.numpy().shape, (15, 15, ksize3, ksize, ksize2))
 
     def test_LCAConv3D_compute_lateral_connectivity_stride_2_even_ksize(self):
         with TemporaryDirectory() as tmp_dir:
             for ksize in range(2, 12, 2):
                 ksize2 = ksize + 2
                 ksize3 = ksize + 4
-                lca = LCAConv3D(15, 3, tmp_dir, ksize, ksize2, ksize3, 2, 2, 2, 
-                                pad='valid')
+                lca = LCAConv3D(
+                    15, 3, tmp_dir, ksize, ksize2, ksize3, 2, 2, 2, pad="valid"
+                )
                 conns = lca.compute_lateral_connectivity(lca.weights.detach())
                 self.assertEqual(
-                    conns.numpy().shape,
-                    (15, 15, ksize3 - 1, ksize - 1, ksize2 - 1)
+                    conns.numpy().shape, (15, 15, ksize3 - 1, ksize - 1, ksize2 - 1)
                 )
 
     def test_LCAConv3D_no_time_pad(self):
@@ -595,8 +636,16 @@ class TestLCA(unittest.TestCase):
         with TemporaryDirectory() as tmp_dir:
             l1_norms = []
             for lambda_ in torch.arange(0.1, 1.0, 0.1):
-                lca = LCAConv2D(10, 3, tmp_dir, 10, 10, lambda_=lambda_,
-                                pad='valid', input_norm=False)
+                lca = LCAConv2D(
+                    10,
+                    3,
+                    tmp_dir,
+                    10,
+                    10,
+                    lambda_=lambda_,
+                    pad="valid",
+                    input_norm=False,
+                )
                 inputs = lca.get_weights()[0].unsqueeze(0)
                 code = lca(inputs)
                 l1_norms.append(code.norm(1).item())
@@ -606,9 +655,17 @@ class TestLCA(unittest.TestCase):
         with TemporaryDirectory() as tmp_dir:
             errors = []
             for lambda_ in torch.arange(0.1, 1.1, 0.1):
-                lca = LCAConv2D(10, 3, tmp_dir, 10, 10, lambda_=lambda_,
-                                pad='valid', input_norm=False,
-                                return_all=True)
+                lca = LCAConv2D(
+                    10,
+                    3,
+                    tmp_dir,
+                    10,
+                    10,
+                    lambda_=lambda_,
+                    pad="valid",
+                    input_norm=False,
+                    return_all=True,
+                )
                 inputs = lca.get_weights()[0].unsqueeze(0)
                 _, _, recon_error, _, _ = lca(inputs)
                 errors.append(0.5 * recon_error.norm(2) ** 2)
@@ -616,28 +673,42 @@ class TestLCA(unittest.TestCase):
 
     def test_inputs_equal_recon_error_plus_recon_LCAConv1D(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv1D(10, 5, tmp_dir, 5, lca_iters=3, input_norm=False,
-                            return_all=True)
+            lca = LCAConv1D(
+                10, 5, tmp_dir, 5, lca_iters=3, input_norm=False, return_all=True
+            )
             inputs = torch.randn(3, 5, 100)
             _, recon, recon_error, _, _ = lca(inputs)
             assert_close(inputs, recon_error + recon)
 
     def test_inputs_equal_recon_error_plus_recon_LCAConv2D(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv2D(10, 5, tmp_dir, 5, 5, lca_iters=3,
-                            input_norm=False, return_all=True)
+            lca = LCAConv2D(
+                10, 5, tmp_dir, 5, 5, lca_iters=3, input_norm=False, return_all=True
+            )
             inputs = torch.randn(3, 5, 100, 100)
             _, recon, recon_error, _, _ = lca(inputs)
             assert_close(inputs, recon_error + recon)
 
     def test_inputs_equal_recon_error_plus_recon_LCAConv3D(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv3D(10, 5, tmp_dir, 5, 5, 3, 2, 2, 1, lca_iters=3,
-                            input_norm=False, return_all=True)
+            lca = LCAConv3D(
+                10,
+                5,
+                tmp_dir,
+                5,
+                5,
+                3,
+                2,
+                2,
+                1,
+                lca_iters=3,
+                input_norm=False,
+                return_all=True,
+            )
             inputs = torch.randn(3, 5, 10, 100, 100)
             _, recon, recon_error, _, _ = lca(inputs)
             assert_close(inputs, recon_error + recon)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

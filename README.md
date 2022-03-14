@@ -3,6 +3,7 @@
 
 [![tests](https://github.com/MichaelTeti/lca-pytorch/actions/workflows/build.yml/badge.svg)](https://github.com/MichaelTeti/lca-pytorch/actions/workflows/build.yml)
 [![codecov](https://codecov.io/gh/MichaelTeti/lca-pytorch/branch/main/graph/badge.svg?token=4EPI05G5CY)](https://codecov.io/gh/MichaelTeti/lca-pytorch)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 LCA-PyTorch (lcapt) provides the ability to flexibly build single- or multi-layer convolutional sparse coding networks in PyTorch with the [Locally Competitive Algorithm (LCA)](https://www.ece.rice.edu/~eld1/papers/Rozell08.pdf). LCA-Pytorch currently supports 1D, 2D, and 3D convolutional LCA layers, which maintain all the functionality and behavior of PyTorch convolutional layers. We currently do not support Linear (a.k.a. fully-connected) layers, but it is possible to implement the equivalent of a Linear layer with convolutions.  
