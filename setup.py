@@ -18,6 +18,7 @@ setup(
         "seaborn>=0.11.2",
         "torch>=1.10.1",
         "torchvision>=0.11.2",
+        "typing_extensions>=4.1.1",
         "wheel>=0.37.0",
     ],
 )

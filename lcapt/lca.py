@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import os
-from typing import Any, Callable, Literal, Optional, Union
+from typing import Any, Callable, Optional, Union
 import yaml
 
 import h5py
@@ -20,6 +20,11 @@ from .metric import (
 )
 from .preproc import standardize_inputs
 from .util import to_3d_from_5d, to_4d_from_5d, to_5d_from_3d, to_5d_from_4d
+
+try:
+    from typing import Literal  # python >= 3.8
+except ImportError:
+    from typing_extensions import Literal  # python < 3.8
 
 
 Parameter = torch.nn.parameter.Parameter
