@@ -3,6 +3,8 @@
 
 [![tests](https://github.com/MichaelTeti/lca-pytorch/actions/workflows/build.yml/badge.svg)](https://github.com/MichaelTeti/lca-pytorch/actions/workflows/build.yml)
 [![codecov](https://codecov.io/gh/MichaelTeti/lca-pytorch/branch/main/graph/badge.svg?token=4EPI05G5CY)](https://codecov.io/gh/MichaelTeti/lca-pytorch)
+[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/MichaelTeti/lca-pytorch.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/MichaelTeti/lca-pytorch/context:python)
+[![Total alerts](https://img.shields.io/lgtm/alerts/g/MichaelTeti/lca-pytorch.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/MichaelTeti/lca-pytorch/alerts/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
