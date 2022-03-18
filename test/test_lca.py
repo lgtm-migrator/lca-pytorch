@@ -537,6 +537,22 @@ class TestLCA(unittest.TestCase):
                 conns = lca.compute_lateral_connectivity(lca.weights.detach())
                 self.assertEqual(conns[..., 0, 0].numpy().shape, (15, 15, ksize - 1))
 
+    def test_LCAConv1D_compute_lateral_connectivity_odd_ksize_various_strides(self):
+        with TemporaryDirectory() as tmp_dir:
+            ksize = 7
+            for stride, exp_size in zip([2, 3, 4, 5, 6, 7], [7, 5, 3, 3, 3, 1]):
+                lca = LCAConv1D(15, 3, tmp_dir, ksize, stride)
+                conns = lca.compute_lateral_connectivity(lca.weights.detach())
+                self.assertEqual(conns[..., 0, 0].numpy().shape, (15, 15, exp_size))
+
+    def test_LCAConv1D_compute_lateral_connectivity_even_ksize_various_strides(self):
+        with TemporaryDirectory() as tmp_dir:
+            ksize = 12
+            for stride, exp_size in zip([2, 4, 6, 12], [11, 5, 3, 1]):
+                lca = LCAConv1D(15, 3, tmp_dir, ksize, stride, pad="valid")
+                conns = lca.compute_lateral_connectivity(lca.weights.detach())
+                self.assertEqual(conns[..., 0, 0].numpy().shape, (15, 15, exp_size))
+
     def test_LCAConv2D_compute_lateral_connectivity_stride_1_odd_ksize(self):
         with TemporaryDirectory() as tmp_dir:
             for ksize in range(1, 50, 2):
@@ -577,6 +593,28 @@ class TestLCA(unittest.TestCase):
                 conns = lca.compute_lateral_connectivity(lca.weights.detach())
                 self.assertEqual(
                     conns[..., 0, :, :].numpy().shape, (15, 15, ksize - 1, ksize2 - 1)
+                )
+
+    def test_LCAConv2D_compute_lateral_connectivity_odd_ksize_various_strides(self):
+        with TemporaryDirectory() as tmp_dir:
+            ksize = 7
+            for stride, exp_size in zip([2, 3, 4, 5, 6, 7], [7, 5, 3, 3, 3, 1]):
+                lca = LCAConv2D(15, 3, tmp_dir, ksize, ksize, stride, stride)
+                conns = lca.compute_lateral_connectivity(lca.weights.detach())
+                self.assertEqual(
+                    conns[..., 0, :, :].numpy().shape, (15, 15, exp_size, exp_size)
+                )
+
+    def test_LCAConv2D_compute_lateral_connectivity_even_ksize_various_strides(self):
+        with TemporaryDirectory() as tmp_dir:
+            ksize = 12
+            for stride, exp_size in zip([2, 4, 6, 12], [11, 5, 3, 1]):
+                lca = LCAConv2D(
+                    15, 3, tmp_dir, ksize, ksize, stride, stride, pad="valid"
+                )
+                conns = lca.compute_lateral_connectivity(lca.weights.detach())
+                self.assertEqual(
+                    conns[..., 0, :, :].numpy().shape, (15, 15, exp_size, exp_size)
                 )
 
     def test_LCAConv3D_compute_lateral_connectivity_stride_1_odd_ksize(self):
@@ -623,6 +661,39 @@ class TestLCA(unittest.TestCase):
                 conns = lca.compute_lateral_connectivity(lca.weights.detach())
                 self.assertEqual(
                     conns.numpy().shape, (15, 15, ksize3 - 1, ksize - 1, ksize2 - 1)
+                )
+
+    def test_LCAConv3D_compute_lateral_connectivity_odd_ksize_various_strides(self):
+        with TemporaryDirectory() as tmp_dir:
+            ksize = 7
+            for stride, exp_size in zip([2, 3, 4, 5, 6, 7], [7, 5, 3, 3, 3, 1]):
+                lca = LCAConv3D(
+                    15, 3, tmp_dir, ksize, ksize, ksize, stride, stride, stride
+                )
+                conns = lca.compute_lateral_connectivity(lca.weights.detach())
+                self.assertEqual(
+                    conns.numpy().shape, (15, 15, exp_size, exp_size, exp_size)
+                )
+
+    def test_LCAConv3D_compute_lateral_connectivity_even_ksize_various_strides(self):
+        with TemporaryDirectory() as tmp_dir:
+            ksize = 12
+            for stride, exp_size in zip([2, 4, 6, 12], [11, 5, 3, 1]):
+                lca = LCAConv3D(
+                    15,
+                    3,
+                    tmp_dir,
+                    ksize,
+                    ksize,
+                    ksize,
+                    stride,
+                    stride,
+                    stride,
+                    pad="valid",
+                )
+                conns = lca.compute_lateral_connectivity(lca.weights.detach())
+                self.assertEqual(
+                    conns.numpy().shape, (15, 15, exp_size, exp_size, exp_size)
                 )
 
     def test_LCAConv3D_no_time_pad(self):
@@ -708,6 +779,77 @@ class TestLCA(unittest.TestCase):
             inputs = torch.randn(3, 5, 10, 100, 100)
             _, recon, recon_error, _, _ = lca(inputs)
             assert_close(inputs, recon_error + recon)
+
+    def test_LCAConv1D_check_conv_params_raises_AssertionError_ksize_div_stride(self):
+        with TemporaryDirectory() as tmp_dir:
+            ksize = 12
+            for stride in range(1, 13):
+                if ksize % stride == 0:
+                    lca = LCAConv1D(10, 1, tmp_dir, ksize, stride, pad="valid")
+                else:
+                    with self.assertRaises(AssertionError):
+                        lca = LCAConv1D(10, 1, tmp_dir, ksize, stride, pad="valid")
+
+    def test_LCAConv2D_check_conv_params_raises_AssertionError_ksize_div_stride(self):
+        with TemporaryDirectory() as tmp_dir:
+            ksize = 12
+            for stride in range(1, 13):
+                if ksize % stride == 0:
+                    lca = LCAConv2D(
+                        10, 1, tmp_dir, ksize, ksize, stride, stride, pad="valid"
+                    )
+                else:
+                    with self.assertRaises(AssertionError):
+                        lca = LCAConv2D(
+                            10, 1, tmp_dir, ksize, ksize, stride, stride, pad="valid"
+                        )
+
+    def test_LCAConv3D_check_conv_params_raises_AssertionError_ksize_div_stride(self):
+        with TemporaryDirectory() as tmp_dir:
+            ksize = 12
+            for stride in range(1, 13):
+                if ksize % stride == 0:
+                    lca = LCAConv3D(
+                        10,
+                        1,
+                        tmp_dir,
+                        ksize,
+                        ksize,
+                        ksize,
+                        stride,
+                        stride,
+                        stride,
+                        pad="valid",
+                    )
+                else:
+                    with self.assertRaises(AssertionError):
+                        lca = LCAConv3D(
+                            10,
+                            1,
+                            tmp_dir,
+                            ksize,
+                            ksize,
+                            ksize,
+                            stride,
+                            stride,
+                            stride,
+                            pad="valid",
+                        )
+
+    def test_LCAConv2D_check_conv_params_raises_AssertionError_odd_even_ksizes(self):
+        with TemporaryDirectory() as tmp_dir:
+            for ksize1 in range(2, 12, 2):
+                for ksize2 in range(3, 12, 2):
+                    with self.assertRaises(AssertionError):
+                        lca = LCAConv2D(10, 1, tmp_dir, ksize1, ksize2)
+
+    def test_LCAConv3D_check_conv_params_raises_AssertionError_odd_even_ksizes(self):
+        with TemporaryDirectory() as tmp_dir:
+            for ksize1 in range(2, 12, 2):
+                for ksize2 in range(3, 12, 2):
+                    for ksize3 in range(2, 12, 2):
+                        with self.assertRaises(AssertionError):
+                            lca = LCAConv3D(10, 1, tmp_dir, ksize1, ksize2, ksize3)
 
 
 if __name__ == "__main__":
