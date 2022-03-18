@@ -44,6 +44,6 @@ Below is a mapping between the variable names used in this implementation and th
 
 ## Examples
 
-Dictionary Learning
-  * [Dictionary Learning on Cifar-10 Images](https://github.com/MichaelTeti/lca-pytorch/blob/main/examples/builtin_dictionary_learning_cifar.ipynb)
-  * [Dictionary Learining on Google Speech Commands](https://github.com/MichaelTeti/lca-pytorch/blob/main/examples/builtin_dictionary_learning_speech_commands.ipynb)
+  * Dictionary Learning Using Built-In Update Method
+    * [Dictionary Learning on Cifar-10 Images](https://github.com/MichaelTeti/lca-pytorch/blob/main/examples/builtin_dictionary_learning_cifar.ipynb)
+    * [Dictionary Learining on Google Speech Commands Audio](https://github.com/MichaelTeti/lca-pytorch/blob/main/examples/builtin_dictionary_learning_speech_commands.ipynb)
