@@ -199,16 +199,6 @@ class _LCAConvBase(torch.nn.Module):
         even_k = [ksize % 2 == 0 for ksize in [self.kt, self.kh, self.kw] if ksize != 1]
         assert all(even_k) or not any(even_k)
         self.kernel_odd = not any(even_k)
-        if not self.kernel_odd:
-            for ksize, stride in zip(
-                [self.kt, self.kh, self.kw],
-                [self.stride_t, self.stride_h, self.stride_w],
-            ):
-                assert ksize % stride == 0, (
-                    "If the kernel size is an even number, it should be ",
-                    "divisible by the corresponding stride, but got a kernel ",
-                    f"size of {ksize} and a stride of {stride}.",
-                )
 
     def _compute_inhib_pad(self) -> None:
         """Computes padding for compute_lateral_connectivity"""
@@ -216,10 +206,16 @@ class _LCAConvBase(torch.nn.Module):
         for ksize, stride in zip(
             [self.kt, self.kh, self.kw], [self.stride_t, self.stride_h, self.stride_w]
         ):
-            if self.kernel_odd or stride == 1 or ksize == 1:
-                pad.append((ksize - 1) // stride * stride)
+            if ksize == 1:
+                pad.append(0)
             else:
-                pad.append(ksize - stride)
+                if ksize % 2 != 0:
+                    pad.append((ksize - 1) // stride * stride)
+                else:
+                    if ksize % stride == 0:
+                        pad.append(ksize - stride)
+                    else:
+                        pad.append(ksize // stride * stride)
 
         self.lat_conn_pad = tuple(pad)
 
