@@ -863,6 +863,39 @@ class TestLCA(unittest.TestCase):
                 )
                 self.assertEqual(lca.lat_conn_pad, (exp_size,) * 3)
 
+    def test_LCAConv1D_compute_inhib_pad_ksize_equal_1(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv1D(10, 3, tmp_dir, 1)
+            self.assertEqual(lca.lat_conn_pad, (0, 0, 0))
+
+    def test_LCAConv2D_compute_inhib_pad_ksize_equal_1(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv2D(10, 3, tmp_dir, 1, 1)
+            self.assertEqual(lca.lat_conn_pad, (0, 0, 0))
+
+    def test_LCAConv3D_compute_inhib_pad_ksize_equal_1(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv3D(10, 3, tmp_dir, 1, 1, 1)
+            self.assertEqual(lca.lat_conn_pad, (0, 0, 0))
+
+    def test_LCAConv1D_compute_lateral_connectivity_ksize_equal_1(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv1D(10, 3, tmp_dir, 1)
+            conns = lca.compute_lateral_connectivity(lca.weights)
+            self.assertEqual(conns.numpy().shape, (10, 10, 1, 1, 1))
+
+    def test_LCAConv2D_compute_lateral_connectivity_ksize_equal_1(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv2D(10, 3, tmp_dir, 1, 1)
+            conns = lca.compute_lateral_connectivity(lca.weights)
+            self.assertEqual(conns.numpy().shape, (10, 10, 1, 1, 1))
+
+    def test_LCAConv3D_compute_lateral_connectivity_ksize_equal_1(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv3D(10, 3, tmp_dir, 1, 1, 1)
+            conns = lca.compute_lateral_connectivity(lca.weights)
+            self.assertEqual(conns.numpy().shape, (10, 10, 1, 1, 1))
+
 
 if __name__ == "__main__":
     unittest.main()
