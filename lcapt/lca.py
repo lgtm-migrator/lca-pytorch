@@ -206,16 +206,13 @@ class _LCAConvBase(torch.nn.Module):
         for ksize, stride in zip(
             [self.kt, self.kh, self.kw], [self.stride_t, self.stride_h, self.stride_w]
         ):
-            if ksize == 1:
-                pad.append(0)
+            if ksize % 2 != 0:
+                pad.append((ksize - 1) // stride * stride)
             else:
-                if ksize % 2 != 0:
-                    pad.append((ksize - 1) // stride * stride)
+                if ksize % stride == 0:
+                    pad.append(ksize - stride)
                 else:
-                    if ksize % stride == 0:
-                        pad.append(ksize - stride)
-                    else:
-                        pad.append(ksize // stride * stride)
+                    pad.append(ksize // stride * stride)
 
         self.lat_conn_pad = tuple(pad)
 
