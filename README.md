@@ -30,13 +30,13 @@ pip install .
 
 ## LCA Parameters
 
-Below is a mapping between the variable names used in this implementation and the symbols used in [Rozell et al.'s](https://www.ece.rice.edu/~eld1/papers/Rozell08.pdf) formulation of LCA.
+Below is a mapping between the variable names used in this implementation and those used in [Rozell et al.'s](https://www.ece.rice.edu/~eld1/papers/Rozell08.pdf) formulation of LCA.
 
 | **LCA-PyTorch Variable** | **Rozell Variable** | **Description** |
 | --- | --- | --- |
 | input_drive | *b(t)* | Drive from the inputs/stimulus |
 | states | *u(t)* | Internal state/membrane potential |
-| acts | *a(t)* | Code/Representation or External Communication |
+| acts | *a(t)* | Code/Representation/External Communication |
 | <img src="https://latex.codecogs.com/svg.image?\large&space;\bg{black}\lambda" title="https://latex.codecogs.com/svg.image?\large \bg{white}\lambda" /> | <img src="https://latex.codecogs.com/svg.image?\large&space;\bg{white}\lambda" title="https://latex.codecogs.com/svg.image?\large \bg{white}\lambda" /> | Transfer function threshold value |
 | weights | <img src="https://latex.codecogs.com/svg.image?\large&space;\bg{black}\Phi" title="https://latex.codecogs.com/svg.image?\large \bg{black}\Phi" /> | Dictionary/Features |
 | inputs | *s(t)* | Input data |
@@ -50,3 +50,8 @@ Below is a mapping between the variable names used in this implementation and th
   
   * Dictionary Learning Using PyTorch Optimizer  
     * [Dictionary Learning on Cifar-10 Images](https://github.com/MichaelTeti/lca-pytorch/blob/main/examples/pytorch_optim_dictionary_learning_cifar.ipynb)
+
+## Pretrained Dictionaries
+
+  * [ImageNet](https://drive.google.com/file/d/14YDoFChRRbzgyHLfVPS-bIWxnlMdIKB3/view?usp=sharing) 
+  * [Cifar-10](https://drive.google.com/file/d/1Et4El_L9AvSQcGTIgPFdfarw6dHpSsiC/view?usp=sharing)
