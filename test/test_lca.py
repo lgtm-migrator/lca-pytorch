@@ -81,7 +81,7 @@ class TestLCA(unittest.TestCase):
             lca.assign_weight_values(new_weights)
             lca.normalize_weights()
             for feat in lca.get_weights():
-                self.assertAlmostEqual(feat.norm(2).item(), 1.0, 5)
+                self.assertAlmostEqual(feat.norm(2).item(), 1.0, 4)
 
     def test_LCAConv2D_normalize_weights(self):
         with TemporaryDirectory() as tmp_dir:
@@ -90,7 +90,7 @@ class TestLCA(unittest.TestCase):
             lca.assign_weight_values(new_weights)
             lca.normalize_weights()
             for feat in lca.get_weights():
-                self.assertAlmostEqual(feat.norm(2).item(), 1.0, 5)
+                self.assertAlmostEqual(feat.norm(2).item(), 1.0, 4)
 
     def test_LCAConv3D_normalize_weights(self):
         with TemporaryDirectory() as tmp_dir:
@@ -99,25 +99,25 @@ class TestLCA(unittest.TestCase):
             lca.assign_weight_values(new_weights)
             lca.normalize_weights()
             for feat in lca.get_weights():
-                self.assertAlmostEqual(feat.norm(2).item(), 1.0, 5)
+                self.assertAlmostEqual(feat.norm(2).item(), 1.0, 4)
 
     def test_LCAConv1D_initial_weights_are_normalized(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv1D(10, 3, tmp_dir, kt=5)
             for feat in lca.get_weights():
-                self.assertAlmostEqual(feat.norm(2).item(), 1.0, 5)
+                self.assertAlmostEqual(feat.norm(2).item(), 1.0, 4)
 
     def test_LCAConv2D_initial_weights_are_normalized(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv2D(10, 3, tmp_dir, 5, 7)
             for feat in lca.get_weights():
-                self.assertAlmostEqual(feat.norm(2).item(), 1.0, 5)
+                self.assertAlmostEqual(feat.norm(2).item(), 1.0, 4)
 
     def test_LCAConv3D_initial_weights_are_normalized(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv3D(10, 3, tmp_dir, 5, 7, 9)
             for feat in lca.get_weights():
-                self.assertAlmostEqual(feat.norm(2).item(), 1.0, 5)
+                self.assertAlmostEqual(feat.norm(2).item(), 1.0, 4)
 
     def test_compute_input_pad_raises_ValueError(self):
         with TemporaryDirectory() as tmp_dir:
