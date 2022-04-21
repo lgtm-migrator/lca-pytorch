@@ -330,6 +330,13 @@ class _LCAConvBase(torch.nn.Module):
         connectivity = self.compute_lateral_connectivity(self.weights)
         tau = self.tau
 
+        if self.return_all:
+            acts_all = []
+            recon_all = []
+            recon_error_all = []
+            input_drive_all = []
+            states_all = []
+
         for lca_iter in range(1, self.lca_iters + 1):
             acts = self.transfer(states)
             inhib = self.lateral_competition(acts, connectivity)
@@ -340,9 +347,18 @@ class _LCAConvBase(torch.nn.Module):
                 or lca_iter == self.lca_iters
                 or self.lca_tol is not None
                 or self._check_lca_write(lca_iter)
+                or self.return_all
             ):
                 recon = self.compute_recon(acts, self.weights)
                 recon_error = inputs - recon
+
+                if self.return_all:
+                    acts_all.append(acts.detach().clone())
+                    recon_all.append(recon.detach().clone())
+                    recon_error_all.append(recon_error.detach().clone())
+                    input_drive_all.append(input_drive.detach().clone())
+                    states_all.append(states.detach().clone())
+
                 if self._check_lca_write(lca_iter):
                     self._write_tensors(
                         {
@@ -371,21 +387,28 @@ class _LCAConvBase(torch.nn.Module):
 
         if self.track_metrics:
             self._write_tracks(tracks, lca_iter, inputs.device.index)
-        return acts, recon, recon_error, input_drive, states
+
+        if self.return_all:
+            return acts_all, recon_all, recon_error_all, input_drive_all, states_all
+        else:
+            return acts, recon, recon_error, input_drive, states
 
     def forward(self, inputs: Tensor) -> Union[Tensor, tuple[Tensor, Tensor, Tensor]]:
         if self.input_norm:
             inputs = standardize_inputs(inputs)
         inputs, reshape_func = self._to_correct_input_shape(inputs)
         acts, recon, recon_error, input_drive, states = self.encode(inputs)
-        acts = reshape_func(acts)
-        recon = reshape_func(recon)
-        recon_error = reshape_func(recon_error)
         self.forward_pass += 1
         if self.return_all:
-            return acts, recon, recon_error, input_drive, states
+            return (
+                torch.stack([reshape_func(act) for act in acts]),
+                torch.stack([reshape_func(rec) for rec in recon]),
+                torch.stack([reshape_func(rec_err) for rec_err in recon_error]),
+                torch.stack([reshape_func(drive) for drive in input_drive]),
+                torch.stack([reshape_func(state) for state in states]),
+            )
         else:
-            return acts
+            return reshape_func(acts)
 
     def _init_weight_tensor(self) -> None:
         weights = torch.randn(
