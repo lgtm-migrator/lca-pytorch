@@ -172,10 +172,12 @@ class _LCAConvBase(torch.nn.Module):
             torch.backends.cudnn.benchmark = True
 
         if self.req_grad and self.return_all:
-            warnings.warn("Setting req_grad and return_all to True at the same time "
-                          "is not recommended. It will result in undesired behavior, "
-                          "because return_all uses .detach() when storing the LCA "
-                          "variables over the LCA loop.")
+            warnings.warn(
+                "Setting req_grad and return_all to True at the same time "
+                "is not recommended. It will result in undesired behavior, "
+                "because return_all uses .detach() when storing the LCA "
+                "variables over the LCA loop."
+            )
 
     def assign_weight_values(self, tensor: Tensor) -> None:
         """Manually assign weight tensor"""
@@ -379,6 +381,7 @@ class _LCAConvBase(torch.nn.Module):
                         },
                         lca_iter,
                     )
+
                 if self.track_metrics or self.lca_tol is not None:
                     if lca_iter == 1:
                         tracks = self._create_trackers()
@@ -403,9 +406,11 @@ class _LCAConvBase(torch.nn.Module):
     def forward(self, inputs: Tensor) -> Union[Tensor, tuple[Tensor, Tensor, Tensor]]:
         if self.input_norm:
             inputs = standardize_inputs(inputs)
+
         inputs, reshape_func = self._to_correct_input_shape(inputs)
         acts, recon, recon_error, input_drive, states = self.encode(inputs)
         self.forward_pass += 1
+
         if self.return_all:
             return (
                 torch.stack([reshape_func(act) for act in acts]),
@@ -443,6 +448,7 @@ class _LCAConvBase(torch.nn.Module):
         curr_avg = energy_history[lca_iter - 100 : lca_iter].mean()
         prev_avg = energy_history[lca_iter - 101 : lca_iter - 1].mean()
         perc_change = self.compute_perc_change(curr_avg, prev_avg)
+
         if perc_change < self.lca_tol:
             return True
         else:
