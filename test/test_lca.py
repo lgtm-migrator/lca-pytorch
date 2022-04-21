@@ -463,7 +463,7 @@ class TestLCA(unittest.TestCase):
             inputs = lca.get_weights()[0].unsqueeze(0)
             _, recon, _, _, _ = lca(inputs)
             mae = (inputs - recon).abs().mean().item()
-            self.assertLess(mae, 5.1e-3)
+            self.assertLess(mae, 5.5e-3)
 
     def test_LCAConv3D_code_feature_as_input(self):
         with TemporaryDirectory() as tmp_dir:
