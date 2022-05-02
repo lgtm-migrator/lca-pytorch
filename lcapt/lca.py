@@ -3,7 +3,6 @@ from __future__ import annotations
 from copy import deepcopy
 import os
 from typing import Any, Callable, Optional, Union
-import warnings
 import yaml
 
 import h5py
@@ -170,14 +169,6 @@ class _LCAConvBase(torch.nn.Module):
 
         if cudnn_benchmark and torch.backends.cudnn.enabled:
             torch.backends.cudnn.benchmark = True
-
-        if self.req_grad and self.return_all:
-            warnings.warn(
-                "Setting req_grad and return_all to True at the same time "
-                "is not recommended. It will result in undesired behavior, "
-                "because return_all uses .detach() when storing the LCA "
-                "variables over the LCA loop."
-            )
 
     def assign_weight_values(self, tensor: Tensor) -> None:
         """Manually assign weight tensor"""
