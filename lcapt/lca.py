@@ -145,7 +145,6 @@ class _LCAConvBase(torch.nn.Module):
         self.stride_w = stride_w
         self.tau = tau
         self.tau_decay_factor = tau_decay_factor
-        self.tensor_write_fpath = os.path.join(result_dir, "tensors.h5")
         self.track_metrics = track_metrics
         self.transfer_func = transfer_func
 
