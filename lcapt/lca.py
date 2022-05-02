@@ -78,16 +78,10 @@ class _LCAConvBase(torch.nn.Module):
             [-d_update_clip, d_update_clip]. Default is no clipping.
         lr_schedule (function): Function which takes the training step
             as input and returns a value for eta.
-        lca_write_step (int): How often to write out a_t, u_t, b_t,
-            recon, and recon_error within a single LCA loop. If None,
-            these will not be written to disk.
         req_grad (bool): If True, dictionary D will have
             requires_grad set to True. Otherwise, it will be False.
             This is useful for propagating gradient through the LCA
             layer (e.g. for adversarial attacks).
-        forward_write_step (int): How often to write out dictionary,
-            input, and dictionary update. If None, these will not be
-            written to disk.
     """
 
     def __init__(
@@ -119,8 +113,6 @@ class _LCAConvBase(torch.nn.Module):
         cudnn_benchmark: bool = True,
         d_update_clip: float = np.inf,
         lr_schedule: Optional[Callable[[int], float]] = None,
-        lca_write_step: Optional[int] = None,
-        forward_write_step: Optional[int] = None,
         req_grad: bool = False,
         no_time_pad: bool = False,
     ) -> None:
@@ -128,7 +120,6 @@ class _LCAConvBase(torch.nn.Module):
         self.d_update_clip = d_update_clip
         self.dtype = dtype
         self.eta = eta
-        self.forward_write_step = forward_write_step
         self.in_c = in_c
         self.input_norm = input_norm
         self.kh = kh
@@ -138,7 +129,6 @@ class _LCAConvBase(torch.nn.Module):
         self.lca_iters = lca_iters
         self.lca_tol = lca_tol
         self.lca_warmup = tau // 10 + 100
-        self.lca_write_step = lca_write_step
         if lr_schedule is not None:
             assert callable(lr_schedule)
         self.lr_schedule = lr_schedule
@@ -155,7 +145,6 @@ class _LCAConvBase(torch.nn.Module):
         self.stride_w = stride_w
         self.tau = tau
         self.tau_decay_factor = tau_decay_factor
-        self.tensor_write_fpath = os.path.join(result_dir, "tensors.h5")
         self.track_metrics = track_metrics
         self.transfer_func = transfer_func
 
@@ -176,24 +165,6 @@ class _LCAConvBase(torch.nn.Module):
         tensor, _ = self._to_correct_input_shape(tensor)
         assert tensor.shape == self.weights.shape
         self.weights.copy_(tensor)
-
-    def _check_lca_write(self, lca_iter: int) -> bool:
-        """Checks whether to write LCA tensors at a given LCA iter"""
-        write = False
-        if self.lca_write_step is not None:
-            if lca_iter % self.lca_write_step == 0:
-                if self._check_forward_write():
-                    write = True
-        return write
-
-    def _check_forward_write(self) -> bool:
-        """Checks whether to write non-LCA-loop variables at a given
-        forward pass"""
-        write = False
-        if self.forward_write_step is not None:
-            if self.forward_pass % self.forward_write_step == 0:
-                write = True
-        return write
 
     def _check_conv_params(self) -> None:
         even_k = [ksize % 2 == 0 for ksize in [self.kt, self.kh, self.kw] if ksize != 1]
@@ -323,12 +294,17 @@ class _LCAConvBase(torch.nn.Module):
             "Tau": float_tracker.copy(),
         }
 
-    def encode(self, inputs: Tensor) -> tuple[Tensor, Tensor, Tensor]:
+    def encode(self, inputs: Tensor) -> tuple[list, list, list, list, Tensor, Tensor]:
         """Computes sparse code given data x and dictionary D"""
         input_drive = self.compute_input_drive(inputs, self.weights)
         states = torch.zeros_like(input_drive, requires_grad=self.req_grad)
         connectivity = self.compute_lateral_connectivity(self.weights)
         tau = self.tau
+
+        acts_all = []
+        recon_all = []
+        recon_error_all = []
+        states_all = []
 
         for lca_iter in range(1, self.lca_iters + 1):
             acts = self.transfer(states)
@@ -339,23 +315,17 @@ class _LCAConvBase(torch.nn.Module):
                 self.track_metrics
                 or lca_iter == self.lca_iters
                 or self.lca_tol is not None
-                or self._check_lca_write(lca_iter)
+                or self.return_all
             ):
                 recon = self.compute_recon(acts, self.weights)
                 recon_error = inputs - recon
-                if self._check_lca_write(lca_iter):
-                    self._write_tensors(
-                        {
-                            "acts": acts,
-                            "input_drive": input_drive,
-                            "input": inputs,
-                            "states": states,
-                            "recon": recon,
-                            "recon_error": recon_error,
-                            "lateral_connectivity": connectivity,
-                        },
-                        lca_iter,
-                    )
+
+                if self.return_all or lca_iter == self.lca_iters:
+                    acts_all.append(acts)
+                    recon_all.append(recon)
+                    recon_error_all.append(recon_error)
+                    states_all.append(states)
+
                 if self.track_metrics or self.lca_tol is not None:
                     if lca_iter == 1:
                         tracks = self._create_trackers()
@@ -371,21 +341,36 @@ class _LCAConvBase(torch.nn.Module):
 
         if self.track_metrics:
             self._write_tracks(tracks, lca_iter, inputs.device.index)
-        return acts, recon, recon_error, input_drive, states
+
+        return (
+            acts_all,
+            recon_all,
+            recon_error_all,
+            states_all,
+            input_drive,
+            connectivity,
+        )
 
     def forward(self, inputs: Tensor) -> Union[Tensor, tuple[Tensor, Tensor, Tensor]]:
         if self.input_norm:
             inputs = standardize_inputs(inputs)
+
         inputs, reshape_func = self._to_correct_input_shape(inputs)
-        acts, recon, recon_error, input_drive, states = self.encode(inputs)
-        acts = reshape_func(acts)
-        recon = reshape_func(recon)
-        recon_error = reshape_func(recon_error)
+        acts, recon, recon_error, states, input_drive, conns = self.encode(inputs)
         self.forward_pass += 1
+
         if self.return_all:
-            return acts, recon, recon_error, input_drive, states
+            return (
+                torch.stack([reshape_func(act) for act in acts], -1),
+                torch.stack([reshape_func(rec) for rec in recon], -1),
+                torch.stack([reshape_func(rec_err) for rec_err in recon_error], -1),
+                torch.stack([reshape_func(state) for state in states], -1),
+                reshape_func(input_drive),
+                reshape_func(conns),
+                reshape_func(inputs),
+            )
         else:
-            return acts
+            return reshape_func(acts[-1])
 
     def _init_weight_tensor(self) -> None:
         weights = torch.randn(
@@ -413,6 +398,7 @@ class _LCAConvBase(torch.nn.Module):
         curr_avg = energy_history[lca_iter - 100 : lca_iter].mean()
         prev_avg = energy_history[lca_iter - 101 : lca_iter - 1].mean()
         perc_change = self.compute_perc_change(curr_avg, prev_avg)
+
         if perc_change < self.lca_tol:
             return True
         else:
@@ -449,8 +435,6 @@ class _LCAConvBase(torch.nn.Module):
             self.normalize_weights()
             if self.lr_schedule is not None:
                 self.eta = self.lr_schedule(self.forward_pass)
-            if self._check_forward_write():
-                self._write_tensors({"weight_update": update})
 
     def _update_tau(self, tau: Union[int, float]) -> float:
         """Update LCA time constant with given decay factor"""
@@ -505,15 +489,6 @@ class _LCAConvBase(torch.nn.Module):
             mode="a",
         )
 
-    def _write_tensors(self, tensor_dict: dict[str, Tensor], lca_iter: int = 0) -> None:
-        """Writes out tensors to a HDF5 file."""
-        with h5py.File(self.tensor_write_fpath, "a") as h5file:
-            for name, tensor in tensor_dict.items():
-                h5file.create_dataset(
-                    f"{name}_{self.forward_pass}_{lca_iter}",
-                    data=tensor.detach().cpu().numpy(),
-                )
-
 
 class LCAConv1D(_LCAConvBase):
     def __init__(
@@ -541,8 +516,6 @@ class LCAConv1D(_LCAConvBase):
         cudnn_benchmark: bool = True,
         d_update_clip: float = np.inf,
         lr_schedule: Optional[Callable[[int], float]] = None,
-        lca_write_step: Optional[int] = None,
-        forward_write_step: Optional[int] = None,
         req_grad: bool = False,
     ) -> None:
 
@@ -572,8 +545,6 @@ class LCAConv1D(_LCAConvBase):
             cudnn_benchmark,
             d_update_clip,
             lr_schedule,
-            lca_write_step,
-            forward_write_step,
             req_grad,
             False,
         )
@@ -622,8 +593,6 @@ class LCAConv2D(_LCAConvBase):
         cudnn_benchmark: bool = True,
         d_update_clip: float = np.inf,
         lr_schedule: Optional[Callable[[int], float]] = None,
-        lca_write_step: Optional[int] = None,
-        forward_write_step: Optional[int] = None,
         req_grad: bool = False,
     ) -> None:
 
@@ -653,8 +622,6 @@ class LCAConv2D(_LCAConvBase):
             cudnn_benchmark,
             d_update_clip,
             lr_schedule,
-            lca_write_step,
-            forward_write_step,
             req_grad,
             True,
         )
@@ -705,8 +672,6 @@ class LCAConv3D(_LCAConvBase):
         cudnn_benchmark: bool = True,
         d_update_clip: float = np.inf,
         lr_schedule: Optional[Callable[[int], float]] = None,
-        lca_write_step: Optional[int] = None,
-        forward_write_step: Optional[int] = None,
         req_grad: bool = False,
         no_time_pad: bool = False,
     ) -> None:
@@ -737,8 +702,6 @@ class LCAConv3D(_LCAConvBase):
             cudnn_benchmark,
             d_update_clip,
             lr_schedule,
-            lca_write_step,
-            forward_write_step,
             req_grad,
             no_time_pad,
         )
