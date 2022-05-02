@@ -32,6 +32,8 @@ pip install .
 
 Below is a mapping between the variable names used in this implementation and those used in [Rozell et al.'s](https://www.ece.rice.edu/~eld1/papers/Rozell08.pdf) formulation of LCA.
 
+<div align="center">
+
 | **LCA-PyTorch Variable** | **Rozell Variable** | **Description** |
 | --- | --- | --- |
 | input_drive | *b(t)* | Drive from the inputs/stimulus |
@@ -41,6 +43,8 @@ Below is a mapping between the variable names used in this implementation and th
 | weights | <img src="https://latex.codecogs.com/svg.image?\large&space;\bg{black}\Phi" title="https://latex.codecogs.com/svg.image?\large \bg{black}\Phi" /> | Dictionary/Features |
 | inputs | *s(t)* | Input data |
 | recons | <img src="https://latex.codecogs.com/svg.image?\hat{s}(t)" title="https://latex.codecogs.com/svg.image?\hat{s}(t)" /> | Reconstruction of the input *s(t)* |
+
+</div>
 
 ## Examples
 
@@ -53,5 +57,9 @@ Below is a mapping between the variable names used in this implementation and th
 
 ## Pretrained Dictionaries
 
-  * [ImageNet](https://drive.google.com/file/d/14YDoFChRRbzgyHLfVPS-bIWxnlMdIKB3/view?usp=sharing) 
+  * [ImageNet (shown below)](https://drive.google.com/file/d/1CNhpZw81EbHT29ikxSZf6PceUFm_YpZN/view?usp=sharing) 
   * [Cifar-10](https://drive.google.com/file/d/1Et4El_L9AvSQcGTIgPFdfarw6dHpSsiC/view?usp=sharing)
+
+<p align="center">
+  <img src="https://github.com/MichaelTeti/lca-pytorch/blob/main/figures/imagenet_dict.png" />
+</p>
