@@ -343,7 +343,6 @@ class _LCAConvBase(torch.nn.Module):
             acts_all = []
             recon_all = []
             recon_error_all = []
-            input_drive_all = []
             states_all = []
 
         for lca_iter in range(1, self.lca_iters + 1):
@@ -365,7 +364,6 @@ class _LCAConvBase(torch.nn.Module):
                     acts_all.append(acts.detach().clone())
                     recon_all.append(recon.detach().clone())
                     recon_error_all.append(recon_error.detach().clone())
-                    input_drive_all.append(input_drive.detach().clone())
                     states_all.append(states.detach().clone())
 
                 if self._check_lca_write(lca_iter):
@@ -399,7 +397,13 @@ class _LCAConvBase(torch.nn.Module):
             self._write_tracks(tracks, lca_iter, inputs.device.index)
 
         if self.return_all:
-            return acts_all, recon_all, recon_error_all, input_drive_all, states_all
+            return (
+                acts_all,
+                recon_all,
+                recon_error_all,
+                input_drive.detach().clone(),
+                states_all,
+            )
         else:
             return acts, recon, recon_error, input_drive, states
 
@@ -416,7 +420,7 @@ class _LCAConvBase(torch.nn.Module):
                 torch.stack([reshape_func(act) for act in acts]),
                 torch.stack([reshape_func(rec) for rec in recon]),
                 torch.stack([reshape_func(rec_err) for rec_err in recon_error]),
-                torch.stack([reshape_func(drive) for drive in input_drive]),
+                reshape_func(input_drive),
                 torch.stack([reshape_func(state) for state in states]),
             )
         else:
