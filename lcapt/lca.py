@@ -422,6 +422,7 @@ class _LCAConvBase(torch.nn.Module):
                 torch.stack([reshape_func(rec_err) for rec_err in recon_error]),
                 reshape_func(input_drive),
                 torch.stack([reshape_func(state) for state in states]),
+                reshape_func(inputs)
             )
         else:
             return reshape_func(acts)
