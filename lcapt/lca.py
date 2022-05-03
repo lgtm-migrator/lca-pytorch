@@ -5,7 +5,6 @@ import os
 from typing import Any, Callable, Optional, Union
 import yaml
 
-import h5py
 import numpy as np
 import pandas as pd
 import torch

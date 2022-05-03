@@ -103,7 +103,7 @@ class TestLCA(unittest.TestCase):
 
     def test_LCAConv1D_initial_weights_are_normalized(self):
         with TemporaryDirectory() as tmp_dir:
-            lca = LCAConv1D(10, 3, tmp_dir, kt=5)
+            lca = LCAConv1D(10, 3, tmp_dir, kt=25)
             for feat in lca.get_weights():
                 self.assertAlmostEqual(feat.norm(2).item(), 1.0, 4)
 
