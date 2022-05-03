@@ -160,10 +160,11 @@ class _LCAConvBase(torch.nn.Module):
 
     def assign_weight_values(self, tensor: Tensor) -> None:
         """Manually assign weight tensor"""
-        assert tensor.dtype == self.weights.dtype
-        tensor, _ = self._to_correct_input_shape(tensor)
-        assert tensor.shape == self.weights.shape
-        self.weights.copy_(tensor)
+        with torch.no_grad():
+            assert tensor.dtype == self.weights.dtype
+            tensor, _ = self._to_correct_input_shape(tensor)
+            assert tensor.shape == self.weights.shape
+            self.weights.copy_(tensor)
 
     def _check_conv_params(self) -> None:
         even_k = [ksize % 2 == 0 for ksize in [self.kt, self.kh, self.kw] if ksize != 1]
