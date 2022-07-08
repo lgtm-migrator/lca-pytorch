@@ -401,7 +401,14 @@ class TestLCA(unittest.TestCase):
         with TemporaryDirectory() as tmp_dir:
             for lambda_ in torch.arange(0.1, 1.0, 0.1):
                 lca = LCAConv1D(
-                    10, 3, tmp_dir, 100, pad="valid", zero_mean=False, contrast_norm=False, lambda_=lambda_
+                    10,
+                    3,
+                    tmp_dir,
+                    100,
+                    pad="valid",
+                    zero_mean=False,
+                    contrast_norm=False,
+                    lambda_=lambda_,
                 )
                 inputs = lca.get_weights()[0].unsqueeze(0)
                 code = lca(inputs)
@@ -752,7 +759,14 @@ class TestLCA(unittest.TestCase):
     def test_inputs_equal_recon_error_plus_recon_LCAConv1D(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv1D(
-                10, 5, tmp_dir, 5, lca_iters=3, zero_mean=False, contrast_norm=False, return_all=True
+                10,
+                5,
+                tmp_dir,
+                5,
+                lca_iters=3,
+                zero_mean=False,
+                contrast_norm=False,
+                return_all=True,
             )
             inputs = torch.randn(3, 5, 100)
             recon, recon_error = lca(inputs)[1:3]
@@ -761,7 +775,15 @@ class TestLCA(unittest.TestCase):
     def test_inputs_equal_recon_error_plus_recon_LCAConv2D(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv2D(
-                10, 5, tmp_dir, 5, 5, lca_iters=3, zero_mean=False, contrast_norm=False, return_all=True
+                10,
+                5,
+                tmp_dir,
+                5,
+                5,
+                lca_iters=3,
+                zero_mean=False,
+                contrast_norm=False,
+                return_all=True,
             )
             inputs = torch.randn(3, 5, 100, 100)
             recon, recon_error = lca(inputs)[1:3]
