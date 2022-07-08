@@ -926,6 +926,33 @@ class TestLCA(unittest.TestCase):
             conns = lca.compute_lateral_connectivity(lca.weights)
             self.assertEqual(conns.numpy().shape, (10, 10, 1, 1, 1))
 
+    def test_zero_mean_and_norm_contrast_in_LCAConv1D(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv1D(64, 3, tmp_dir, 7, return_all=True, lca_iters=1)
+            inputs = torch.rand(10, 3, 100)
+            inputs_model = lca(inputs)[-1]
+            for inp in range(10):
+                self.assertLess(inputs_model[inp].mean().item(), 1e-5)
+                assert_close(inputs_model[inp].std().item(), 1.0)
+
+    def test_zero_mean_and_norm_contrast_in_LCAConv2D(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv2D(64, 3, tmp_dir, 7, 7, return_all=True, lca_iters=1)
+            inputs = torch.rand(10, 3, 100, 100)
+            inputs_model = lca(inputs)[-1]
+            for inp in range(10):
+                self.assertLess(inputs_model[inp].mean().item(), 1e-5)
+                assert_close(inputs_model[inp].std().item(), 1.0)
+
+    def test_zero_mean_and_norm_contrast_in_LCAConv3D(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv3D(64, 3, tmp_dir, 7, 7, 7, return_all=True, lca_iters=1)
+            inputs = torch.rand(10, 3, 5, 100, 100)
+            inputs_model = lca(inputs)[-1]
+            for inp in range(10):
+                self.assertLess(inputs_model[inp].mean().item(), 1e-5)
+                assert_close(inputs_model[inp].std().item(), 1.0)
+
 
 if __name__ == "__main__":
     unittest.main()
