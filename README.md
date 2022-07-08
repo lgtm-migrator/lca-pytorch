@@ -39,7 +39,7 @@ Below is a mapping between the variable names used in this implementation and th
 | input_drive | *b(t)* | Drive from the inputs/stimulus |
 | states | *u(t)* | Internal state/membrane potential |
 | acts | *a(t)* | Code/Representation/External Communication |
-| <img src="https://latex.codecogs.com/svg.image?\large&space;\bg{black}\lambda" title="https://latex.codecogs.com/svg.image?\large \bg{white}\lambda" /> | <img src="https://latex.codecogs.com/svg.image?\large&space;\bg{white}\lambda" title="https://latex.codecogs.com/svg.image?\large \bg{white}\lambda" /> | Transfer function threshold value |
+| lambda_ | <img src="https://latex.codecogs.com/svg.image?\large&space;\bg{white}\lambda" title="https://latex.codecogs.com/svg.image?\large \bg{white}\lambda" /> | Transfer function threshold value |
 | weights | <img src="https://latex.codecogs.com/svg.image?\large&space;\bg{black}\Phi" title="https://latex.codecogs.com/svg.image?\large \bg{black}\Phi" /> | Dictionary/Features |
 | inputs | *s(t)* | Input data |
 | recons | <img src="https://latex.codecogs.com/svg.image?\hat{s}(t)" title="https://latex.codecogs.com/svg.image?\hat{s}(t)" /> | Reconstruction of the input *s(t)* |
