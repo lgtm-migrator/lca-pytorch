@@ -3,47 +3,80 @@ import unittest
 import torch
 from torch.testing import assert_close
 
-from lcapt.preproc import standardize_inputs
+from lcapt.preproc import contrast_norm, zero_mean
 
 
 class TestPreprocessing(unittest.TestCase):
-    def test_standardize_inputs_raises_NotImplementedError(self):
+    def test_zero_mean_raises_NotImplementedError(self):
         with self.assertRaises(NotImplementedError):
-            standardize_inputs(torch.zeros(1, 2, 3, 4, 5, 6))
+            zero_mean(torch.zeros(1, 2, 3, 4, 5, 6))
 
-    def test_standardize_inputs_3D_tensor(self):
-        inputs = torch.rand(1, 3, 100) * 100
-        outputs = standardize_inputs(inputs)
+    def test_contrast_norm_raises_NotImplementedError(self):
+        with self.assertRaises(NotImplementedError):
+            contrast_norm(torch.zeros(1, 2, 3, 4, 5, 6))
+
+    def test_zero_mean_3D_tensor(self):
+        inputs = torch.rand(10, 3, 1000) * 100
+        outputs = zero_mean(inputs)
         self.assertEqual(outputs.shape, inputs.shape)
-        for chann in range(3):
-            self.assertLess(outputs[:, chann].mean().abs().item(), 5e-7)
-            assert_close(outputs[:, chann].std().item(), 1.0)
+        for inp in range(10):
+            self.assertLess(outputs[inp].mean().abs().item(), 1e-5)
 
-    def test_standardize_inputs_4D_tensor(self):
-        inputs = torch.rand(1, 3, 100, 100) * 100
-        outputs = standardize_inputs(inputs)
+    def test_contrast_norm_3D_tensor(self):
+        inputs = torch.rand(10, 3, 1000) * 100
+        outputs = contrast_norm(inputs)
         self.assertEqual(outputs.shape, inputs.shape)
-        for chann in range(3):
-            self.assertLess(outputs[:, chann].mean().abs().item(), 5e-7)
-            assert_close(outputs[:, chann].std().item(), 1.0)
+        for inp in range(10):
+            assert_close(outputs[inp].std().item(), 1.0)
 
-    def test_standardize_inputs_5D_tensor(self):
-        inputs = torch.rand(1, 3, 4, 100, 100) * 100
-        outputs = standardize_inputs(inputs)
+    def test_zero_mean_4D_tensor(self):
+        inputs = torch.rand(10, 3, 100, 100) * 100
+        outputs = zero_mean(inputs)
         self.assertEqual(outputs.shape, inputs.shape)
-        for chann in range(3):
-            for depth in range(4):
-                self.assertLess(outputs[:, chann, depth].mean().abs().item(), 5e-7)
-                assert_close(outputs[:, chann, depth].std().item(), 1.0)
+        for inp in range(10):
+            self.assertLess(outputs[inp].mean().abs().item(), 1e-5)
 
-    def test_standardize_inputs_already_standardized(self):
-        inputs = standardize_inputs(torch.rand(1, 3, 10000))
-        outputs = standardize_inputs(inputs)
+    def test_contrast_norm_4D_tensor(self):
+        inputs = torch.rand(10, 3, 100, 100) * 100
+        outputs = contrast_norm(inputs)
+        self.assertEqual(outputs.shape, inputs.shape)
+        for inp in range(10):
+            assert_close(outputs[inp].std().item(), 1.0)
+
+    def test_zero_mean_5D_tensor(self):
+        inputs = torch.rand(10, 3, 4, 100, 100) * 100
+        outputs = zero_mean(inputs)
+        self.assertEqual(outputs.shape, inputs.shape)
+        for inp in range(10):
+            self.assertLess(outputs[inp].mean().abs().item(), 1e-5)
+
+    def test_contrast_norm_5D_tensor(self):
+        inputs = torch.rand(10, 3, 4, 100, 100) * 100
+        outputs = contrast_norm(inputs)
+        self.assertEqual(outputs.shape, inputs.shape)
+        for inp in range(10):
+            assert_close(outputs[inp].std().item(), 1.0)
+
+    def test_zero_mean_inputs_already_zero_mean(self):
+        inputs = torch.randn(10, 3, 10000)
+        inputs = inputs - inputs.mean((-2, -1), True)
+        outputs = zero_mean(inputs)
         assert_close(inputs, outputs)
 
-    def test_standardize_inputs_returns_torch_tensor(self):
+    def test_contrast_norm_inputs_already_unit_var(self):
+        inputs = torch.randn(10, 3, 10000)
+        inputs = inputs / inputs.std((-2, -1), keepdim=True)
+        outputs = contrast_norm(inputs)
+        assert_close(inputs, outputs)
+
+    def test_zero_mean_returns_torch_tensor(self):
         inputs = torch.rand(1, 3, 4, 100, 100)
-        outputs = standardize_inputs(inputs)
+        outputs = zero_mean(inputs)
+        self.assertEqual(type(outputs), torch.Tensor)
+
+    def test_contrast_norm_returns_torch_tensor(self):
+        inputs = torch.rand(1, 3, 4, 100, 100)
+        outputs = contrast_norm(inputs)
         self.assertEqual(type(outputs), torch.Tensor)
 
 
