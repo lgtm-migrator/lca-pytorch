@@ -7,14 +7,6 @@ from lcapt.preproc import contrast_norm, zero_mean
 
 
 class TestPreprocessing(unittest.TestCase):
-    def test_zero_mean_raises_NotImplementedError(self):
-        with self.assertRaises(NotImplementedError):
-            zero_mean(torch.zeros(1, 2, 3, 4, 5, 6))
-
-    def test_contrast_norm_raises_NotImplementedError(self):
-        with self.assertRaises(NotImplementedError):
-            contrast_norm(torch.zeros(1, 2, 3, 4, 5, 6))
-
     def test_zero_mean_3D_tensor(self):
         inputs = torch.rand(10, 3, 1000) * 100
         outputs = zero_mean(inputs)
