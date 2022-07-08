@@ -13,7 +13,7 @@ def zero_mean(batch: Tensor) -> Tensor:
         dims = (-4, -3, -2, -1)
     else:
         raise NotImplementedError
-    
+
     mean = batch.mean(dim=dims, keepdim=True)
     return batch - mean
 
