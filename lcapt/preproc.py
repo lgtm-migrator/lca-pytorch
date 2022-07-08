@@ -6,9 +6,11 @@ Tensor = torch.Tensor
 
 def zero_mean(batch: Tensor) -> Tensor:
     if len(batch.shape) == 3:
-        dims = -1
-    elif len(batch.shape) in [4, 5]:
         dims = (-2, -1)
+    elif len(batch.shape) == 4:
+        dims = (-3, -2, -1)
+    elif len(batch.shape) == 5:
+        dims = (-4, -3, -2, -1)
     else:
         raise NotImplementedError
     
@@ -18,9 +20,11 @@ def zero_mean(batch: Tensor) -> Tensor:
 
 def contrast_norm(batch: Tensor, eps: float = 1e-8) -> Tensor:
     if len(batch.shape) == 3:
-        dims = -1
-    elif len(batch.shape) in [4, 5]:
         dims = (-2, -1)
+    elif len(batch.shape) == 4:
+        dims = (-3, -2, -1)
+    elif len(batch.shape) == 5:
+        dims = (-4, -3, -2, -1)
     else:
         raise NotImplementedError
 
