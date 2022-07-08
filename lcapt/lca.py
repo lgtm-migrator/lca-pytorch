@@ -17,7 +17,7 @@ from .metric import (
     compute_l2_error,
     compute_times_active_by_feature,
 )
-from .preproc import standardize_inputs
+from .preproc import contrast_norm, zero_mean
 from .util import to_3d_from_5d, to_4d_from_5d, to_5d_from_3d, to_5d_from_4d
 
 try:
@@ -106,7 +106,8 @@ class _LCAConvBase(torch.nn.Module):
         transfer_func: Union[
             Literal["soft_threshold", "hard_threshold"], Callable[[Tensor], Tensor]
         ] = "soft_threshold",
-        input_norm: bool = True,
+        zero_mean: bool = True,
+        contrast_norm: bool = True,
         tau_decay_factor: float = 0.0,
         lca_tol: Optional[float] = None,
         cudnn_benchmark: bool = True,
@@ -120,7 +121,8 @@ class _LCAConvBase(torch.nn.Module):
         self.dtype = dtype
         self.eta = eta
         self.in_c = in_c
-        self.input_norm = input_norm
+        self.contrast_norm = contrast_norm
+        self.zero_mean = zero_mean
         self.kh = kh
         self.kt = kt
         self.kw = kw
@@ -352,8 +354,10 @@ class _LCAConvBase(torch.nn.Module):
         )
 
     def forward(self, inputs: Tensor) -> Union[Tensor, tuple[Tensor, Tensor, Tensor]]:
-        if self.input_norm:
-            inputs = standardize_inputs(inputs)
+        if self.zero_mean:
+            inputs = zero_mean(inputs)
+        if self.contrast_norm:
+            inputs = contrast_norm(inputs)
 
         inputs, reshape_func = self._to_correct_input_shape(inputs)
         acts, recon, recon_error, states, input_drive, conns = self.encode(inputs)
@@ -510,7 +514,8 @@ class LCAConv1D(_LCAConvBase):
         transfer_func: Union[
             Literal["soft_threshold", "hard_threshold"], Callable[[Tensor], Tensor]
         ] = "soft_threshold",
-        input_norm: bool = True,
+        zero_mean: bool = True,
+        contrast_norm: bool = True,
         tau_decay_factor: float = 0.0,
         lca_tol: Optional[float] = None,
         cudnn_benchmark: bool = True,
@@ -539,7 +544,8 @@ class LCAConv1D(_LCAConvBase):
             nonneg,
             track_metrics,
             transfer_func,
-            input_norm,
+            zero_mean,
+            contrast_norm,
             tau_decay_factor,
             lca_tol,
             cudnn_benchmark,
@@ -587,7 +593,8 @@ class LCAConv2D(_LCAConvBase):
         transfer_func: Union[
             Literal["soft_threshold", "hard_threshold"], Callable[[Tensor], Tensor]
         ] = "soft_threshold",
-        input_norm: bool = True,
+        zero_mean: bool = True,
+        contrast_norm: bool = True,
         tau_decay_factor: float = 0.0,
         lca_tol: Optional[float] = None,
         cudnn_benchmark: bool = True,
@@ -616,7 +623,8 @@ class LCAConv2D(_LCAConvBase):
             nonneg,
             track_metrics,
             transfer_func,
-            input_norm,
+            zero_mean,
+            contrast_norm,
             tau_decay_factor,
             lca_tol,
             cudnn_benchmark,
@@ -666,7 +674,8 @@ class LCAConv3D(_LCAConvBase):
         transfer_func: Union[
             Literal["soft_threshold", "hard_threshold"], Callable[[Tensor], Tensor]
         ] = "soft_threshold",
-        input_norm: bool = True,
+        zero_mean: bool = True,
+        contrast_norm: bool = True,
         tau_decay_factor: float = 0.0,
         lca_tol: Optional[float] = None,
         cudnn_benchmark: bool = True,
@@ -696,7 +705,8 @@ class LCAConv3D(_LCAConvBase):
             nonneg,
             track_metrics,
             transfer_func,
-            input_norm,
+            zero_mean,
+            contrast_norm,
             tau_decay_factor,
             lca_tol,
             cudnn_benchmark,
