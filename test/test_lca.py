@@ -406,8 +406,8 @@ class TestLCA(unittest.TestCase):
                     tmp_dir,
                     100,
                     pad="valid",
-                    zero_mean=False,
-                    contrast_norm=False,
+                    input_zero_mean=False,
+                    input_unit_var=False,
                     lambda_=lambda_,
                 )
                 inputs = lca.get_weights()[0].unsqueeze(0)
@@ -425,8 +425,8 @@ class TestLCA(unittest.TestCase):
                 tmp_dir,
                 100,
                 pad="valid",
-                zero_mean=False,
-                contrast_norm=False,
+                input_zero_mean=False,
+                input_unit_var=False,
                 lambda_=0.1,
                 return_all=True,
             )
@@ -445,8 +445,8 @@ class TestLCA(unittest.TestCase):
                     10,
                     10,
                     pad="valid",
-                    zero_mean=False,
-                    contrast_norm=False,
+                    input_zero_mean=False,
+                    input_unit_var=False,
                     lambda_=lambda_,
                 )
                 inputs = lca.get_weights()[0].unsqueeze(0)
@@ -465,8 +465,8 @@ class TestLCA(unittest.TestCase):
                 10,
                 10,
                 pad="valid",
-                zero_mean=False,
-                contrast_norm=False,
+                input_zero_mean=False,
+                input_unit_var=False,
                 lambda_=0.1,
                 return_all=True,
             )
@@ -486,8 +486,8 @@ class TestLCA(unittest.TestCase):
                     10,
                     10,
                     pad="valid",
-                    zero_mean=False,
-                    contrast_norm=False,
+                    input_zero_mean=False,
+                    input_unit_var=False,
                     lambda_=lambda_,
                 )
                 inputs = lca.get_weights()[0].unsqueeze(0)
@@ -507,8 +507,8 @@ class TestLCA(unittest.TestCase):
                 10,
                 10,
                 pad="valid",
-                zero_mean=False,
-                contrast_norm=False,
+                input_zero_mean=False,
+                input_unit_var=False,
                 lambda_=0.1,
                 return_all=True,
             )
@@ -727,8 +727,8 @@ class TestLCA(unittest.TestCase):
                     10,
                     lambda_=lambda_,
                     pad="valid",
-                    zero_mean=False,
-                    contrast_norm=False,
+                    input_zero_mean=False,
+                    input_unit_var=False,
                 )
                 inputs = lca.get_weights()[0].unsqueeze(0)
                 code = lca(inputs)
@@ -747,8 +747,8 @@ class TestLCA(unittest.TestCase):
                     10,
                     lambda_=lambda_,
                     pad="valid",
-                    zero_mean=False,
-                    contrast_norm=False,
+                    input_zero_mean=False,
+                    input_unit_var=False,
                     return_all=True,
                 )
                 inputs = lca.get_weights()[0].unsqueeze(0)
@@ -764,8 +764,8 @@ class TestLCA(unittest.TestCase):
                 tmp_dir,
                 5,
                 lca_iters=3,
-                zero_mean=False,
-                contrast_norm=False,
+                input_zero_mean=False,
+                input_unit_var=False,
                 return_all=True,
             )
             inputs = torch.randn(3, 5, 100)
@@ -781,8 +781,8 @@ class TestLCA(unittest.TestCase):
                 5,
                 5,
                 lca_iters=3,
-                zero_mean=False,
-                contrast_norm=False,
+                input_zero_mean=False,
+                input_unit_var=False,
                 return_all=True,
             )
             inputs = torch.randn(3, 5, 100, 100)
@@ -802,8 +802,8 @@ class TestLCA(unittest.TestCase):
                 2,
                 1,
                 lca_iters=3,
-                zero_mean=False,
-                contrast_norm=False,
+                input_zero_mean=False,
+                input_unit_var=False,
                 return_all=True,
             )
             inputs = torch.randn(3, 5, 10, 100, 100)
@@ -926,7 +926,7 @@ class TestLCA(unittest.TestCase):
             conns = lca.compute_lateral_connectivity(lca.weights)
             self.assertEqual(conns.numpy().shape, (10, 10, 1, 1, 1))
 
-    def test_zero_mean_and_norm_contrast_in_LCAConv1D(self):
+    def test_input_zero_mean_and_unit_var_in_LCAConv1D(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv1D(8, 3, tmp_dir, 7, return_all=True, lca_iters=1)
             inputs = torch.rand(10, 3, 32)
@@ -935,7 +935,7 @@ class TestLCA(unittest.TestCase):
                 self.assertLess(inputs_model[inp].mean().item(), 1e-5)
                 assert_close(inputs_model[inp].std().item(), 1.0)
 
-    def test_zero_mean_and_norm_contrast_in_LCAConv2D(self):
+    def test_input_zero_mean_and_unit_var_in_LCAConv2D(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv2D(8, 3, tmp_dir, 7, 7, return_all=True, lca_iters=1)
             inputs = torch.rand(10, 3, 32, 32)
@@ -944,7 +944,7 @@ class TestLCA(unittest.TestCase):
                 self.assertLess(inputs_model[inp].mean().item(), 1e-5)
                 assert_close(inputs_model[inp].std().item(), 1.0)
 
-    def test_zero_mean_and_norm_contrast_in_LCAConv3D(self):
+    def test_input_zero_mean_and_unit_var_in_LCAConv3D(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv3D(8, 3, tmp_dir, 7, 7, 7, return_all=True, lca_iters=1)
             inputs = torch.rand(10, 3, 5, 32, 32)
