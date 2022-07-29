@@ -126,6 +126,7 @@ class _LCAConvBase(torch.nn.Module):
         self.kh = kh
         self.kt = kt
         self.kw = kw
+        self.trace_kt = 7
         self.lambda_ = lambda_
         self.lca_iters = lca_iters
         self.lca_tol = lca_tol
@@ -134,6 +135,7 @@ class _LCAConvBase(torch.nn.Module):
             assert callable(lr_schedule)
         self.lr_schedule = lr_schedule
         self.metric_fpath = os.path.join(result_dir, "metrics.xz")
+        self.n_cells = 100  # probably the only thing you need to change
         self.n_neurons = n_neurons
         self.no_time_pad = no_time_pad
         self.nonneg = nonneg
@@ -146,6 +148,11 @@ class _LCAConvBase(torch.nn.Module):
         self.stride_w = stride_w
         self.tau = tau
         self.tau_decay_factor = tau_decay_factor
+        self.trace_input_pad = 0
+        self.trace_inhib_pad = 0
+        self.trace_recon_pad = 0
+        self.trace_unit_var = True
+        self.trace_zero_mean = True
         self.track_metrics = track_metrics
         self.transfer_func = transfer_func
 
@@ -296,11 +303,13 @@ class _LCAConvBase(torch.nn.Module):
             "Tau": float_tracker.copy(),
         }
 
-    def encode(self, inputs: Tensor) -> tuple[list, list, list, list, Tensor, Tensor]:
+    def encode(self, inputs: Tensor, traces: Tensor) -> tuple[list, list, list, list, Tensor, Tensor]:
         """Computes sparse code given data x and dictionary D"""
         input_drive = self.compute_input_drive(inputs, self.weights)
+        trace_input_drive = F.conv1d(traces, self.trace_weights).unsqueeze(-1).unsqueeze(-1)
         states = torch.zeros_like(input_drive, requires_grad=self.req_grad)
         connectivity = self.compute_lateral_connectivity(self.weights)
+        trace_connectivity = F.conv1d(self.trace_weights, self.trace_weights).unsqueeze(-1).unsqueeze(-1)
         tau = self.tau
 
         acts_all = []
@@ -311,7 +320,8 @@ class _LCAConvBase(torch.nn.Module):
         for lca_iter in range(1, self.lca_iters + 1):
             acts = self.transfer(states)
             inhib = self.lateral_competition(acts, connectivity)
-            states = states + (1 / tau) * (input_drive - states - inhib + acts)
+            trace_inhib = F.conv3d(acts, trace_connectivity)
+            states = states + (1 / tau) * (input_drive + trace_input_drive - states - inhib - trace_inhib + 2 * acts)
 
             if (
                 self.track_metrics
@@ -354,13 +364,19 @@ class _LCAConvBase(torch.nn.Module):
         )
 
     def forward(self, inputs: Tensor) -> Union[Tensor, tuple[Tensor, Tensor, Tensor]]:
+        inputs, traces = inputs
         if self.input_zero_mean:
             inputs = make_zero_mean(inputs)
         if self.input_unit_var:
             inputs = make_unit_var(inputs)
 
+        if self.trace_zero_mean:
+            traces = make_zero_mean(traces)
+        if self.trace_unit_var:
+            traces = make_unit_var(traces)
+
         inputs, reshape_func = self._to_correct_input_shape(inputs)
-        acts, recon, recon_error, states, input_drive, conns = self.encode(inputs)
+        acts, recon, recon_error, states, input_drive, conns = self.encode(inputs, traces)
         self.forward_pass += 1
 
         if self.return_all:
@@ -383,6 +399,11 @@ class _LCAConvBase(torch.nn.Module):
         weights[weights.abs() < 1.0] = 0.0
         self.weights = torch.nn.Parameter(weights, requires_grad=self.req_grad)
         self.normalize_weights()
+        trace_weights = torch.randn(self.n_neurons, self.n_cells, 7, dtype=self.dtype)
+        trace_weights[trace_weights.abs() < 0.5] = 0.0
+        self.trace_weights = torch.nn.Parameter(trace_weights, requires_grad=self.req_grad)
+        with torch.no_grad():
+            self.trace_weights.copy_(self.trace_weights / (self.trace_weights.norm(2, (1, 2), True) + 1e-8))
 
     def lateral_competition(self, acts: Tensor, conns: Tensor) -> Tensor:
         return F.conv3d(acts, conns, stride=1, padding=self.surround)
