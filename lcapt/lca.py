@@ -151,8 +151,8 @@ class _LCAConvBase(torch.nn.Module):
         self.trace_input_pad = 0
         self.trace_inhib_pad = 0
         self.trace_recon_pad = 0
-        self.trace_unit_var = True
-        self.trace_zero_mean = True
+        self.trace_unit_var = False
+        self.trace_zero_mean = False
         self.track_metrics = track_metrics
         self.transfer_func = transfer_func
 
@@ -263,7 +263,7 @@ class _LCAConvBase(torch.nn.Module):
         """Computes percent change of a value from t-1 to t"""
         return abs((curr - prev) / prev)
 
-    def compute_recon(self, acts: Tensor, weights: Union[Tensor, Parameter]) -> Tensor:
+    def compute_recon(self, acts: Tensor, weights: Union[Tensor, Parameter], return_trace_recon=False) -> Tensor:
         """Computes reconstruction given code"""
         acts, reshape_func = self._to_correct_input_shape(acts)
         recons = F.conv_transpose3d(
@@ -273,7 +273,16 @@ class _LCAConvBase(torch.nn.Module):
             padding=self.input_pad,
             output_padding=self.recon_output_pad,
         )
-        return reshape_func(recons)
+        act_height, act_width = acts.shape[-2:]
+        trace_recons = torch.zeros(acts.shape[0], self.n_cells, self.trace_kt, 1, 1, device=acts.device.index)
+        for row in range(act_height):
+            for col in range(act_width):
+                trace_recons += F.conv_transpose3d(acts[..., row:row+1, col:col+1], self.trace_weights)
+        
+        if return_trace_recon:
+            return reshape_func(recons), trace_recons.squeeze() / (act_height * act_width)
+        else:
+            return reshape_func(recons)
 
     def compute_weight_update(self, acts: Tensor, error: Tensor) -> Tensor:
         error = F.pad(
@@ -306,10 +315,10 @@ class _LCAConvBase(torch.nn.Module):
     def encode(self, inputs: Tensor, traces: Tensor) -> tuple[list, list, list, list, Tensor, Tensor]:
         """Computes sparse code given data x and dictionary D"""
         input_drive = self.compute_input_drive(inputs, self.weights)
-        trace_input_drive = F.conv1d(traces, self.trace_weights).unsqueeze(-1).unsqueeze(-1)
+        trace_input_drive = F.conv3d(traces, self.trace_weights)
         states = torch.zeros_like(input_drive, requires_grad=self.req_grad)
         connectivity = self.compute_lateral_connectivity(self.weights)
-        trace_connectivity = F.conv1d(self.trace_weights, self.trace_weights).unsqueeze(-1).unsqueeze(-1)
+        trace_connectivity = F.conv3d(self.trace_weights, self.trace_weights)
         tau = self.tau
 
         acts_all = []
@@ -365,6 +374,8 @@ class _LCAConvBase(torch.nn.Module):
 
     def forward(self, inputs: Tensor) -> Union[Tensor, tuple[Tensor, Tensor, Tensor]]:
         inputs, traces = inputs
+        traces = traces.unsqueeze(-1).unsqueeze(-1)
+
         if self.input_zero_mean:
             inputs = make_zero_mean(inputs)
         if self.input_unit_var:
@@ -399,11 +410,11 @@ class _LCAConvBase(torch.nn.Module):
         weights[weights.abs() < 1.0] = 0.0
         self.weights = torch.nn.Parameter(weights, requires_grad=self.req_grad)
         self.normalize_weights()
-        trace_weights = torch.randn(self.n_neurons, self.n_cells, 7, dtype=self.dtype)
+        trace_weights = torch.randn(self.n_neurons, self.n_cells, 7, 1, 1, dtype=self.dtype)
         trace_weights[trace_weights.abs() < 0.5] = 0.0
         self.trace_weights = torch.nn.Parameter(trace_weights, requires_grad=self.req_grad)
         with torch.no_grad():
-            self.trace_weights.copy_(self.trace_weights / (self.trace_weights.norm(2, (1, 2), True) + 1e-8))
+            self.trace_weights.copy_(self.trace_weights / (self.trace_weights.norm(2, (1, 2, 3, 4), True) + 1e-8))
 
     def lateral_competition(self, acts: Tensor, conns: Tensor) -> Tensor:
         return F.conv3d(acts, conns, stride=1, padding=self.surround)
@@ -445,18 +456,26 @@ class _LCAConvBase(torch.nn.Module):
         elif callable(self.transfer_func):
             return self.transfer_func(x)
 
-    def update_weights(self, acts: Tensor, recon_error: Tensor) -> None:
+    def update_weights(self, acts: Tensor, recon_error: Tensor, recon_error_traces: Tensor) -> None:
         """Updates the dictionary given the computed gradient"""
         with torch.no_grad():
             acts, _ = self._to_correct_input_shape(acts)
             recon_error, _ = self._to_correct_input_shape(recon_error)
+            trace_error = recon_error_traces.unsqueeze(-1).unsqueeze(-1)
             update = self.compute_weight_update(acts, recon_error)
+            trace_error = trace_error.unfold(-3, self.trace_kt, 1)
+            trace_error = trace_error.unfold(-3, 1, 1)
+            trace_error = trace_error.unfold(-3, 1, 1)
+            trace_update = torch.tensordot(acts, trace_error, dims=([0, 2, 3, 4], [0, 2, 3, 4]))
             times_active = compute_times_active_by_feature(acts) + 1
             update *= self.eta / times_active
+            trace_update *= self.eta / times_active
             update = torch.clamp(
                 update, min=-self.d_update_clip, max=self.d_update_clip
             )
             self.weights.copy_(self.weights + update)
+            self.trace_weights.copy_(self.trace_weights + trace_update)
+            self.trace_weights.copy_(self.trace_weights / (self.trace_weights.norm(2, (1, 2, 3, 4), keepdim=True) + 1e-8))
             self.normalize_weights()
             if self.lr_schedule is not None:
                 self.eta = self.lr_schedule(self.forward_pass)
