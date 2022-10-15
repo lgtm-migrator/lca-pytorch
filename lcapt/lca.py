@@ -197,7 +197,7 @@ class _LCAConvBase(torch.nn.Module):
 
     def _check_return_vars(self) -> None:
         if type(self.return_vars) not in [list, tuple]:
-            return TypeError(f"return_vars should be list or tuple, but got {type(self.return_vars)}.")
+            raise TypeError(f"return_vars should be list or tuple, but got {type(self.return_vars)}.")
 
         for var_name in self.return_vars:
             if var_name not in self.return_var_names:
