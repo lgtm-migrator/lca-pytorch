@@ -992,6 +992,105 @@ class TestLCA(unittest.TestCase):
                 self.assertLess(inputs_model[inp].mean().item(), 1e-5)
                 assert_close(inputs_model[inp].std().item(), 1.0)
 
+    def test_LCAConv1D_return_all_ts_return_one_var(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv1D(8, 3, tmp_dir, 7, return_all_ts=True, lca_iters=6)
+            inputs = torch.randn(9, 3, 11)
+            code = lca(inputs)
+            self.assertTupleEqual(code.numpy().shape, (9, 8, 11, 6))
+
+    def test_LCAConv1D_return_all_ts_return_multiple_vars(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv1D(
+                8,
+                3,
+                tmp_dir,
+                7,
+                return_all_ts=True,
+                return_vars=["acts", "input_drives"],
+                lca_iters=6,
+            )
+            inputs = torch.randn(9, 3, 11)
+            code, input_drive = lca(inputs)
+            self.assertTupleEqual(code.numpy().shape, (9, 8, 11, 6))
+            self.assertTupleEqual(input_drive.numpy().shape, (9, 8, 11, 6))
+
+    def test_LCAConv1D_return_one_ts_return_multiple_vars(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv1D(
+                8, 3, tmp_dir, 7, return_vars=["acts", "input_drives"], lca_iters=6
+            )
+            inputs = torch.randn(9, 3, 11)
+            code, input_drive = lca(inputs)
+            self.assertTupleEqual(code.numpy().shape, (9, 8, 11))
+            self.assertTupleEqual(input_drive.numpy().shape, (9, 8, 11))
+
+    def test_LCAConv2D_return_all_ts_return_one_var(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv2D(8, 3, tmp_dir, 7, return_all_ts=True, lca_iters=6)
+            inputs = torch.randn(9, 3, 11, 11)
+            code = lca(inputs)
+            self.assertTupleEqual(code.numpy().shape, (9, 8, 11, 11, 6))
+
+    def test_LCAConv2D_return_all_ts_return_multiple_vars(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv2D(
+                8,
+                3,
+                tmp_dir,
+                7,
+                return_all_ts=True,
+                return_vars=["acts", "input_drives"],
+                lca_iters=6,
+            )
+            inputs = torch.randn(9, 3, 11, 11)
+            code, input_drive = lca(inputs)
+            self.assertTupleEqual(code.numpy().shape, (9, 8, 11, 11, 6))
+            self.assertTupleEqual(input_drive.numpy().shape, (9, 8, 11, 11, 6))
+
+    def test_LCAConv2D_return_one_ts_return_multiple_vars(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv2D(
+                8, 3, tmp_dir, 7, return_vars=["acts", "input_drives"], lca_iters=6
+            )
+            inputs = torch.randn(9, 3, 11, 11)
+            code, input_drive = lca(inputs)
+            self.assertTupleEqual(code.numpy().shape, (9, 8, 11, 11))
+            self.assertTupleEqual(input_drive.numpy().shape, (9, 8, 11, 11))
+
+    def test_LCAConv3D_return_all_ts_return_one_var(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv3D(8, 3, tmp_dir, 7, return_all_ts=True, lca_iters=6)
+            inputs = torch.randn(9, 3, 11, 11, 11)
+            code = lca(inputs)
+            self.assertTupleEqual(code.numpy().shape, (9, 8, 11, 11, 11, 6))
+
+    def test_LCAConv3D_return_all_ts_return_multiple_vars(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv3D(
+                8,
+                3,
+                tmp_dir,
+                7,
+                return_all_ts=True,
+                return_vars=["acts", "input_drives"],
+                lca_iters=6,
+            )
+            inputs = torch.randn(9, 3, 11, 11, 11)
+            code, input_drive = lca(inputs)
+            self.assertTupleEqual(code.numpy().shape, (9, 8, 11, 11, 11, 6))
+            self.assertTupleEqual(input_drive.numpy().shape, (9, 8, 11, 11, 11, 6))
+
+    def test_LCAConv3D_return_one_ts_return_multiple_vars(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv3D(
+                8, 3, tmp_dir, 7, return_vars=["acts", "input_drives"], lca_iters=6
+            )
+            inputs = torch.randn(9, 3, 11, 11, 11)
+            code, input_drive = lca(inputs)
+            self.assertTupleEqual(code.numpy().shape, (9, 8, 11, 11, 11))
+            self.assertTupleEqual(input_drive.numpy().shape, (9, 8, 11, 11, 11))
+
 
 if __name__ == "__main__":
     unittest.main()
