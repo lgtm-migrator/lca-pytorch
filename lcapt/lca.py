@@ -325,17 +325,14 @@ class _LCAConvBase(torch.nn.Module):
             "Tau": float_tracker.copy(),
         }
 
-    def encode(self, inputs: Tensor) -> tuple[list, list, list, list, Tensor, Tensor]:
+    def encode(self, inputs: Tensor) -> tuple[list[Tensor], ...]:
         """Computes sparse code given data x and dictionary D"""
         input_drive = self.compute_input_drive(inputs, self.weights)
         states = torch.zeros_like(input_drive, requires_grad=self.req_grad)
         connectivity = self.compute_lateral_connectivity(self.weights)
         tau = self.tau
 
-        acts_all = []
-        recon_all = []
-        recon_error_all = []
-        states_all = []
+        return_vars = tuple([[] for _ in range(len(self.return_vars))])
 
         for lca_iter in range(1, self.lca_iters + 1):
             acts = self.transfer(states)
@@ -352,10 +349,21 @@ class _LCAConvBase(torch.nn.Module):
                 recon_error = inputs - recon
 
                 if self.return_all_ts or lca_iter == self.lca_iters:
-                    acts_all.append(acts)
-                    recon_all.append(recon)
-                    recon_error_all.append(recon_error)
-                    states_all.append(states)
+                    for var_idx, var_name in enumerate(self.return_vars):
+                        if var_name == 'inputs':
+                            return_vars[var_idx].append(inputs)
+                        elif var_name == 'input_drives':
+                            return_vars[var_idx].append(input_drive)
+                        elif var_name == 'states':
+                            return_vars[var_idx].append(states)
+                        elif var_name == 'acts':
+                            return_vars[var_idx].append(acts)
+                        elif var_name == 'recons':
+                            return_vars[var_idx].append(recon)
+                        elif var_name == 'recon_errors':
+                            return_vars[var_idx].append(recon_error)
+                        elif var_name == 'conns':
+                            return_vars[var_idx].append(connectivity)
 
                 if self.track_metrics or self.lca_tol is not None:
                     if lca_iter == 1:
@@ -373,37 +381,22 @@ class _LCAConvBase(torch.nn.Module):
         if self.track_metrics:
             self._write_tracks(tracks, lca_iter, inputs.device.index)
 
-        return (
-            acts_all,
-            recon_all,
-            recon_error_all,
-            states_all,
-            input_drive,
-            connectivity,
-        )
+        return return_vars
 
-    def forward(self, inputs: Tensor) -> Union[Tensor, tuple[Tensor, Tensor, Tensor]]:
+    def forward(self, inputs: Tensor) -> Union[Tensor, tuple[Tensor, ...]]:
         if self.input_zero_mean:
             inputs = make_zero_mean(inputs)
         if self.input_unit_var:
             inputs = make_unit_var(inputs)
 
         inputs, reshape_func = self._to_correct_input_shape(inputs)
-        acts, recon, recon_error, states, input_drive, conns = self.encode(inputs)
+        outputs = self.encode(inputs)
         self.forward_pass += 1
 
-        if self.return_all_ts:
-            return (
-                torch.stack([reshape_func(act) for act in acts], -1),
-                torch.stack([reshape_func(rec) for rec in recon], -1),
-                torch.stack([reshape_func(rec_err) for rec_err in recon_error], -1),
-                torch.stack([reshape_func(state) for state in states], -1),
-                reshape_func(input_drive),
-                reshape_func(conns),
-                reshape_func(inputs),
-            )
+        if self.return_vars == ['acts'] and not self.return_all_ts:
+            return reshape_func(outputs[0][-1])
         else:
-            return reshape_func(acts[-1])
+            return tuple([torch.stack([reshape_func(tensor) for tensor in out], -1) for out in outputs])
 
     def _init_weight_tensor(self) -> None:
         weights = torch.randn(
