@@ -170,7 +170,7 @@ class _LCAConvBase(torch.nn.Module):
             "conns",
         ]
 
-        self._check_return_var_names()
+        self._check_return_vars()
         self._check_conv_params()
         self._compute_padding()
         os.makedirs(self.result_dir, exist_ok=True)
@@ -195,7 +195,10 @@ class _LCAConvBase(torch.nn.Module):
         assert all(even_k) or not any(even_k)
         self.kernel_odd = not any(even_k)
 
-    def _check_return_var_names(self) -> None:
+    def _check_return_vars(self) -> None:
+        if type(self.return_vars) not in [list, tuple]:
+            return TypeError(f"return_vars should be list or tuple, but got {type(self.return_vars)}.")
+
         for var_name in self.return_vars:
             if var_name not in self.return_var_names:
                 raise ValueError(
