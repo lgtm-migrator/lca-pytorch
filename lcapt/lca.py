@@ -150,7 +150,9 @@ class _LCAConvBase(torch.nn.Module):
         self.tau_decay_factor = tau_decay_factor
         self.track_metrics = track_metrics
         self.transfer_func = transfer_func
+        self.return_var_names = ['inputs', 'input_drives', 'states', 'acts', 'recons', 'recon_errors', 'conns']
 
+        self._check_return_var_names()
         self._check_conv_params()
         self._compute_padding()
         os.makedirs(self.result_dir, exist_ok=True)
@@ -174,6 +176,11 @@ class _LCAConvBase(torch.nn.Module):
         even_k = [ksize % 2 == 0 for ksize in [self.kt, self.kh, self.kw] if ksize != 1]
         assert all(even_k) or not any(even_k)
         self.kernel_odd = not any(even_k)
+
+    def _check_return_var_names(self) -> None:
+        for var_name in self.return_vars:
+            if var_name not in self.return_var_names:
+                raise ValueError(f"Name '{var_name}' in return_vars is not in {self.return_var_names}.")
 
     def _compute_inhib_pad(self) -> None:
         """Computes padding for compute_lateral_connectivity"""
