@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import os
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Iterable, Optional, Union
 import yaml
 
 import numpy as np
@@ -99,6 +99,7 @@ class _LCAConvBase(torch.nn.Module):
         eta: float = 0.01,
         lca_iters: int = 3000,
         pad: Literal["same", "valid"] = "same",
+        return_vars: Iterable[str] = ['acts'],
         return_all: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
@@ -141,6 +142,7 @@ class _LCAConvBase(torch.nn.Module):
         self.req_grad = req_grad
         self.result_dir = result_dir
         self.return_all = return_all
+        self.return_vars = return_vars
         self.stride_h = stride_h
         self.stride_t = stride_t
         self.stride_w = stride_w
@@ -507,6 +509,7 @@ class LCAConv1D(_LCAConvBase):
         eta: float = 0.01,
         lca_iters: int = 3000,
         pad: Literal["same", "valid"] = "same",
+        return_vars: Iterable[str] = ['acts'],
         return_all: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
@@ -539,6 +542,7 @@ class LCAConv1D(_LCAConvBase):
             eta,
             lca_iters,
             pad,
+            return_vars,
             return_all,
             dtype,
             nonneg,
@@ -586,6 +590,7 @@ class LCAConv2D(_LCAConvBase):
         eta: float = 0.01,
         lca_iters: int = 3000,
         pad: Literal["same", "valid"] = "same",
+        return_vars: Iterable[str] = ['acts'],
         return_all: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
@@ -618,6 +623,7 @@ class LCAConv2D(_LCAConvBase):
             eta,
             lca_iters,
             pad,
+            return_vars,
             return_all,
             dtype,
             nonneg,
@@ -667,6 +673,7 @@ class LCAConv3D(_LCAConvBase):
         eta: float = 0.01,
         lca_iters: int = 3000,
         pad: Literal["same", "valid"] = "same",
+        return_vars: Iterable[str] = ['acts'],
         return_all: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
@@ -700,6 +707,7 @@ class LCAConv3D(_LCAConvBase):
             eta,
             lca_iters,
             pad,
+            return_vars,
             return_all,
             dtype,
             nonneg,
