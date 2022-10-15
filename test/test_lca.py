@@ -1047,6 +1047,42 @@ class TestLCA(unittest.TestCase):
             self.assertTupleEqual(code.numpy().shape, (9, 8, 11, 11, 11))
             self.assertTupleEqual(input_drive.numpy().shape, (9, 8, 11, 11, 11))
 
+    def test_LCAConv1D_transform_conv_params_int(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv1D(10, 3, tmp_dir, 11)
+            out = lca._transform_conv_params(11)
+            self.assertTupleEqual(out, (11, 1, 1))
+
+    def test_LCAConv1D_transform_conv_params_tuple(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv1D(10, 3, tmp_dir, 11)
+            out = lca._transform_conv_params((11,))
+            self.assertTupleEqual(out, (11, 1, 1))
+
+    def test_LCAConv2D_transform_conv_params_int(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv2D(10, 3, tmp_dir, 11)
+            out = lca._transform_conv_params(11)
+            self.assertTupleEqual(out, (1, 11, 11))
+
+    def test_LCAConv2D_transform_conv_params_tuple(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv2D(10, 3, tmp_dir, 11)
+            out = lca._transform_conv_params((9, 11))
+            self.assertTupleEqual(out, (1, 9, 11))
+
+    def test_LCAConv3D_transform_conv_params_int(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv3D(10, 3, tmp_dir, 11)
+            out = lca._transform_conv_params(11)
+            self.assertTupleEqual(out, (11, 11, 11))
+
+    def test_LCAConv3D_transform_conv_params_tuple(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv3D(10, 3, tmp_dir, 11)
+            out = lca._transform_conv_params((9, 11, 13))
+            self.assertTupleEqual(out, (9, 11, 13))
+
 
 if __name__ == "__main__":
     unittest.main()
