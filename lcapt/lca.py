@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import os
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Iterable, Optional, Union
 import yaml
 
 import numpy as np
@@ -99,7 +99,18 @@ class _LCAConvBase(torch.nn.Module):
         eta: float = 0.01,
         lca_iters: int = 3000,
         pad: Literal["same", "valid"] = "same",
-        return_all: bool = False,
+        return_vars: Iterable[
+            Literal[
+                "inputs",
+                "input_drives",
+                "states",
+                "acts",
+                "recons",
+                "recon_errors",
+                "conns",
+            ]
+        ] = ["acts"],
+        return_all_ts: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
         track_metrics: bool = False,
@@ -140,7 +151,8 @@ class _LCAConvBase(torch.nn.Module):
         self.pad = pad
         self.req_grad = req_grad
         self.result_dir = result_dir
-        self.return_all = return_all
+        self.return_all_ts = return_all_ts
+        self.return_vars = return_vars
         self.stride_h = stride_h
         self.stride_t = stride_t
         self.stride_w = stride_w
@@ -148,7 +160,17 @@ class _LCAConvBase(torch.nn.Module):
         self.tau_decay_factor = tau_decay_factor
         self.track_metrics = track_metrics
         self.transfer_func = transfer_func
+        self.return_var_names = [
+            "inputs",
+            "input_drives",
+            "states",
+            "acts",
+            "recons",
+            "recon_errors",
+            "conns",
+        ]
 
+        self._check_return_vars()
         self._check_conv_params()
         self._compute_padding()
         os.makedirs(self.result_dir, exist_ok=True)
@@ -172,6 +194,18 @@ class _LCAConvBase(torch.nn.Module):
         even_k = [ksize % 2 == 0 for ksize in [self.kt, self.kh, self.kw] if ksize != 1]
         assert all(even_k) or not any(even_k)
         self.kernel_odd = not any(even_k)
+
+    def _check_return_vars(self) -> None:
+        if type(self.return_vars) not in [list, tuple]:
+            raise TypeError(
+                f"return_vars should be list or tuple, but got {type(self.return_vars)}."
+            )
+
+        for var_name in self.return_vars:
+            if var_name not in self.return_var_names:
+                raise ValueError(
+                    f"Name '{var_name}' in return_vars is not in {self.return_var_names}."
+                )
 
     def _compute_inhib_pad(self) -> None:
         """Computes padding for compute_lateral_connectivity"""
@@ -296,17 +330,14 @@ class _LCAConvBase(torch.nn.Module):
             "Tau": float_tracker.copy(),
         }
 
-    def encode(self, inputs: Tensor) -> tuple[list, list, list, list, Tensor, Tensor]:
+    def encode(self, inputs: Tensor) -> tuple[list[Tensor], ...]:
         """Computes sparse code given data x and dictionary D"""
         input_drive = self.compute_input_drive(inputs, self.weights)
         states = torch.zeros_like(input_drive, requires_grad=self.req_grad)
         connectivity = self.compute_lateral_connectivity(self.weights)
         tau = self.tau
 
-        acts_all = []
-        recon_all = []
-        recon_error_all = []
-        states_all = []
+        return_vars = tuple([[] for _ in range(len(self.return_vars))])
 
         for lca_iter in range(1, self.lca_iters + 1):
             acts = self.transfer(states)
@@ -317,16 +348,27 @@ class _LCAConvBase(torch.nn.Module):
                 self.track_metrics
                 or lca_iter == self.lca_iters
                 or self.lca_tol is not None
-                or self.return_all
+                or self.return_all_ts
             ):
                 recon = self.compute_recon(acts, self.weights)
                 recon_error = inputs - recon
 
-                if self.return_all or lca_iter == self.lca_iters:
-                    acts_all.append(acts)
-                    recon_all.append(recon)
-                    recon_error_all.append(recon_error)
-                    states_all.append(states)
+                if self.return_all_ts or lca_iter == self.lca_iters:
+                    for var_idx, var_name in enumerate(self.return_vars):
+                        if var_name == "inputs":
+                            return_vars[var_idx].append(inputs)
+                        elif var_name == "input_drives":
+                            return_vars[var_idx].append(input_drive)
+                        elif var_name == "states":
+                            return_vars[var_idx].append(states)
+                        elif var_name == "acts":
+                            return_vars[var_idx].append(acts)
+                        elif var_name == "recons":
+                            return_vars[var_idx].append(recon)
+                        elif var_name == "recon_errors":
+                            return_vars[var_idx].append(recon_error)
+                        elif var_name == "conns":
+                            return_vars[var_idx].append(connectivity)
 
                 if self.track_metrics or self.lca_tol is not None:
                     if lca_iter == 1:
@@ -344,37 +386,34 @@ class _LCAConvBase(torch.nn.Module):
         if self.track_metrics:
             self._write_tracks(tracks, lca_iter, inputs.device.index)
 
-        return (
-            acts_all,
-            recon_all,
-            recon_error_all,
-            states_all,
-            input_drive,
-            connectivity,
-        )
+        return return_vars
 
-    def forward(self, inputs: Tensor) -> Union[Tensor, tuple[Tensor, Tensor, Tensor]]:
+    def forward(self, inputs: Tensor) -> Union[Tensor, tuple[Tensor, ...]]:
         if self.input_zero_mean:
             inputs = make_zero_mean(inputs)
         if self.input_unit_var:
             inputs = make_unit_var(inputs)
 
         inputs, reshape_func = self._to_correct_input_shape(inputs)
-        acts, recon, recon_error, states, input_drive, conns = self.encode(inputs)
+        outputs = self.encode(inputs)
         self.forward_pass += 1
 
-        if self.return_all:
-            return (
-                torch.stack([reshape_func(act) for act in acts], -1),
-                torch.stack([reshape_func(rec) for rec in recon], -1),
-                torch.stack([reshape_func(rec_err) for rec_err in recon_error], -1),
-                torch.stack([reshape_func(state) for state in states], -1),
-                reshape_func(input_drive),
-                reshape_func(conns),
-                reshape_func(inputs),
+        if self.return_all_ts:
+            outputs = tuple(
+                [
+                    torch.stack([reshape_func(tensor) for tensor in out], -1)
+                    for out in outputs
+                ]
             )
+
+            if len(self.return_vars) == 1:
+                return outputs[0]
+            return outputs
+
         else:
-            return reshape_func(acts[-1])
+            if len(self.return_vars) == 1:
+                return reshape_func(outputs[0][-1])
+            return tuple([reshape_func(out[-1]) for out in outputs])
 
     def _init_weight_tensor(self) -> None:
         weights = torch.randn(
@@ -507,7 +546,18 @@ class LCAConv1D(_LCAConvBase):
         eta: float = 0.01,
         lca_iters: int = 3000,
         pad: Literal["same", "valid"] = "same",
-        return_all: bool = False,
+        return_vars: Iterable[
+            Literal[
+                "inputs",
+                "input_drives",
+                "states",
+                "acts",
+                "recons",
+                "recon_errors",
+                "conns",
+            ]
+        ] = ["acts"],
+        return_all_ts: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
         track_metrics: bool = False,
@@ -539,7 +589,8 @@ class LCAConv1D(_LCAConvBase):
             eta,
             lca_iters,
             pad,
-            return_all,
+            return_vars,
+            return_all_ts,
             dtype,
             nonneg,
             track_metrics,
@@ -586,7 +637,18 @@ class LCAConv2D(_LCAConvBase):
         eta: float = 0.01,
         lca_iters: int = 3000,
         pad: Literal["same", "valid"] = "same",
-        return_all: bool = False,
+        return_vars: Iterable[
+            Literal[
+                "inputs",
+                "input_drives",
+                "states",
+                "acts",
+                "recons",
+                "recon_errors",
+                "conns",
+            ]
+        ] = ["acts"],
+        return_all_ts: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
         track_metrics: bool = False,
@@ -618,7 +680,8 @@ class LCAConv2D(_LCAConvBase):
             eta,
             lca_iters,
             pad,
-            return_all,
+            return_vars,
+            return_all_ts,
             dtype,
             nonneg,
             track_metrics,
@@ -667,7 +730,18 @@ class LCAConv3D(_LCAConvBase):
         eta: float = 0.01,
         lca_iters: int = 3000,
         pad: Literal["same", "valid"] = "same",
-        return_all: bool = False,
+        return_vars: Iterable[
+            Literal[
+                "inputs",
+                "input_drives",
+                "states",
+                "acts",
+                "recons",
+                "recon_errors",
+                "conns",
+            ]
+        ] = ["acts"],
+        return_all_ts: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
         track_metrics: bool = False,
@@ -700,7 +774,8 @@ class LCAConv3D(_LCAConvBase):
             eta,
             lca_iters,
             pad,
-            return_all,
+            return_vars,
+            return_all_ts,
             dtype,
             nonneg,
             track_metrics,
