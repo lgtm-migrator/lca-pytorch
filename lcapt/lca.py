@@ -197,7 +197,9 @@ class _LCAConvBase(torch.nn.Module):
 
     def _check_return_vars(self) -> None:
         if type(self.return_vars) not in [list, tuple]:
-            raise TypeError(f"return_vars should be list or tuple, but got {type(self.return_vars)}.")
+            raise TypeError(
+                f"return_vars should be list or tuple, but got {type(self.return_vars)}."
+            )
 
         for var_name in self.return_vars:
             if var_name not in self.return_var_names:
@@ -353,19 +355,19 @@ class _LCAConvBase(torch.nn.Module):
 
                 if self.return_all_ts or lca_iter == self.lca_iters:
                     for var_idx, var_name in enumerate(self.return_vars):
-                        if var_name == 'inputs':
+                        if var_name == "inputs":
                             return_vars[var_idx].append(inputs)
-                        elif var_name == 'input_drives':
+                        elif var_name == "input_drives":
                             return_vars[var_idx].append(input_drive)
-                        elif var_name == 'states':
+                        elif var_name == "states":
                             return_vars[var_idx].append(states)
-                        elif var_name == 'acts':
+                        elif var_name == "acts":
                             return_vars[var_idx].append(acts)
-                        elif var_name == 'recons':
+                        elif var_name == "recons":
                             return_vars[var_idx].append(recon)
-                        elif var_name == 'recon_errors':
+                        elif var_name == "recon_errors":
                             return_vars[var_idx].append(recon_error)
-                        elif var_name == 'conns':
+                        elif var_name == "conns":
                             return_vars[var_idx].append(connectivity)
 
                 if self.track_metrics or self.lca_tol is not None:
@@ -397,8 +399,13 @@ class _LCAConvBase(torch.nn.Module):
         self.forward_pass += 1
 
         if self.return_all_ts:
-            outputs = tuple([torch.stack([reshape_func(tensor) for tensor in out], -1) for out in outputs])
-            
+            outputs = tuple(
+                [
+                    torch.stack([reshape_func(tensor) for tensor in out], -1)
+                    for out in outputs
+                ]
+            )
+
             if len(self.return_vars) == 1:
                 return outputs[0]
             return outputs
