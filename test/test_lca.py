@@ -795,7 +795,7 @@ class TestLCA(unittest.TestCase):
                 errors.append(0.5 * recon_error.norm(2) ** 2)
             self.assertEqual(errors, sorted(errors))
 
-    def test_inputs_equal_recon_error_plus_recon_LCAConv1D(self):
+    def test_LCAConv1D_inputs_equal_recon_error_plus_recon(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv1D(
                 10,
@@ -811,7 +811,7 @@ class TestLCA(unittest.TestCase):
             recon, recon_error = lca(inputs)
             assert_close(inputs, recon_error + recon)
 
-    def test_inputs_equal_recon_error_plus_recon_LCAConv2D(self):
+    def test_LCAConv2D_inputs_equal_recon_error_plus_recon(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv2D(
                 10,
@@ -828,7 +828,7 @@ class TestLCA(unittest.TestCase):
             recon, recon_error = lca(inputs)
             assert_close(inputs, recon_error + recon)
 
-    def test_inputs_equal_recon_error_plus_recon_LCAConv3D(self):
+    def test_LCAConv3D_inputs_equal_recon_error_plus_recon(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv3D(
                 10,
@@ -965,7 +965,7 @@ class TestLCA(unittest.TestCase):
             conns = lca.compute_lateral_connectivity(lca.weights)
             self.assertEqual(conns.numpy().shape, (10, 10, 1, 1, 1))
 
-    def test_input_zero_mean_and_unit_var_in_LCAConv1D(self):
+    def test_LCAConv1D_input_zero_mean_and_unit_var(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv1D(8, 3, tmp_dir, 7, return_vars=["inputs"], lca_iters=1)
             inputs = torch.rand(10, 3, 32)
@@ -974,7 +974,7 @@ class TestLCA(unittest.TestCase):
                 self.assertLess(inputs_model[inp].mean().item(), 1e-5)
                 assert_close(inputs_model[inp].std().item(), 1.0)
 
-    def test_input_zero_mean_and_unit_var_in_LCAConv2D(self):
+    def test_LCAConv2D_input_zero_mean_and_unit_var(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv2D(8, 3, tmp_dir, 7, 7, return_vars=["inputs"], lca_iters=1)
             inputs = torch.rand(10, 3, 32, 32)
@@ -983,7 +983,7 @@ class TestLCA(unittest.TestCase):
                 self.assertLess(inputs_model[inp].mean().item(), 1e-5)
                 assert_close(inputs_model[inp].std().item(), 1.0)
 
-    def test_input_zero_mean_and_unit_var_in_LCAConv3D(self):
+    def test_LCAConv3D_input_zero_mean_and_unit_var(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv3D(8, 3, tmp_dir, 7, 7, 7, return_vars=["inputs"], lca_iters=1)
             inputs = torch.rand(10, 3, 5, 32, 32)
