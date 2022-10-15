@@ -396,10 +396,17 @@ class _LCAConvBase(torch.nn.Module):
         outputs = self.encode(inputs)
         self.forward_pass += 1
 
-        if len(self.return_vars) == 1 and not self.return_all_ts:
-            return reshape_func(outputs[0][-1])
+        if self.return_all_ts:
+            outputs = tuple([torch.stack([reshape_func(tensor) for tensor in out], -1) for out in outputs])
+            
+            if len(self.return_vars) == 1:
+                return outputs[0]
+            return outputs
+
         else:
-            return tuple([torch.stack([reshape_func(tensor) for tensor in out], -1) for out in outputs])
+            if len(self.return_vars) == 1:
+                return reshape_func(outputs[0][-1])
+            return tuple([reshape_func(out[-1]) for out in outputs])
 
     def _init_weight_tensor(self) -> None:
         weights = torch.randn(
