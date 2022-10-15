@@ -99,7 +99,17 @@ class _LCAConvBase(torch.nn.Module):
         eta: float = 0.01,
         lca_iters: int = 3000,
         pad: Literal["same", "valid"] = "same",
-        return_vars: Iterable[str] = ['acts'],
+        return_vars: Iterable[
+            Literal[
+                "inputs",
+                "input_drives",
+                "states",
+                "acts",
+                "recons",
+                "recon_errors",
+                "conns",
+            ]
+        ] = ["acts"],
         return_all: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
@@ -150,7 +160,15 @@ class _LCAConvBase(torch.nn.Module):
         self.tau_decay_factor = tau_decay_factor
         self.track_metrics = track_metrics
         self.transfer_func = transfer_func
-        self.return_var_names = ['inputs', 'input_drives', 'states', 'acts', 'recons', 'recon_errors', 'conns']
+        self.return_var_names = [
+            "inputs",
+            "input_drives",
+            "states",
+            "acts",
+            "recons",
+            "recon_errors",
+            "conns",
+        ]
 
         self._check_return_var_names()
         self._check_conv_params()
@@ -180,7 +198,9 @@ class _LCAConvBase(torch.nn.Module):
     def _check_return_var_names(self) -> None:
         for var_name in self.return_vars:
             if var_name not in self.return_var_names:
-                raise ValueError(f"Name '{var_name}' in return_vars is not in {self.return_var_names}.")
+                raise ValueError(
+                    f"Name '{var_name}' in return_vars is not in {self.return_var_names}."
+                )
 
     def _compute_inhib_pad(self) -> None:
         """Computes padding for compute_lateral_connectivity"""
@@ -516,7 +536,17 @@ class LCAConv1D(_LCAConvBase):
         eta: float = 0.01,
         lca_iters: int = 3000,
         pad: Literal["same", "valid"] = "same",
-        return_vars: Iterable[str] = ['acts'],
+        return_vars: Iterable[
+            Literal[
+                "inputs",
+                "input_drives",
+                "states",
+                "acts",
+                "recons",
+                "recon_errors",
+                "conns",
+            ]
+        ] = ["acts"],
         return_all: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
@@ -597,7 +627,17 @@ class LCAConv2D(_LCAConvBase):
         eta: float = 0.01,
         lca_iters: int = 3000,
         pad: Literal["same", "valid"] = "same",
-        return_vars: Iterable[str] = ['acts'],
+        return_vars: Iterable[
+            Literal[
+                "inputs",
+                "input_drives",
+                "states",
+                "acts",
+                "recons",
+                "recon_errors",
+                "conns",
+            ]
+        ] = ["acts"],
         return_all: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
@@ -680,7 +720,17 @@ class LCAConv3D(_LCAConvBase):
         eta: float = 0.01,
         lca_iters: int = 3000,
         pad: Literal["same", "valid"] = "same",
-        return_vars: Iterable[str] = ['acts'],
+        return_vars: Iterable[
+            Literal[
+                "inputs",
+                "input_drives",
+                "states",
+                "acts",
+                "recons",
+                "recon_errors",
+                "conns",
+            ]
+        ] = ["acts"],
         return_all: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
