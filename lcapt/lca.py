@@ -396,7 +396,7 @@ class _LCAConvBase(torch.nn.Module):
         outputs = self.encode(inputs)
         self.forward_pass += 1
 
-        if self.return_vars == ['acts'] and not self.return_all_ts:
+        if len(self.return_vars) == 1 and not self.return_all_ts:
             return reshape_func(outputs[0][-1])
         else:
             return tuple([torch.stack([reshape_func(tensor) for tensor in out], -1) for out in outputs])
