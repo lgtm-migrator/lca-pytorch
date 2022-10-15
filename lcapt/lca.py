@@ -110,7 +110,7 @@ class _LCAConvBase(torch.nn.Module):
                 "conns",
             ]
         ] = ["acts"],
-        return_all: bool = False,
+        return_all_ts: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
         track_metrics: bool = False,
@@ -151,7 +151,7 @@ class _LCAConvBase(torch.nn.Module):
         self.pad = pad
         self.req_grad = req_grad
         self.result_dir = result_dir
-        self.return_all = return_all
+        self.return_all_ts = return_all_ts
         self.return_vars = return_vars
         self.stride_h = stride_h
         self.stride_t = stride_t
@@ -346,12 +346,12 @@ class _LCAConvBase(torch.nn.Module):
                 self.track_metrics
                 or lca_iter == self.lca_iters
                 or self.lca_tol is not None
-                or self.return_all
+                or self.return_all_ts
             ):
                 recon = self.compute_recon(acts, self.weights)
                 recon_error = inputs - recon
 
-                if self.return_all or lca_iter == self.lca_iters:
+                if self.return_all_ts or lca_iter == self.lca_iters:
                     acts_all.append(acts)
                     recon_all.append(recon)
                     recon_error_all.append(recon_error)
@@ -392,7 +392,7 @@ class _LCAConvBase(torch.nn.Module):
         acts, recon, recon_error, states, input_drive, conns = self.encode(inputs)
         self.forward_pass += 1
 
-        if self.return_all:
+        if self.return_all_ts:
             return (
                 torch.stack([reshape_func(act) for act in acts], -1),
                 torch.stack([reshape_func(rec) for rec in recon], -1),
@@ -547,7 +547,7 @@ class LCAConv1D(_LCAConvBase):
                 "conns",
             ]
         ] = ["acts"],
-        return_all: bool = False,
+        return_all_ts: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
         track_metrics: bool = False,
@@ -580,7 +580,7 @@ class LCAConv1D(_LCAConvBase):
             lca_iters,
             pad,
             return_vars,
-            return_all,
+            return_all_ts,
             dtype,
             nonneg,
             track_metrics,
@@ -638,7 +638,7 @@ class LCAConv2D(_LCAConvBase):
                 "conns",
             ]
         ] = ["acts"],
-        return_all: bool = False,
+        return_all_ts: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
         track_metrics: bool = False,
@@ -671,7 +671,7 @@ class LCAConv2D(_LCAConvBase):
             lca_iters,
             pad,
             return_vars,
-            return_all,
+            return_all_ts,
             dtype,
             nonneg,
             track_metrics,
@@ -731,7 +731,7 @@ class LCAConv3D(_LCAConvBase):
                 "conns",
             ]
         ] = ["acts"],
-        return_all: bool = False,
+        return_all_ts: bool = False,
         dtype: torch.dtype = torch.float32,
         nonneg: bool = True,
         track_metrics: bool = False,
@@ -765,7 +765,7 @@ class LCAConv3D(_LCAConvBase):
             lca_iters,
             pad,
             return_vars,
-            return_all,
+            return_all_ts,
             dtype,
             nonneg,
             track_metrics,
