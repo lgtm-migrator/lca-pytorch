@@ -88,12 +88,8 @@ class _LCAConvBase(torch.nn.Module):
         n_neurons: int,
         in_c: int,
         result_dir: str,
-        kh: int = 7,
-        kw: int = 7,
-        kt: int = 1,
-        stride_h: int = 1,
-        stride_w: int = 1,
-        stride_t: int = 1,
+        kernel_size: tuple[int, int, int] = (1, 7, 7),
+        stride: tuple[int, int, int] = (1, 1, 1),
         lambda_: float = 0.25,
         tau: Union[float, int] = 1000,
         eta: float = 0.01,
@@ -134,9 +130,9 @@ class _LCAConvBase(torch.nn.Module):
         self.in_c = in_c
         self.input_unit_var = input_unit_var
         self.input_zero_mean = input_zero_mean
-        self.kh = kh
-        self.kt = kt
-        self.kw = kw
+        self.kh = kernel_size[1]
+        self.kt = kernel_size[0]
+        self.kw = kernel_size[2]
         self.lambda_ = lambda_
         self.lca_iters = lca_iters
         self.lca_tol = lca_tol
@@ -153,9 +149,9 @@ class _LCAConvBase(torch.nn.Module):
         self.result_dir = result_dir
         self.return_all_ts = return_all_ts
         self.return_vars = return_vars
-        self.stride_h = stride_h
-        self.stride_t = stride_t
-        self.stride_w = stride_w
+        self.stride_h = stride[1]
+        self.stride_t = stride[0]
+        self.stride_w = stride[2]
         self.tau = tau
         self.tau_decay_factor = tau_decay_factor
         self.track_metrics = track_metrics
@@ -539,8 +535,8 @@ class LCAConv1D(_LCAConvBase):
         n_neurons: int,
         in_c: int,
         result_dir: str,
-        kt: int = 1,
-        stride_t: int = 1,
+        kernel_size: Union[int, tuple[int]] = 7,
+        stride: Union[int, tuple[int]] = 1,
         lambda_: float = 0.25,
         tau: Union[float, int] = 1000,
         eta: float = 0.01,
@@ -574,16 +570,15 @@ class LCAConv1D(_LCAConvBase):
         req_grad: bool = False,
     ) -> None:
 
+        kernel_size = self._transform_conv_params(kernel_size)
+        stride = self._transform_conv_params(stride)
+
         super(LCAConv1D, self).__init__(
             n_neurons,
             in_c,
             result_dir,
-            1,
-            1,
-            kt,
-            1,
-            1,
-            stride_t,
+            kernel_size,
+            stride,
             lambda_,
             tau,
             eta,
@@ -618,6 +613,13 @@ class LCAConv1D(_LCAConvBase):
                 f"Expected 3D inputs, but got {len(inputs.shape)}D inputs."
             )
 
+    def _transform_conv_params(
+        self, val: Union[int, tuple[int]]
+    ) -> tuple[int, int, int]:
+        if type(val) == int:
+            return (val, 1, 1)
+        return val + (1, 1)
+
     def get_weights(self) -> None:
         return to_3d_from_5d(self.weights.detach())
 
@@ -628,10 +630,8 @@ class LCAConv2D(_LCAConvBase):
         n_neurons: int,
         in_c: int,
         result_dir: str,
-        kh: int = 7,
-        kw: int = 7,
-        stride_h: int = 1,
-        stride_w: int = 1,
+        kernel_size: Union[int, tuple[int, int]] = 7,
+        stride: Union[int, tuple[int, int]] = 1,
         lambda_: float = 0.25,
         tau: Union[float, int] = 1000,
         eta: float = 0.01,
@@ -665,16 +665,15 @@ class LCAConv2D(_LCAConvBase):
         req_grad: bool = False,
     ) -> None:
 
+        kernel_size = self._transform_conv_params(kernel_size)
+        stride = self._transform_conv_params(stride)
+
         super(LCAConv2D, self).__init__(
             n_neurons,
             in_c,
             result_dir,
-            kh,
-            kw,
-            1,
-            stride_h,
-            stride_w,
-            1,
+            kernel_size,
+            stride,
             lambda_,
             tau,
             eta,
@@ -709,6 +708,13 @@ class LCAConv2D(_LCAConvBase):
                 f"Expected 4D inputs, but got {len(inputs.shape)}D inputs."
             )
 
+    def _transform_conv_params(
+        self, val: Union[int, tuple[int, int]]
+    ) -> tuple[int, int, int]:
+        if type(val) == int:
+            return (1, val, val)
+        return (1,) + val
+
     def get_weights(self) -> Tensor:
         return to_4d_from_5d(self.weights.detach())
 
@@ -719,12 +725,8 @@ class LCAConv3D(_LCAConvBase):
         n_neurons: int,
         in_c: int,
         result_dir: str,
-        kh: int = 7,
-        kw: int = 7,
-        kt: int = 1,
-        stride_h: int = 1,
-        stride_w: int = 1,
-        stride_t: int = 1,
+        kernel_size: Union[int, tuple[int, int, int]] = 7,
+        stride: Union[int, tuple[int, int, int]] = 1,
         lambda_: float = 0.25,
         tau: Union[float, int] = 1000,
         eta: float = 0.01,
@@ -759,16 +761,15 @@ class LCAConv3D(_LCAConvBase):
         no_time_pad: bool = False,
     ) -> None:
 
+        kernel_size = self._transform_conv_params(kernel_size)
+        stride = self._transform_conv_params(stride)
+
         super(LCAConv3D, self).__init__(
             n_neurons,
             in_c,
             result_dir,
-            kh,
-            kw,
-            kt,
-            stride_h,
-            stride_w,
-            stride_t,
+            kernel_size,
+            stride,
             lambda_,
             tau,
             eta,
@@ -800,6 +801,13 @@ class LCAConv3D(_LCAConvBase):
             raise ValueError(
                 f"Expected 5D inputs, but got {len(inputs.shape)}D inputs."
             )
+
+    def _transform_conv_params(
+        self, val: Union[int, tuple[int, int, int]]
+    ) -> tuple[int, int, int]:
+        if type(val) == int:
+            return (val,) * 3
+        return val
 
     def get_weights(self) -> Tensor:
         return self.weights.detach()
