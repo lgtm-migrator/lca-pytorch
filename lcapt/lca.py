@@ -31,54 +31,11 @@ Tensor = torch.Tensor
 
 
 class _LCAConvBase(torch.nn.Module):
-    """
-    Base class for LCA models.
-
-    Required Args:
-        n_neurons (int): Number of dictionary elements.
-        in_c (int): Number of channels / features in the input data.
-        result_dir (str): Path to dir where results will be saved.
-
-    Optional Args:
-        kh (int): Kernel height of the convolutional features.
-        kw (int): Kernel width of the convolutional features.
-        kt (int): Kernel depth of the convolutional features. For 1D
-            (e.g. raw audio) or 2D (e.g. images) inputs, keep this at
-            the default of 1.
-        stride_h (int): Vertical stride of each feature.
-        stride_w (int): Horizontal stride of each feature.
-        stride_t (int): Stride in depth (time) of each feature.
-        thresh (float): Threshold for the LCA transfer function.
-        tau (int): LCA time constant.
-        eta (float): Learning rate for dictionary updates.
-        lca_iters (int): Number of LCA timesteps per forward pass.
-        pad ('same' or 'valid'): Input padding method.
-        return_recon (bool): If True, calling forward will return code,
-            recon, and input - recon. If False, will just return code.
-        device (int, list, or 'cpu'): Device(s) to use.
-        dtype (torch.dtype): Data type to use.
-        nonneg (bool): True for rectified activations, False for
-            non-rectified activations.
-        track_metrics (bool): True to track and write out objective
-            metrics over the run.
-        thresh_type ('hard' or 'soft'): Hard or soft transfer function.
-        samplewise_standardization (bool): If True, each sample in the
-            batch will be standardized (i.e. mean zero and var 1).
-        d_update_clip (float): Dictionary updates will be clipped to
-            [-d_update_clip, d_update_clip]. Default is no clipping.
-        lr_schedule (function): Function which takes the training step
-            as input and returns a value for eta.
-        req_grad (bool): If True, dictionary D will have
-            requires_grad set to True. Otherwise, it will be False.
-            This is useful for propagating gradient through the LCA
-            layer (e.g. for adversarial attacks).
-    """
-
     def __init__(
         self,
         out_neurons: int,
         in_neurons: int,
-        result_dir: str,
+        result_dir: str = "./lca_results",
         kernel_size: tuple[int, int, int] = (1, 7, 7),
         stride: tuple[int, int, int] = (1, 1, 1),
         lambda_: float = 0.25,
@@ -484,11 +441,73 @@ class _LCAConvBase(torch.nn.Module):
 
 
 class LCAConv1D(_LCAConvBase):
+    """
+    Performs LCA with a 1D Convolution on 3D inputs.
+
+    Args:
+        out_neurons (int): Number of LCA neurons/features
+        in_neurons (int): Number of input neurons/channels
+        result_dir (str, optional): Path where model params and results will
+            be saved
+        kernel_size (int | tuple, optional): Length of the LCA receptive
+            fields. Default: 7
+        stride (int | tuple, optional): Stride of the LCA receptive fields.
+            Default: 1
+        lambda_ (float, optional): LCA firing threshold. Default: 0.25
+        tau (float | int, optional): LCA time constant. Default: 1000
+        eta (float, optional): Learning rate for built-in weight updates.
+            Default: 0.01
+        lca_iters (int, optional): LCA iterations per forward pass.
+            Default: 3000
+        pad ('same' | 'valid', optional): Input padding for the conv.
+            Default: 'same'
+        return_vars (list | tuple, optional): Iterable of one or more strings
+            determining which variables will be returned during the forward
+            pass. Possible values are 'inputs', 'input_drives', 'states',
+            'acts', 'recons', 'recon_errors', and 'conns'. Default: ['acts'].
+        return_all_ts (bool, optional): Whether to return the value of
+            return_vars at every LCA iteration (True) or just the last LCA
+            iteration (False). Default: False
+        dtype (torch.dtype, optional): Dtype for all tensors.
+            Default: torch.float32
+        nonneg (bool, optional): Enforces nonnegative activations.
+            Default: True
+        track_metrics (bool, optional): Whether to track the L1 sparsity
+            penalty, L2 reconstruction error, total energy (L1 + L2), and
+            fraction of neurons active over the LCA loop at each forward pass
+            and write it to a file in result_dir. Default: False
+        transfer_func ('soft_threshold' | 'hard_threshold' | callable,
+            optional): The function that transforms the LCA membrane
+            potentials into activations. If using custom functions, nonneg
+            will not be used. Default: 'soft_threshold'
+        input_zero_mean (bool, optional): Whether to make each input in the
+            batch have zero mean before performing LCA. Default: True
+        input_unit_var (bool, optional): Whether to make each input in the
+            batch have unit variance before performing LCA. Default: True
+        cudnn_benchmark (bool, optional): Use CUDNN benchmark. Default: True
+        d_update_clip (float, optional): Clips weight updates from above and
+            below when using built-in update method. Default: np.inf
+        lr_schedule (callable, optional): Schedule for eta when using the
+            built-in weight update method. Should take in the number of
+            forward passes at the current update and return a value for eta.
+            Default: None
+        req_grad (bool, optional): Keep track of the gradients over the LCA
+            loop. This is useful when not using the built-in dictionary
+            learning method, or for things like adversarial attacks.
+            Default: False
+
+    Shape:
+        Input: (N, in_neurons, L)
+        Input Drives, States, Acts: (N, out_neurons, L_out)
+        Recons, Recon Errors: (N, in_neurons, L)
+        Weights: (out_neurons, in_neurons, kernel_size)
+    """
+
     def __init__(
         self,
         out_neurons: int,
         in_neurons: int,
-        result_dir: str,
+        result_dir: str = "./lca_results",
         kernel_size: Union[int, tuple[int]] = 7,
         stride: Union[int, tuple[int]] = 1,
         lambda_: float = 0.25,
@@ -575,11 +594,73 @@ class LCAConv1D(_LCAConvBase):
 
 
 class LCAConv2D(_LCAConvBase):
+    """
+    Performs LCA with a 2D Convolution on 4D inputs.
+
+    Args:
+        out_neurons (int): Number of LCA neurons/features
+        in_neurons (int): Number of input neurons/channels
+        result_dir (str, optional): Path where model params and results will
+            be saved
+        kernel_size (int | tuple, optional): Spatial size of the LCA
+            receptive fields. Default: (7, 7)
+        stride (int | tuple, optional): Stride of the LCA receptive fields.
+            Default: (1, 1)
+        lambda_ (float, optional): LCA firing threshold. Default: 0.25
+        tau (float | int, optional): LCA time constant. Default: 1000
+        eta (float, optional): Learning rate for built-in weight updates.
+            Default: 0.01
+        lca_iters (int, optional): LCA iterations per forward pass.
+            Default: 3000
+        pad ('same' | 'valid', optional): Input padding for the conv.
+            Default: 'same'
+        return_vars (list | tuple, optional): Iterable of one or more strings
+            determining which variables will be returned during the forward
+            pass. Possible values are 'inputs', 'input_drives', 'states',
+            'acts', 'recons', 'recon_errors', and 'conns'. Default: ['acts'].
+        return_all_ts (bool, optional): Whether to return the value of
+            return_vars at every LCA iteration (True) or just the last LCA
+            iteration (False). Default: False
+        dtype (torch.dtype, optional): Dtype for all tensors.
+            Default: torch.float32
+        nonneg (bool, optional): Enforces nonnegative activations.
+            Default: True
+        track_metrics (bool, optional): Whether to track the L1 sparsity
+            penalty, L2 reconstruction error, total energy (L1 + L2), and
+            fraction of neurons active over the LCA loop at each forward pass
+            and write it to a file in result_dir. Default: False
+        transfer_func ('soft_threshold' | 'hard_threshold' | callable,
+            optional): The function that transforms the LCA membrane
+            potentials into activations. If using custom functions, nonneg
+            will not be used. Default: 'soft_threshold'
+        input_zero_mean (bool, optional): Whether to make each input in the
+            batch have zero mean before performing LCA. Default: True
+        input_unit_var (bool, optional): Whether to make each input in the
+            batch have unit variance before performing LCA. Default: True
+        cudnn_benchmark (bool, optional): Use CUDNN benchmark. Default: True
+        d_update_clip (float, optional): Clips weight updates from above and
+            below when using built-in update method. Default: np.inf
+        lr_schedule (callable, optional): Schedule for eta when using the
+            built-in weight update method. Should take in the number of
+            forward passes at the current update and return a value for eta.
+            Default: None
+        req_grad (bool, optional): Keep track of the gradients over the LCA
+            loop. This is useful when not using the built-in dictionary
+            learning method, or for things like adversarial attacks.
+            Default: False
+
+    Shape:
+        Input: (N, in_neurons, H, W)
+        Input Drives, States, Acts: (N, out_neurons, H_out, W_out)
+        Recons, Recon Errors: (N, in_neurons, H, W)
+        Weights: (out_neurons, in_neurons, kernel_size[0], kernel_size[1])
+    """
+
     def __init__(
         self,
         out_neurons: int,
         in_neurons: int,
-        result_dir: str,
+        result_dir: str = "./lca_results",
         kernel_size: Union[int, tuple[int, int]] = 7,
         stride: Union[int, tuple[int, int]] = 1,
         lambda_: float = 0.25,
@@ -666,11 +747,78 @@ class LCAConv2D(_LCAConvBase):
 
 
 class LCAConv3D(_LCAConvBase):
+    """
+    Performs LCA with a 3D Convolution on 5D inputs.
+
+    Args:
+        out_neurons (int): Number of LCA neurons/features
+        in_neurons (int): Number of input neurons/channels
+        result_dir (str, optional): Path where model params and results will
+            be saved
+        kernel_size (int | tuple, optional): Spatio-temporal size of the LCA
+            receptive fields. Default: (7, 7, 7)
+        stride (int | tuple, optional): Stride of the LCA receptive fields.
+            Default: (1, 1, 1)
+        lambda_ (float, optional): LCA firing threshold. Default: 0.25
+        tau (float | int, optional): LCA time constant. Default: 1000
+        eta (float, optional): Learning rate for built-in weight updates.
+            Default: 0.01
+        lca_iters (int, optional): LCA iterations per forward pass.
+            Default: 3000
+        pad ('same' | 'valid', optional): Input padding for the conv.
+            Default: 'same'
+        return_vars (list | tuple, optional): Iterable of one or more strings
+            determining which variables will be returned during the forward
+            pass. Possible values are 'inputs', 'input_drives', 'states',
+            'acts', 'recons', 'recon_errors', and 'conns'. Default: ['acts'].
+        return_all_ts (bool, optional): Whether to return the value of
+            return_vars at every LCA iteration (True) or just the last LCA
+            iteration (False). Default: False
+        dtype (torch.dtype, optional): Dtype for all tensors.
+            Default: torch.float32
+        nonneg (bool, optional): Enforces nonnegative activations.
+            Default: True
+        track_metrics (bool, optional): Whether to track the L1 sparsity
+            penalty, L2 reconstruction error, total energy (L1 + L2), and
+            fraction of neurons active over the LCA loop at each forward pass
+            and write it to a file in result_dir. Default: False
+        transfer_func ('soft_threshold' | 'hard_threshold' | callable,
+            optional): The function that transforms the LCA membrane
+            potentials into activations. If using custom functions, nonneg
+            will not be used. Default: 'soft_threshold'
+        input_zero_mean (bool, optional): Whether to make each input in the
+            batch have zero mean before performing LCA. Default: True
+        input_unit_var (bool, optional): Whether to make each input in the
+            batch have unit variance before performing LCA. Default: True
+        cudnn_benchmark (bool, optional): Use CUDNN benchmark. Default: True
+        d_update_clip (float, optional): Clips weight updates from above and
+            below when using built-in update method. Default: np.inf
+        lr_schedule (callable, optional): Schedule for eta when using the
+            built-in weight update method. Should take in the number of
+            forward passes at the current update and return a value for eta.
+            Default: None
+        req_grad (bool, optional): Keep track of the gradients over the LCA
+            loop. This is useful when not using the built-in dictionary
+            learning method, or for things like adversarial attacks.
+            Default: False
+        no_time_pad (bool, optional): If True, no padding will be performed
+            in dimension D regardless of the value of the pad argument.
+            Allows for control over padding in the depth dimension that is
+            independent of that in the spatial dimensions.
+
+    Shape:
+        Input: (N, in_neurons, D, H, W)
+        Input Drives, States, Acts: (N, out_neurons, D_out, H_out, W_out)
+        Recons, Recon Errors: (N, in_neurons, D, H, W)
+        Weights: (out_neurons, in_neurons, kernel_size[0], kernel_size[1],
+            kernel_size[2])
+    """
+
     def __init__(
         self,
         out_neurons: int,
         in_neurons: int,
-        result_dir: str,
+        result_dir: str = "./lca_results",
         kernel_size: Union[int, tuple[int, int, int]] = 7,
         stride: Union[int, tuple[int, int, int]] = 1,
         lambda_: float = 0.25,
