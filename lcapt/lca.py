@@ -68,11 +68,6 @@ class _LCAConvBase(torch.nn.Module):
             and after each iteration will update according to
             tau -= tau * tau_decay_factor. Empirically helps speed up
             convergence in most cases. Use 0.0 to use constant tau.
-        lca_tol (float): Value to determine when to stop LCA loop.
-            If a running average of the objective function changes less
-            than lca_tol from one LCA iteration to the next, the LCA
-            loop will be terminated. Use None to disable this and run
-            for lca_iters iterations.
         d_update_clip (float): Dictionary updates will be clipped to
             [-d_update_clip, d_update_clip]. Default is no clipping.
         lr_schedule (function): Function which takes the training step
@@ -116,7 +111,6 @@ class _LCAConvBase(torch.nn.Module):
         input_zero_mean: bool = True,
         input_unit_var: bool = True,
         tau_decay_factor: float = 0.0,
-        lca_tol: Optional[float] = None,
         cudnn_benchmark: bool = True,
         d_update_clip: float = np.inf,
         lr_schedule: Optional[Callable[[int], float]] = None,
@@ -135,8 +129,6 @@ class _LCAConvBase(torch.nn.Module):
         self.kw = kernel_size[2]
         self.lambda_ = lambda_
         self.lca_iters = lca_iters
-        self.lca_tol = lca_tol
-        self.lca_warmup = tau // 10 + 100
         if lr_schedule is not None:
             assert callable(lr_schedule)
         self.lr_schedule = lr_schedule
@@ -280,12 +272,6 @@ class _LCAConvBase(torch.nn.Module):
         conn_shp = conns.shape[2:]
         self.surround = tuple([int(np.ceil((dim - 1) / 2)) for dim in conn_shp])
 
-    def compute_perc_change(
-        self, curr: Union[int, float], prev: Union[int, float]
-    ) -> float:
-        """Computes percent change of a value from t-1 to t"""
-        return abs((curr - prev) / prev)
-
     def compute_recon(self, acts: Tensor, weights: Union[Tensor, Parameter]) -> Tensor:
         """Computes reconstruction given code"""
         acts, reshape_func = self._to_correct_input_shape(acts)
@@ -343,7 +329,6 @@ class _LCAConvBase(torch.nn.Module):
             if (
                 self.track_metrics
                 or lca_iter == self.lca_iters
-                or self.lca_tol is not None
                 or self.return_all_ts
             ):
                 recon = self.compute_recon(acts, self.weights)
@@ -366,16 +351,12 @@ class _LCAConvBase(torch.nn.Module):
                         elif var_name == "conns":
                             return_vars[var_idx].append(connectivity)
 
-                if self.track_metrics or self.lca_tol is not None:
+                if self.track_metrics:
                     if lca_iter == 1:
                         tracks = self._create_trackers()
                     tracks = self._update_tracks(
                         tracks, lca_iter, acts, inputs, recon, tau
                     )
-                    if self.lca_tol is not None:
-                        if lca_iter > self.lca_warmup:
-                            if self._stop_lca(tracks["TotalEnergy"], lca_iter):
-                                break
 
             tau = self._update_tau(tau)
 
@@ -428,20 +409,6 @@ class _LCAConvBase(torch.nn.Module):
             dims = tuple(range(1, len(self.weights.shape)))
             scale = self.weights.norm(p=2, dim=dims, keepdim=True)
             self.weights.copy_(self.weights / (scale + eps))
-
-    def _stop_lca(self, energy_history: np.ndarray, lca_iter: int) -> bool:
-        """Determines when to stop LCA loop early by comparing the
-        percent change between a running avg of the objective value
-        at time t and that at time t-1 and checking if it is less
-        then the user-defined lca_tol value"""
-        curr_avg = energy_history[lca_iter - 100 : lca_iter].mean()
-        prev_avg = energy_history[lca_iter - 101 : lca_iter - 1].mean()
-        perc_change = self.compute_perc_change(curr_avg, prev_avg)
-
-        if perc_change < self.lca_tol:
-            return True
-        else:
-            return False
 
     def _to_correct_input_shape(
         self, inputs: Tensor
@@ -563,7 +530,6 @@ class LCAConv1D(_LCAConvBase):
         input_zero_mean: bool = True,
         input_unit_var: bool = True,
         tau_decay_factor: float = 0.0,
-        lca_tol: Optional[float] = None,
         cudnn_benchmark: bool = True,
         d_update_clip: float = np.inf,
         lr_schedule: Optional[Callable[[int], float]] = None,
@@ -593,7 +559,6 @@ class LCAConv1D(_LCAConvBase):
             input_zero_mean,
             input_unit_var,
             tau_decay_factor,
-            lca_tol,
             cudnn_benchmark,
             d_update_clip,
             lr_schedule,
@@ -658,7 +623,6 @@ class LCAConv2D(_LCAConvBase):
         input_zero_mean: bool = True,
         input_unit_var: bool = True,
         tau_decay_factor: float = 0.0,
-        lca_tol: Optional[float] = None,
         cudnn_benchmark: bool = True,
         d_update_clip: float = np.inf,
         lr_schedule: Optional[Callable[[int], float]] = None,
@@ -688,7 +652,6 @@ class LCAConv2D(_LCAConvBase):
             input_zero_mean,
             input_unit_var,
             tau_decay_factor,
-            lca_tol,
             cudnn_benchmark,
             d_update_clip,
             lr_schedule,
@@ -753,7 +716,6 @@ class LCAConv3D(_LCAConvBase):
         input_zero_mean: bool = True,
         input_unit_var: bool = True,
         tau_decay_factor: float = 0.0,
-        lca_tol: Optional[float] = None,
         cudnn_benchmark: bool = True,
         d_update_clip: float = np.inf,
         lr_schedule: Optional[Callable[[int], float]] = None,
@@ -784,7 +746,6 @@ class LCAConv3D(_LCAConvBase):
             input_zero_mean,
             input_unit_var,
             tau_decay_factor,
-            lca_tol,
             cudnn_benchmark,
             d_update_clip,
             lr_schedule,
