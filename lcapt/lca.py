@@ -326,11 +326,7 @@ class _LCAConvBase(torch.nn.Module):
             inhib = self.lateral_competition(acts, connectivity)
             states = states + (1 / tau) * (input_drive - states - inhib + acts)
 
-            if (
-                self.track_metrics
-                or lca_iter == self.lca_iters
-                or self.return_all_ts
-            ):
+            if self.track_metrics or lca_iter == self.lca_iters or self.return_all_ts:
                 recon = self.compute_recon(acts, self.weights)
                 recon_error = inputs - recon
 
