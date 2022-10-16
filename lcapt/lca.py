@@ -380,7 +380,12 @@ class _LCAConvBase(torch.nn.Module):
 
     def _init_weight_tensor(self) -> None:
         weights = torch.randn(
-            self.out_neurons, self.in_neurons, self.kt, self.kh, self.kw, dtype=self.dtype
+            self.out_neurons,
+            self.in_neurons,
+            self.kt,
+            self.kh,
+            self.kw,
+            dtype=self.dtype,
         )
         weights[weights.abs() < 1.0] = 0.0
         self.weights = torch.nn.Parameter(weights, requires_grad=self.req_grad)
