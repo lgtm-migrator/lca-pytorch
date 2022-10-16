@@ -76,8 +76,8 @@ class _LCAConvBase(torch.nn.Module):
 
     def __init__(
         self,
-        n_neurons: int,
-        in_c: int,
+        out_neurons: int,
+        in_neurons: int,
         result_dir: str,
         kernel_size: tuple[int, int, int] = (1, 7, 7),
         stride: tuple[int, int, int] = (1, 1, 1),
@@ -116,7 +116,7 @@ class _LCAConvBase(torch.nn.Module):
         self.d_update_clip = d_update_clip
         self.dtype = dtype
         self.eta = eta
-        self.in_c = in_c
+        self.in_neurons = in_neurons
         self.input_unit_var = input_unit_var
         self.input_zero_mean = input_zero_mean
         self.kh = kernel_size[1]
@@ -128,9 +128,9 @@ class _LCAConvBase(torch.nn.Module):
             assert callable(lr_schedule)
         self.lr_schedule = lr_schedule
         self.metric_fpath = os.path.join(result_dir, "metrics.xz")
-        self.n_neurons = n_neurons
         self.no_time_pad = no_time_pad
         self.nonneg = nonneg
+        self.out_neurons = out_neurons
         self.pad = pad
         self.req_grad = req_grad
         self.result_dir = result_dir
@@ -380,7 +380,12 @@ class _LCAConvBase(torch.nn.Module):
 
     def _init_weight_tensor(self) -> None:
         weights = torch.randn(
-            self.n_neurons, self.in_c, self.kt, self.kh, self.kw, dtype=self.dtype
+            self.out_neurons,
+            self.in_neurons,
+            self.kt,
+            self.kh,
+            self.kw,
+            dtype=self.dtype,
         )
         weights[weights.abs() < 1.0] = 0.0
         self.weights = torch.nn.Parameter(weights, requires_grad=self.req_grad)
@@ -481,8 +486,8 @@ class _LCAConvBase(torch.nn.Module):
 class LCAConv1D(_LCAConvBase):
     def __init__(
         self,
-        n_neurons: int,
-        in_c: int,
+        out_neurons: int,
+        in_neurons: int,
         result_dir: str,
         kernel_size: Union[int, tuple[int]] = 7,
         stride: Union[int, tuple[int]] = 1,
@@ -521,8 +526,8 @@ class LCAConv1D(_LCAConvBase):
         stride = self._transform_conv_params(stride)
 
         super(LCAConv1D, self).__init__(
-            n_neurons,
-            in_c,
+            out_neurons,
+            in_neurons,
             result_dir,
             kernel_size,
             stride,
@@ -572,8 +577,8 @@ class LCAConv1D(_LCAConvBase):
 class LCAConv2D(_LCAConvBase):
     def __init__(
         self,
-        n_neurons: int,
-        in_c: int,
+        out_neurons: int,
+        in_neurons: int,
         result_dir: str,
         kernel_size: Union[int, tuple[int, int]] = 7,
         stride: Union[int, tuple[int, int]] = 1,
@@ -612,8 +617,8 @@ class LCAConv2D(_LCAConvBase):
         stride = self._transform_conv_params(stride)
 
         super(LCAConv2D, self).__init__(
-            n_neurons,
-            in_c,
+            out_neurons,
+            in_neurons,
             result_dir,
             kernel_size,
             stride,
@@ -663,8 +668,8 @@ class LCAConv2D(_LCAConvBase):
 class LCAConv3D(_LCAConvBase):
     def __init__(
         self,
-        n_neurons: int,
-        in_c: int,
+        out_neurons: int,
+        in_neurons: int,
         result_dir: str,
         kernel_size: Union[int, tuple[int, int, int]] = 7,
         stride: Union[int, tuple[int, int, int]] = 1,
@@ -704,8 +709,8 @@ class LCAConv3D(_LCAConvBase):
         stride = self._transform_conv_params(stride)
 
         super(LCAConv3D, self).__init__(
-            n_neurons,
-            in_c,
+            out_neurons,
+            in_neurons,
             result_dir,
             kernel_size,
             stride,
