@@ -35,7 +35,7 @@ class _LCAConvBase(torch.nn.Module):
         self,
         out_neurons: int,
         in_neurons: int,
-        result_dir: str,
+        result_dir: str = "./lca_results",
         kernel_size: tuple[int, int, int] = (1, 7, 7),
         stride: tuple[int, int, int] = (1, 1, 1),
         lambda_: float = 0.25,
@@ -447,7 +447,8 @@ class LCAConv1D(_LCAConvBase):
     Args:
         out_neurons (int): Number of LCA neurons/features
         in_neurons (int): Number of input neurons/channels
-        result_dir (str): Path where model params and results will be saved
+        result_dir (str, optional): Path where model params and results will
+            be saved
         kernel_size (int | tuple, optional): Length of the LCA receptive
             fields. Default: 7
         stride (int | tuple, optional): Stride of the LCA receptive fields.
@@ -506,7 +507,7 @@ class LCAConv1D(_LCAConvBase):
         self,
         out_neurons: int,
         in_neurons: int,
-        result_dir: str,
+        result_dir: str = "./lca_results",
         kernel_size: Union[int, tuple[int]] = 7,
         stride: Union[int, tuple[int]] = 1,
         lambda_: float = 0.25,
@@ -599,7 +600,8 @@ class LCAConv2D(_LCAConvBase):
     Args:
         out_neurons (int): Number of LCA neurons/features
         in_neurons (int): Number of input neurons/channels
-        result_dir (str): Path where model params and results will be saved
+        result_dir (str, optional): Path where model params and results will
+            be saved
         kernel_size (int | tuple, optional): Spatial size of the LCA
             receptive fields. Default: (7, 7)
         stride (int | tuple, optional): Stride of the LCA receptive fields.
@@ -658,7 +660,7 @@ class LCAConv2D(_LCAConvBase):
         self,
         out_neurons: int,
         in_neurons: int,
-        result_dir: str,
+        result_dir: str = "./lca_results",
         kernel_size: Union[int, tuple[int, int]] = 7,
         stride: Union[int, tuple[int, int]] = 1,
         lambda_: float = 0.25,
@@ -751,7 +753,8 @@ class LCAConv3D(_LCAConvBase):
     Args:
         out_neurons (int): Number of LCA neurons/features
         in_neurons (int): Number of input neurons/channels
-        result_dir (str): Path where model params and results will be saved
+        result_dir (str, optional): Path where model params and results will
+            be saved
         kernel_size (int | tuple, optional): Spatio-temporal size of the LCA
             receptive fields. Default: (7, 7, 7)
         stride (int | tuple, optional): Stride of the LCA receptive fields.
@@ -811,7 +814,7 @@ class LCAConv3D(_LCAConvBase):
         self,
         out_neurons: int,
         in_neurons: int,
-        result_dir: str,
+        result_dir: str = "./lca_results",
         kernel_size: Union[int, tuple[int, int, int]] = 7,
         stride: Union[int, tuple[int, int, int]] = 1,
         lambda_: float = 0.25,
