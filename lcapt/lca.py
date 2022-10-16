@@ -311,13 +311,12 @@ class _LCAConvBase(torch.nn.Module):
         input_drive = self.compute_input_drive(inputs, self.weights)
         states = torch.zeros_like(input_drive, requires_grad=self.req_grad)
         connectivity = self.compute_lateral_connectivity(self.weights)
-        tau = self.tau
         return_vars = tuple([[] for _ in range(len(self.return_vars))])
 
         for lca_iter in range(1, self.lca_iters + 1):
             acts = self.transfer(states)
             inhib = self.lateral_competition(acts, connectivity)
-            states = states + (1 / tau) * (input_drive - states - inhib + acts)
+            states = states + (1 / self.tau) * (input_drive - states - inhib + acts)
 
             if self.track_metrics or lca_iter == self.lca_iters or self.return_all_ts:
                 recon = self.compute_recon(acts, self.weights)
@@ -344,7 +343,7 @@ class _LCAConvBase(torch.nn.Module):
                     if lca_iter == 1:
                         tracks = self._create_trackers()
                     tracks = self._update_tracks(
-                        tracks, lca_iter, acts, inputs, recon, tau
+                        tracks, lca_iter, acts, inputs, recon, self.tau
                     )
 
         if self.track_metrics:
