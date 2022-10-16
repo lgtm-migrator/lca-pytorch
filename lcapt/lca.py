@@ -801,6 +801,10 @@ class LCAConv3D(_LCAConvBase):
             loop. This is useful when not using the built-in dictionary
             learning method, or for things like adversarial attacks.
             Default: False
+        no_time_pad (bool, optional): If True, no padding will be performed
+            in dimension D regardless of the value of the pad argument.
+            Allows for control over padding in the depth dimension that is
+            independent of that in the spatial dimensions.
 
     Shape:
         Input: (N, in_neurons, D, H, W)
