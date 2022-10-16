@@ -313,7 +313,7 @@ class _LCAConvBase(torch.nn.Module):
         connectivity = self.compute_lateral_connectivity(self.weights)
         tau = self.tau
 
-        return_vars = tuple([[] for _ in range(len(self.return_vars))])
+        return_vars = ([],) * len(self.return_vars)
 
         for lca_iter in range(1, self.lca_iters + 1):
             acts = self.transfer(states)
