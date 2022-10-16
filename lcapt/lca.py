@@ -64,10 +64,6 @@ class _LCAConvBase(torch.nn.Module):
         thresh_type ('hard' or 'soft'): Hard or soft transfer function.
         samplewise_standardization (bool): If True, each sample in the
             batch will be standardized (i.e. mean zero and var 1).
-        tau_decay_factor (float): Each lca loop, tau will start at tau
-            and after each iteration will update according to
-            tau -= tau * tau_decay_factor. Empirically helps speed up
-            convergence in most cases. Use 0.0 to use constant tau.
         d_update_clip (float): Dictionary updates will be clipped to
             [-d_update_clip, d_update_clip]. Default is no clipping.
         lr_schedule (function): Function which takes the training step
@@ -110,7 +106,6 @@ class _LCAConvBase(torch.nn.Module):
         ] = "soft_threshold",
         input_zero_mean: bool = True,
         input_unit_var: bool = True,
-        tau_decay_factor: float = 0.0,
         cudnn_benchmark: bool = True,
         d_update_clip: float = np.inf,
         lr_schedule: Optional[Callable[[int], float]] = None,
@@ -145,7 +140,6 @@ class _LCAConvBase(torch.nn.Module):
         self.stride_t = stride[0]
         self.stride_w = stride[2]
         self.tau = tau
-        self.tau_decay_factor = tau_decay_factor
         self.track_metrics = track_metrics
         self.transfer_func = transfer_func
         self.return_var_names = [
@@ -354,8 +348,6 @@ class _LCAConvBase(torch.nn.Module):
                         tracks, lca_iter, acts, inputs, recon, tau
                     )
 
-            tau = self._update_tau(tau)
-
         if self.track_metrics:
             self._write_tracks(tracks, lca_iter, inputs.device.index)
 
@@ -437,10 +429,6 @@ class _LCAConvBase(torch.nn.Module):
             self.normalize_weights()
             if self.lr_schedule is not None:
                 self.eta = self.lr_schedule(self.forward_pass)
-
-    def _update_tau(self, tau: Union[int, float]) -> float:
-        """Update LCA time constant with given decay factor"""
-        return tau - tau * self.tau_decay_factor
 
     def _update_tracks(
         self,
@@ -525,7 +513,6 @@ class LCAConv1D(_LCAConvBase):
         ] = "soft_threshold",
         input_zero_mean: bool = True,
         input_unit_var: bool = True,
-        tau_decay_factor: float = 0.0,
         cudnn_benchmark: bool = True,
         d_update_clip: float = np.inf,
         lr_schedule: Optional[Callable[[int], float]] = None,
@@ -554,7 +541,6 @@ class LCAConv1D(_LCAConvBase):
             transfer_func,
             input_zero_mean,
             input_unit_var,
-            tau_decay_factor,
             cudnn_benchmark,
             d_update_clip,
             lr_schedule,
@@ -618,7 +604,6 @@ class LCAConv2D(_LCAConvBase):
         ] = "soft_threshold",
         input_zero_mean: bool = True,
         input_unit_var: bool = True,
-        tau_decay_factor: float = 0.0,
         cudnn_benchmark: bool = True,
         d_update_clip: float = np.inf,
         lr_schedule: Optional[Callable[[int], float]] = None,
@@ -647,7 +632,6 @@ class LCAConv2D(_LCAConvBase):
             transfer_func,
             input_zero_mean,
             input_unit_var,
-            tau_decay_factor,
             cudnn_benchmark,
             d_update_clip,
             lr_schedule,
@@ -711,7 +695,6 @@ class LCAConv3D(_LCAConvBase):
         ] = "soft_threshold",
         input_zero_mean: bool = True,
         input_unit_var: bool = True,
-        tau_decay_factor: float = 0.0,
         cudnn_benchmark: bool = True,
         d_update_clip: float = np.inf,
         lr_schedule: Optional[Callable[[int], float]] = None,
@@ -741,7 +724,6 @@ class LCAConv3D(_LCAConvBase):
             transfer_func,
             input_zero_mean,
             input_unit_var,
-            tau_decay_factor,
             cudnn_benchmark,
             d_update_clip,
             lr_schedule,
