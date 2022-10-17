@@ -8,29 +8,29 @@ from lcapt.lca import LCAConv1D, LCAConv2D, LCAConv3D
 
 
 class TestLCA(unittest.TestCase):
-    def test_LCAConv1D_to_correct_input_shape_raises_ValueError(self):
+    def test_LCAConv1D_to_correct_shape_raises_ValueError(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv1D(10, 3, tmp_dir)
             inputs_4d = torch.zeros(1, 3, 10, 10)
 
             with self.assertRaises(ValueError):
-                lca._to_correct_input_shape(inputs_4d)
+                lca._to_correct_shape(inputs_4d)
 
-    def test_LCAConv2D_to_correct_input_shape_raises_ValueError(self):
+    def test_LCAConv2D_to_correct_shape_raises_ValueError(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv2D(10, 3, tmp_dir)
             inputs_3d = torch.zeros(1, 3, 10)
 
             with self.assertRaises(ValueError):
-                lca._to_correct_input_shape(inputs_3d)
+                lca._to_correct_shape(inputs_3d)
 
-    def test_LCAConv3D_to_correct_input_shape_raises_ValueError(self):
+    def test_LCAConv3D_to_correct_shape_raises_ValueError(self):
         with TemporaryDirectory() as tmp_dir:
             lca = LCAConv3D(10, 3, tmp_dir)
             inputs_4d = torch.zeros(1, 3, 10, 10)
 
             with self.assertRaises(ValueError):
-                lca._to_correct_input_shape(inputs_4d)
+                lca._to_correct_shape(inputs_4d)
 
     def test_LCA_check_return_vars_returns_ValueError(self):
         with TemporaryDirectory() as tmp_dir:
