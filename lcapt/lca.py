@@ -99,15 +99,6 @@ class _LCAConvBase(torch.nn.Module):
         self.tau = tau
         self.track_metrics = track_metrics
         self.transfer_func = transfer_func
-        self.return_var_names = [
-            "inputs",
-            "input_drives",
-            "states",
-            "acts",
-            "recons",
-            "recon_errors",
-            "conns",
-        ]
 
         self._check_return_vars()
         self._check_conv_params()
@@ -140,10 +131,19 @@ class _LCAConvBase(torch.nn.Module):
                 f"return_vars should be list or tuple, but got {type(self.return_vars)}."
             )
 
+        return_var_names = [
+            "inputs",
+            "input_drives",
+            "states",
+            "acts",
+            "recons",
+            "recon_errors",
+            "conns",
+        ]
         for var_name in self.return_vars:
-            if var_name not in self.return_var_names:
+            if var_name not in return_var_names:
                 raise ValueError(
-                    f"Name '{var_name}' in return_vars is not in {self.return_var_names}."
+                    f"Name '{var_name}' in return_vars is not in {return_var_names}."
                 )
 
     def _compute_inhib_pad(self) -> None:
