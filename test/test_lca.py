@@ -1083,6 +1083,87 @@ class TestLCA(unittest.TestCase):
             out = lca._transform_conv_params((9, 11, 13))
             self.assertTupleEqual(out, (9, 11, 13))
 
+    def test_LCAConv1D_drive_scaling(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv1D(
+                10, 3, tmp_dir, 99, lca_iters=3, return_vars=["input_drives"]
+            )
+            inputs = torch.randn(1, 3, 1000)
+            scaling = torch.ones(1, 10, 1000)
+            scaling[0, 8, 500] = 0
+            input_drives = lca(inputs)
+            input_drives_scaled = lca(inputs, scaling)
+            self.assertTrue(input_drives[0, 8, 500].item() != 0.0)
+            self.assertTrue(input_drives_scaled[0, 8, 500].item() == 0.0)
+
+    def test_LCAConv2D_drive_scaling(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv2D(
+                10, 3, tmp_dir, 11, lca_iters=3, return_vars=["input_drives"]
+            )
+            inputs = torch.randn(1, 3, 32, 32)
+            scaling = torch.ones(1, 10, 32, 32)
+            scaling[0, 8, 16, 16] = 0
+            input_drives = lca(inputs)
+            input_drives_scaled = lca(inputs, scaling)
+            self.assertTrue(input_drives[0, 8, 16, 16].item() != 0.0)
+            self.assertTrue(input_drives_scaled[0, 8, 16, 16].item() == 0.0)
+
+    def test_LCAConv3D_drive_scaling(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv3D(
+                10, 3, tmp_dir, 5, lca_iters=3, return_vars=["input_drives"]
+            )
+            inputs = torch.randn(1, 3, 5, 32, 32)
+            scaling = torch.ones(1, 10, 5, 32, 32)
+            scaling[0, 8, 2, 16, 16] = 0
+            input_drives = lca(inputs)
+            input_drives_scaled = lca(inputs, scaling)
+            self.assertTrue(input_drives[0, 8, 2, 16, 16].item() != 0.0)
+            self.assertTrue(input_drives_scaled[0, 8, 2, 16, 16].item() == 0.0)
+
+    def test_LCAConv1D_gradient_drive_scaling(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv1D(10, 3, tmp_dir, req_grad=True, lca_iters=3)
+            inputs = torch.randn(1, 3, 100)
+            scaling = torch.randn(1, 10, 100)
+            with torch.no_grad():
+                acts = lca(inputs, scaling)
+
+            with self.assertRaises(RuntimeError):
+                acts.sum().backward()
+
+            acts = lca(inputs, scaling)
+            acts.sum().backward()
+
+    def test_LCAConv2D_gradient_drive_scaling(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv2D(10, 3, tmp_dir, req_grad=True, lca_iters=3)
+            inputs = torch.randn(1, 3, 11, 11)
+            scaling = torch.randn(1, 10, 11, 11)
+            with torch.no_grad():
+                acts = lca(inputs, scaling)
+
+            with self.assertRaises(RuntimeError):
+                acts.sum().backward()
+
+            acts = lca(inputs, scaling)
+            acts.sum().backward()
+
+    def test_LCAConv3D_gradient_drive_scaling(self):
+        with TemporaryDirectory() as tmp_dir:
+            lca = LCAConv3D(10, 3, tmp_dir, req_grad=True, lca_iters=3)
+            inputs = torch.randn(1, 3, 7, 7, 7)
+            scaling = torch.randn(1, 10, 7, 7, 7)
+            with torch.no_grad():
+                acts = lca(inputs, scaling)
+
+            with self.assertRaises(RuntimeError):
+                acts.sum().backward()
+
+            acts = lca(inputs, scaling)
+            acts.sum().backward()
+
 
 if __name__ == "__main__":
     unittest.main()

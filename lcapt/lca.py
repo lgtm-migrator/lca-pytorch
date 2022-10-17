@@ -263,12 +263,17 @@ class _LCAConvBase(torch.nn.Module):
             "Tau": float_tracker.copy(),
         }
 
-    def encode(self, inputs: Tensor) -> tuple[list[Tensor], ...]:
+    def encode(
+        self, inputs: Tensor, drive_scaling: Optional[Tensor] = None
+    ) -> tuple[list[Tensor], ...]:
         """Computes sparse code given data x and dictionary D"""
         input_drive = self.compute_input_drive(inputs, self.weights)
         states = torch.zeros_like(input_drive, requires_grad=self.req_grad)
         connectivity = self.compute_lateral_connectivity(self.weights)
         return_vars = tuple([[] for _ in range(len(self.return_vars))])
+
+        if drive_scaling is not None:
+            input_drive = input_drive * drive_scaling
 
         for lca_iter in range(1, self.lca_iters + 1):
             acts = self.transfer(states)
@@ -308,14 +313,19 @@ class _LCAConvBase(torch.nn.Module):
 
         return return_vars
 
-    def forward(self, inputs: Tensor) -> Union[Tensor, tuple[Tensor, ...]]:
+    def forward(
+        self, inputs: Tensor, drive_scaling: Optional[Tensor] = None
+    ) -> Union[Tensor, tuple[Tensor, ...]]:
         if self.input_zero_mean:
             inputs = make_zero_mean(inputs)
         if self.input_unit_var:
             inputs = make_unit_var(inputs)
 
         inputs, reshape_func = self._to_correct_input_shape(inputs)
-        outputs = self.encode(inputs)
+        if drive_scaling is not None:
+            drive_scaling, _ = self._to_correct_input_shape(drive_scaling)
+
+        outputs = self.encode(inputs, drive_scaling)
         self.forward_pass += 1
 
         if self.return_all_ts:
