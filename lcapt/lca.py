@@ -116,7 +116,7 @@ class _LCAConvBase(torch.nn.Module):
         """Manually assign weight tensor"""
         with torch.no_grad():
             assert tensor.dtype == self.weights.dtype
-            tensor, _ = self._to_correct_input_shape(tensor)
+            tensor, _ = self._to_correct_shape(tensor)
             assert tensor.shape == self.weights.shape
             self.weights.copy_(tensor)
 
@@ -198,7 +198,7 @@ class _LCAConvBase(torch.nn.Module):
     def compute_input_drive(
         self, inputs: Tensor, weights: Union[Tensor, Parameter]
     ) -> Tensor:
-        inputs, reshape_func = self._to_correct_input_shape(inputs)
+        inputs, reshape_func = self._to_correct_shape(inputs)
         drive = F.conv3d(
             inputs,
             weights,
@@ -225,7 +225,7 @@ class _LCAConvBase(torch.nn.Module):
 
     def compute_recon(self, acts: Tensor, weights: Union[Tensor, Parameter]) -> Tensor:
         """Computes reconstruction given code"""
-        acts, reshape_func = self._to_correct_input_shape(acts)
+        acts, reshape_func = self._to_correct_shape(acts)
         recons = F.conv_transpose3d(
             acts,
             weights,
@@ -321,9 +321,9 @@ class _LCAConvBase(torch.nn.Module):
         if self.input_unit_var:
             inputs = make_unit_var(inputs)
 
-        inputs, reshape_func = self._to_correct_input_shape(inputs)
+        inputs, reshape_func = self._to_correct_shape(inputs)
         if drive_scaling is not None:
-            drive_scaling, _ = self._to_correct_input_shape(drive_scaling)
+            drive_scaling, _ = self._to_correct_shape(drive_scaling)
 
         outputs = self.encode(inputs, drive_scaling)
         self.forward_pass += 1
@@ -368,7 +368,7 @@ class _LCAConvBase(torch.nn.Module):
             scale = self.weights.norm(p=2, dim=dims, keepdim=True)
             self.weights.copy_(self.weights / (scale + eps))
 
-    def _to_correct_input_shape(
+    def _to_correct_shape(
         self, inputs: Tensor
     ) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
         pass
@@ -387,8 +387,8 @@ class _LCAConvBase(torch.nn.Module):
     def update_weights(self, acts: Tensor, recon_error: Tensor) -> None:
         """Updates the dictionary given the computed gradient"""
         with torch.no_grad():
-            acts, _ = self._to_correct_input_shape(acts)
-            recon_error, _ = self._to_correct_input_shape(recon_error)
+            acts, _ = self._to_correct_shape(acts)
+            recon_error, _ = self._to_correct_shape(recon_error)
             update = self.compute_weight_update(acts, recon_error)
             times_active = compute_times_active_by_feature(acts) + 1
             update *= self.eta / times_active
@@ -580,7 +580,7 @@ class LCAConv1D(_LCAConvBase):
             False,
         )
 
-    def _to_correct_input_shape(
+    def _to_correct_shape(
         self, inputs: Tensor
     ) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
         if len(inputs.shape) == 3:
@@ -733,7 +733,7 @@ class LCAConv2D(_LCAConvBase):
             True,
         )
 
-    def _to_correct_input_shape(
+    def _to_correct_shape(
         self, inputs: Tensor
     ) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
         if len(inputs.shape) == 4:
@@ -892,7 +892,7 @@ class LCAConv3D(_LCAConvBase):
             no_time_pad,
         )
 
-    def _to_correct_input_shape(
+    def _to_correct_shape(
         self, inputs: Tensor
     ) -> tuple[Tensor, Callable[[Tensor], Tensor]]:
         if len(inputs.shape) == 5:
