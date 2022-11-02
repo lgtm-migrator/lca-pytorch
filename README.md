@@ -57,7 +57,7 @@ Below is a mapping between the variable names used in this implementation and th
 
 ## Pretrained Dictionaries
 
-  * [ImageNet (shown below)](https://drive.google.com/file/d/1CNhpZw81EbHT29ikxSZf6PceUFm_YpZN/view?usp=sharing) 
+  * [ImageNet (shown below)](https://drive.google.com/file/d/13MEoH1C5xDMLXGhz8G1QM9odf1F5Veml/view?usp=share_link) 
   * [Cifar-10](https://drive.google.com/file/d/1Et4El_L9AvSQcGTIgPFdfarw6dHpSsiC/view?usp=sharing)
 
 <p align="center">
